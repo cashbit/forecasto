@@ -1,0 +1,111 @@
+import { X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
+import { AmountDisplay } from '@/components/common/AmountDisplay'
+import { DateDisplay } from '@/components/common/DateDisplay'
+import { StatusBadge } from '@/components/common/StatusBadge'
+import { AREA_LABELS } from '@/lib/constants'
+import type { Record } from '@/types/record'
+
+interface RecordDetailProps {
+  record: Record
+  onClose: () => void
+  onEdit?: () => void
+}
+
+export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
+  return (
+    <Card className="h-full border-0 rounded-none">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-lg">Dettaglio Record</CardTitle>
+        <Button variant="ghost" size="icon" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      </CardHeader>
+      <Separator />
+      <CardContent className="pt-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <Badge variant="outline">{AREA_LABELS[record.area]}</Badge>
+          <StatusBadge status={record.stage} />
+        </div>
+
+        <div>
+          <p className="text-sm text-muted-foreground">Conto</p>
+          <p className="font-medium">{record.account}</p>
+        </div>
+
+        <div>
+          <p className="text-sm text-muted-foreground">Riferimento</p>
+          <p className="font-medium">{record.reference}</p>
+        </div>
+
+        {record.note && (
+          <div>
+            <p className="text-sm text-muted-foreground">Note</p>
+            <p className="text-sm">{record.note}</p>
+          </div>
+        )}
+
+        <Separator />
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Imponibile</p>
+            <AmountDisplay amount={record.amount} className="text-lg" />
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">IVA</p>
+            <AmountDisplay amount={record.vat} className="text-lg" />
+          </div>
+        </div>
+
+        <div>
+          <p className="text-sm text-muted-foreground">Totale</p>
+          <AmountDisplay amount={record.total} className="text-xl font-bold" />
+        </div>
+
+        <Separator />
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Data Cashflow</p>
+            <DateDisplay date={record.date_cashflow} />
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Data Offerta</p>
+            <DateDisplay date={record.date_offer} />
+          </div>
+        </div>
+
+        {record.transfer_history && record.transfer_history.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">Cronologia Trasferimenti</p>
+              <div className="space-y-2">
+                {record.transfer_history.map((transfer, idx) => (
+                  <div key={idx} className="text-sm bg-muted p-2 rounded">
+                    <p>
+                      {AREA_LABELS[transfer.from_area]} → {AREA_LABELS[transfer.to_area]}
+                    </p>
+                    <p className="text-muted-foreground">
+                      <DateDisplay date={transfer.transferred_at} format="datetime" />
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        <Separator />
+
+        <Button className="w-full" onClick={onEdit}>
+          Modifica Record
+        </Button>
+      </CardContent>
+    </Card>
+  )
+}
