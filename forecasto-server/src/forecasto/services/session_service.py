@@ -531,8 +531,7 @@ class SessionService:
             "stage": record.stage,
             "transaction_id": record.transaction_id,
             "bank_account_id": record.bank_account_id,
-            "project_id": record.project_id,
-            "phase_id": record.phase_id,
+            "project_code": record.project_code,
         }
 
     def _session_to_response(self, session: Session) -> SessionResponse:

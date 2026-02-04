@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, BarChart3, FolderKanban } from 'lucide-react'
 import { AxiosError } from 'axios'
-import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { RecordGrid } from '@/components/records/RecordGrid'
@@ -15,13 +13,12 @@ import { BulkSetDayDialog } from '@/components/records/BulkSetDayDialog'
 import { BulkTransferDialog } from '@/components/records/BulkTransferDialog'
 import { BulkStageDialog } from '@/components/records/BulkStageDialog'
 import { BulkMergeDialog } from '@/components/records/BulkMergeDialog'
-import { ProjectList } from '@/components/projects/ProjectList'
 import { OperationList } from '@/components/operations/OperationList'
 import { useRecords } from '@/hooks/useRecords'
-import { useProjects } from '@/hooks/useProjects'
 import { useFilterStore } from '@/stores/filterStore'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { useUiStore } from '@/stores/uiStore'
 import { toast } from '@/hooks/useToast'
 import { AREA_LABELS, AREAS } from '@/lib/constants'
 import type { Record, Area, RecordCreate, RecordUpdate } from '@/types/record'
@@ -30,16 +27,13 @@ export function DashboardPage() {
   const { currentArea, setArea } = useFilterStore()
   const { activeSession, activeSessionId, fetchOperations } = useSessionStore()
   const { currentWorkspaceId } = useWorkspaceStore()
+  const { rightPanelContent, createRecordDialogOpen, setCreateRecordDialogOpen } = useUiStore()
   const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord } = useRecords()
-  const { projects, isLoading: projectsLoading } = useProjects()
 
-  const [viewMode, setViewMode] = useState<'area' | 'project'>('area')
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
-  const [showCreateForm, setShowCreateForm] = useState(false)
   const [transferRecord_, setTransferRecord] = useState<Record | null>(null)
   const [splitRecord_, setSplitRecord] = useState<Record | null>(null)
-  const [showOperations, setShowOperations] = useState(false)
 
   // Bulk operations state
   const [bulkRecords, setBulkRecords] = useState<Record[] | null>(null)
@@ -67,7 +61,7 @@ export function DashboardPage() {
     }
     try {
       await createRecord(data)
-      setShowCreateForm(false)
+      setCreateRecordDialogOpen(false)
       toast({ title: 'Record creato', variant: 'success' })
     } catch (error) {
       const axiosError = error as AxiosError<{ error?: string; message?: string; detail?: Array<{ msg: string; loc: string[] }> | string }>
@@ -358,91 +352,43 @@ export function DashboardPage() {
   return (
     <div className="flex h-[calc(100vh-7rem)]">
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="border-b p-4">
-          <div className="flex items-center justify-between">
-            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'area' | 'project')}>
-              <TabsList>
-                <TabsTrigger value="area">
-                  <BarChart3 className="mr-2 h-4 w-4" />
-                  Per Area
+        {/* Area Tabs */}
+        <div className="border-b">
+          <Tabs value={currentArea} onValueChange={(v) => setArea(v as Area)}>
+            <TabsList className="w-full justify-start rounded-none border-none bg-transparent p-0">
+              {AREAS.map((area) => (
+                <TabsTrigger
+                  key={area}
+                  value={area}
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
+                >
+                  {AREA_LABELS[area]}
                 </TabsTrigger>
-                <TabsTrigger value="project">
-                  <FolderKanban className="mr-2 h-4 w-4" />
-                  Per Progetto
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowOperations(!showOperations)}
-              >
-                Operazioni
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => setShowCreateForm(true)}
-                disabled={!activeSession}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Nuovo Record
-              </Button>
-            </div>
-          </div>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
 
-        {/* Area View */}
-        {viewMode === 'area' && (
-          <>
-            {/* Area Tabs */}
-            <div className="border-b">
-              <Tabs value={currentArea} onValueChange={(v) => setArea(v as Area)}>
-                <TabsList className="w-full justify-start rounded-none border-none bg-transparent p-0">
-                  {AREAS.map((area) => (
-                    <TabsTrigger
-                      key={area}
-                      value={area}
-                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
-                    >
-                      {AREA_LABELS[area]}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
-            </div>
+        <RecordFilters availableOwners={records.map(r => r.owner).filter(Boolean) as string[]} />
 
-            <RecordFilters availableOwners={records.map(r => r.owner).filter(Boolean) as string[]} />
-
-            <div className="flex-1 overflow-auto p-4">
-              <RecordGrid
-                records={records}
-                isLoading={isLoading}
-                onSelectRecord={setSelectedRecord}
-                onEditRecord={setEditingRecord}
-                onDeleteRecord={handleDeleteRecord}
-                onTransferRecord={setTransferRecord}
-                onSplitRecord={setSplitRecord}
-                onBulkDelete={handleBulkDelete}
-                onBulkMerge={(recs) => { setBulkRecords(recs); setShowBulkMerge(true) }}
-                onBulkMoveDates={(recs) => { setBulkRecords(recs); setShowBulkMoveDates(true) }}
-                onBulkSetDay={(recs) => { setBulkRecords(recs); setShowBulkSetDay(true) }}
-                onBulkExport={handleBulkExport}
-                onBulkTransfer={(recs) => { setBulkRecords(recs); setShowBulkTransfer(true) }}
-                onBulkSetStage={(recs) => { setBulkRecords(recs); setShowBulkStage(true) }}
-              />
-            </div>
-          </>
-        )}
-
-        {/* Project View */}
-        {viewMode === 'project' && (
-          <div className="flex-1 overflow-auto">
-            <ProjectList projects={projects} isLoading={projectsLoading} />
-          </div>
-        )}
+        <div className="flex-1 overflow-auto p-4">
+          <RecordGrid
+            records={records}
+            isLoading={isLoading}
+            onSelectRecord={setSelectedRecord}
+            onEditRecord={setEditingRecord}
+            onDeleteRecord={handleDeleteRecord}
+            onTransferRecord={setTransferRecord}
+            onSplitRecord={setSplitRecord}
+            onBulkDelete={handleBulkDelete}
+            onBulkMerge={(recs) => { setBulkRecords(recs); setShowBulkMerge(true) }}
+            onBulkMoveDates={(recs) => { setBulkRecords(recs); setShowBulkMoveDates(true) }}
+            onBulkSetDay={(recs) => { setBulkRecords(recs); setShowBulkSetDay(true) }}
+            onBulkExport={handleBulkExport}
+            onBulkTransfer={(recs) => { setBulkRecords(recs); setShowBulkTransfer(true) }}
+            onBulkSetStage={(recs) => { setBulkRecords(recs); setShowBulkStage(true) }}
+          />
+        </div>
       </div>
 
       {/* Right Panel */}
@@ -457,16 +403,16 @@ export function DashboardPage() {
       )}
 
       {/* Operations Panel */}
-      {showOperations && (
+      {rightPanelContent === 'operations' && (
         <div className="w-80 border-l">
           <OperationList />
         </div>
       )}
 
       {/* Create/Edit Dialog */}
-      <Dialog open={showCreateForm || !!editingRecord} onOpenChange={(open) => {
+      <Dialog open={createRecordDialogOpen || !!editingRecord} onOpenChange={(open) => {
         if (!open) {
-          setShowCreateForm(false)
+          setCreateRecordDialogOpen(false)
           setEditingRecord(null)
         }
       }}>
@@ -487,7 +433,7 @@ export function DashboardPage() {
               }
             }}
             onCancel={() => {
-              setShowCreateForm(false)
+              setCreateRecordDialogOpen(false)
               setEditingRecord(null)
             }}
           />

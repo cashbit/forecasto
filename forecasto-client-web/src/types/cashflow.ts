@@ -6,7 +6,7 @@ export interface CashflowParams {
   areas: Area[]
   group_by: 'day' | 'week' | 'month'
   bank_account_id?: string
-  project_id?: string
+  project_code?: string
 }
 
 export interface CashflowEntry {

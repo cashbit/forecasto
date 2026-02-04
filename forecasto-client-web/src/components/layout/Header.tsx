@@ -93,16 +93,6 @@ export function Header() {
           >
             <Link to="/cashflow">Cashflow</Link>
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            asChild
-            className={cn(
-              location.pathname === '/projects' && 'bg-primary/10 text-primary font-semibold'
-            )}
-          >
-            <Link to="/projects">Progetti</Link>
-          </Button>
         </nav>
 
         <DropdownMenu>

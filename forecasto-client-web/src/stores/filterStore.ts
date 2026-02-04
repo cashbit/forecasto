@@ -13,7 +13,7 @@ interface FilterState {
   nextactionFilter: 'all' | 'with' | 'without'
   textFilter: string
   accountFilter: string[]
-  projectFilter: string | null
+  projectCodeFilter: string | null
   bankAccountFilter: string | null
 
   setArea: (area: Area) => void
@@ -28,7 +28,7 @@ interface FilterState {
   setNextactionFilter: (filter: 'all' | 'with' | 'without') => void
   setTextFilter: (text: string) => void
   setAccountFilter: (accounts: string[]) => void
-  setProjectFilter: (projectId: string | null) => void
+  setProjectCodeFilter: (code: string | null) => void
   setBankAccountFilter: (accountId: string | null) => void
   resetFilters: () => void
 }
@@ -45,7 +45,7 @@ const initialState = {
   nextactionFilter: 'all' as const,
   textFilter: '',
   accountFilter: [],
-  projectFilter: null,
+  projectCodeFilter: null,
   bankAccountFilter: null,
 }
 
@@ -91,7 +91,7 @@ export const useFilterStore = create<FilterState>()((set) => ({
 
   setAccountFilter: (accounts) => set({ accountFilter: accounts }),
 
-  setProjectFilter: (projectId) => set({ projectFilter: projectId }),
+  setProjectCodeFilter: (code) => set({ projectCodeFilter: code }),
 
   setBankAccountFilter: (accountId) => set({ bankAccountFilter: accountId }),
 

@@ -32,17 +32,6 @@ router = APIRouter()
 def _record_to_response(record, is_draft: bool = False) -> RecordResponse:
     """Convert record model to response schema."""
 
-    project_info = None
-    if record.project_id:
-        project_info = {
-            "project_id": record.project_id,
-            "project_name": record.project.name if record.project else "",
-            "project_code": record.project.code if record.project else None,
-            "phase_id": record.phase_id,
-            "phase_name": record.phase.name if record.phase else None,
-            "phase_sequence": record.phase.sequence if record.phase else None,
-        }
-
     return RecordResponse(
         id=record.id,
         workspace_id=record.workspace_id,
@@ -61,7 +50,7 @@ def _record_to_response(record, is_draft: bool = False) -> RecordResponse:
         stage=record.stage,
         transaction_id=record.transaction_id,
         bank_account_id=record.bank_account_id,
-        project=project_info,
+        project_code=record.project_code,
         classification=record.classification,
         transfer_history=record.transfer_history,
         version=record.version,
@@ -82,7 +71,7 @@ async def list_records(
     date_end: date | None = Query(None),
     sign: str | None = Query(None),
     text_filter: str | None = Query(None),
-    project_id: str | None = Query(None),
+    project_code: str | None = Query(None),
     bank_account_id: str | None = Query(None),
     x_session_id: str | None = Header(None),
 ):
@@ -101,7 +90,7 @@ async def list_records(
         date_end=date_end,
         sign=sign,
         text_filter=text_filter,
-        project_id=project_id,
+        project_code=project_code,
         bank_account_id=bank_account_id,
         session_id=x_session_id,
     )

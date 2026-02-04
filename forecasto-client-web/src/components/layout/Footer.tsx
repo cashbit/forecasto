@@ -1,4 +1,4 @@
-import { Undo, Redo, Save, X, AlertTriangle } from 'lucide-react'
+import { Undo, Redo, Save, X, AlertTriangle, Plus, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -10,7 +10,7 @@ import { useUiStore } from '@/stores/uiStore'
 export function Footer() {
   const { activeSession, operations, canUndo, canRedo, undo, redo } = useSessionStore()
   const { currentWorkspaceId } = useWorkspaceStore()
-  const { setCommitDialogOpen, setDiscardDialogOpen } = useUiStore()
+  const { rightPanelContent, setRightPanelContent, setCommitDialogOpen, setDiscardDialogOpen, setCreateRecordDialogOpen } = useUiStore()
 
   const handleUndo = () => {
     if (currentWorkspaceId && canUndo) {
@@ -46,6 +46,26 @@ export function Footer() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => setCreateRecordDialogOpen(true)}
+              disabled={!activeSession}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Nuovo Record
+            </Button>
+
+            <Button
+              variant={rightPanelContent === 'operations' ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setRightPanelContent(rightPanelContent === 'operations' ? null : 'operations')}
+            >
+              <ClipboardList className="h-4 w-4 mr-1" />
+              Operazioni
+            </Button>
+
+            <Separator orientation="vertical" className="h-6" />
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

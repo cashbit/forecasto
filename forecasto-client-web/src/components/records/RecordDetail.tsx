@@ -52,6 +52,11 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
         </div>
 
         <div>
+          <p className="text-sm text-muted-foreground">Progetto</p>
+          <p className="font-mono text-sm">{record.project_code || '-'}</p>
+        </div>
+
+        <div>
           <p className="text-sm text-muted-foreground">Prossima Azione</p>
           <p className="font-medium text-amber-600 dark:text-amber-400">{record.nextaction || '-'}</p>
         </div>

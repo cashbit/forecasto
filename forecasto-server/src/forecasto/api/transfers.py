@@ -53,18 +53,6 @@ async def transfer_record(
         record, data.to_area, current_user, session, data.note
     )
 
-    # Build response
-    project_info = None
-    if record.project_id:
-        project_info = {
-            "project_id": record.project_id,
-            "project_name": record.project.name if record.project else "",
-            "project_code": record.project.code if record.project else None,
-            "phase_id": record.phase_id,
-            "phase_name": record.phase.name if record.phase else None,
-            "phase_sequence": record.phase.sequence if record.phase else None,
-        }
-
     from forecasto.schemas.record import RecordResponse
 
     record_response = RecordResponse(
@@ -83,7 +71,7 @@ async def transfer_record(
         stage=record.stage,
         transaction_id=record.transaction_id,
         bank_account_id=record.bank_account_id,
-        project=project_info,
+        project_code=record.project_code,
         classification=record.classification,
         transfer_history=record.transfer_history,
         version=record.version,

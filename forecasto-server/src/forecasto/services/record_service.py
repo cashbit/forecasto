@@ -49,8 +49,7 @@ class RecordService:
             stage=data.stage,
             transaction_id=data.transaction_id,
             bank_account_id=data.bank_account_id,
-            project_id=data.project_id,
-            phase_id=data.phase_id,
+            project_code=data.project_code,
             created_by=user.id,
             updated_by=user.id,
         )
@@ -126,8 +125,8 @@ class RecordService:
                 )
             )
 
-        if filters.project_id:
-            query = query.where(Record.project_id == filters.project_id)
+        if filters.project_code:
+            query = query.where(Record.project_code == filters.project_code)
 
         if filters.bank_account_id:
             query = query.where(Record.bank_account_id == filters.bank_account_id)
@@ -329,6 +328,5 @@ class RecordService:
             "stage": record.stage,
             "transaction_id": record.transaction_id,
             "bank_account_id": record.bank_account_id,
-            "project_id": record.project_id,
-            "phase_id": record.phase_id,
+            "project_code": record.project_code,
         }

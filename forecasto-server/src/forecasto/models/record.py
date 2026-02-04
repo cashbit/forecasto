@@ -15,7 +15,6 @@ from forecasto.models.base import Base, TimestampMixin, UUIDMixin, generate_uuid
 
 if TYPE_CHECKING:
     from forecasto.models.bank_account import BankAccount
-    from forecasto.models.project import Project, ProjectPhase
     from forecasto.models.user import User
     from forecasto.models.workspace import Workspace
 
@@ -50,12 +49,9 @@ class Record(Base, UUIDMixin, TimestampMixin):
     bank_account_id: Mapped[Optional[str]] = mapped_column(
         String(36), ForeignKey("bank_accounts.id"), nullable=True, index=True
     )
-    project_id: Mapped[Optional[str]] = mapped_column(
-        String(36), ForeignKey("projects.id"), nullable=True, index=True
-    )
-    phase_id: Mapped[Optional[str]] = mapped_column(
-        String(36), ForeignKey("project_phases.id"), nullable=True
-    )
+
+    # Project code (free text for grouping records)
+    project_code: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
 
     # Semantic classification
     classification: Mapped[dict] = mapped_column(JSON, default=dict)
@@ -83,8 +79,6 @@ class Record(Base, UUIDMixin, TimestampMixin):
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="records")
     bank_account: Mapped[Optional["BankAccount"]] = relationship("BankAccount")
-    project: Mapped[Optional["Project"]] = relationship("Project")
-    phase: Mapped[Optional["ProjectPhase"]] = relationship("ProjectPhase")
     creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
     updater: Mapped[Optional["User"]] = relationship("User", foreign_keys=[updated_by])
     versions: Mapped[list["RecordVersion"]] = relationship(

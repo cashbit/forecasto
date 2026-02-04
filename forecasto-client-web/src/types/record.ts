@@ -32,8 +32,7 @@ export interface Record {
   nextaction?: string
   transaction_id?: string
   bank_account_id?: string
-  project_id?: string
-  phase_id?: string
+  project_code?: string
   classification?: Classification
   transfer_history?: TransferEntry[]
   version: number
@@ -58,8 +57,7 @@ export interface RecordCreate {
   nextaction?: string
   transaction_id: string
   bank_account_id?: string
-  project_id?: string
-  phase_id?: string
+  project_code?: string
   classification?: Classification
 }
 
@@ -78,8 +76,7 @@ export interface RecordUpdate {
   nextaction?: string
   transaction_id?: string
   bank_account_id?: string
-  project_id?: string
-  phase_id?: string
+  project_code?: string
   classification?: Classification
 }
 
@@ -89,7 +86,7 @@ export interface RecordFilters {
   date_end?: string
   sign?: 'in' | 'out' | 'all'
   text_filter?: string
-  project_id?: string
+  project_code?: string
   bank_account_id?: string
   session_id?: string
   page?: number

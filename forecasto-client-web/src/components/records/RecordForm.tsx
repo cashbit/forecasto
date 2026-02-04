@@ -27,6 +27,7 @@ const schema = z.object({
   total: z.string().min(1, 'Totale obbligatorio'),
   stage: z.string().min(1, 'Stato obbligatorio'),
   nextaction: z.string().optional(),
+  project_code: z.string().optional(),
   sign: z.enum(['in', 'out'], { message: 'Seleziona entrata o uscita' }),
 })
 
@@ -74,6 +75,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, isLoading }: Reco
       total: record?.total ? Math.abs(parseFloat(record.total)).toString() : '',
       stage: normalizeLegacyStage(record?.stage) || stages[0] || '0',
       nextaction: record?.nextaction || '',
+      project_code: record?.project_code || '',
       sign: record?.amount ? (parseFloat(record.amount) >= 0 ? 'in' : 'out') : undefined,
     },
   })
@@ -137,8 +139,8 @@ export function RecordForm({ record, area, onSubmit, onCancel, isLoading }: Reco
         </div>
       </div>
 
-      {/* Row 2: Date + Responsabile + Prossima Azione */}
-      <div className="grid grid-cols-4 gap-4">
+      {/* Row 2: Date + Responsabile + Prossima Azione + Progetto */}
+      <div className="grid grid-cols-5 gap-4">
         <div className="space-y-1">
           <Label htmlFor="date_cashflow">Data Cashflow</Label>
           <Input id="date_cashflow" type="date" {...register('date_cashflow')} />
@@ -159,6 +161,11 @@ export function RecordForm({ record, area, onSubmit, onCancel, isLoading }: Reco
         <div className="space-y-1">
           <Label htmlFor="nextaction">Prossima Azione</Label>
           <Input id="nextaction" {...register('nextaction')} placeholder="Azione" />
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor="project_code">Codice Progetto</Label>
+          <Input id="project_code" {...register('project_code')} placeholder="es. PROJ-001" />
         </div>
       </div>
 

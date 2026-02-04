@@ -7,6 +7,7 @@ interface UiState {
   selectedRecordId: string | null
   createSessionDialogOpen: boolean
   createWorkspaceDialogOpen: boolean
+  createRecordDialogOpen: boolean
   commitDialogOpen: boolean
   discardDialogOpen: boolean
   conflictDialogOpen: boolean
@@ -19,6 +20,7 @@ interface UiState {
   setSelectedRecordId: (id: string | null) => void
   setCreateSessionDialogOpen: (open: boolean) => void
   setCreateWorkspaceDialogOpen: (open: boolean) => void
+  setCreateRecordDialogOpen: (open: boolean) => void
   setCommitDialogOpen: (open: boolean) => void
   setDiscardDialogOpen: (open: boolean) => void
   setConflictDialogOpen: (open: boolean) => void
@@ -32,6 +34,7 @@ export const useUiStore = create<UiState>()((set) => ({
   selectedRecordId: null,
   createSessionDialogOpen: false,
   createWorkspaceDialogOpen: false,
+  createRecordDialogOpen: false,
   commitDialogOpen: false,
   discardDialogOpen: false,
   conflictDialogOpen: false,
@@ -53,6 +56,7 @@ export const useUiStore = create<UiState>()((set) => ({
 
   setCreateSessionDialogOpen: (open) => set({ createSessionDialogOpen: open }),
   setCreateWorkspaceDialogOpen: (open) => set({ createWorkspaceDialogOpen: open }),
+  setCreateRecordDialogOpen: (open) => set({ createRecordDialogOpen: open }),
   setCommitDialogOpen: (open) => set({ commitDialogOpen: open }),
   setDiscardDialogOpen: (open) => set({ discardDialogOpen: open }),
   setConflictDialogOpen: (open) => set({ conflictDialogOpen: open }),
@@ -61,6 +65,7 @@ export const useUiStore = create<UiState>()((set) => ({
     set({
       createSessionDialogOpen: false,
       createWorkspaceDialogOpen: false,
+      createRecordDialogOpen: false,
       commitDialogOpen: false,
       discardDialogOpen: false,
       conflictDialogOpen: false,

@@ -183,9 +183,9 @@ interface RecordFiltersProps {
 export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
   const {
     currentArea, sign, stageFilter, textFilter,
-    yearFilter, ownerFilter, nextactionFilter,
+    yearFilter, ownerFilter, nextactionFilter, projectCodeFilter,
     setSign, setStageFilter, setTextFilter, resetFilters,
-    toggleOwnerFilter, clearOwnerFilter, setNextactionFilter
+    toggleOwnerFilter, clearOwnerFilter, setNextactionFilter, setProjectCodeFilter
   } = useFilterStore()
 
   const stageLabels = STAGE_LABELS_BY_AREA[currentArea] || { '0': 'Stato 0', '1': 'Stato 1' }
@@ -193,7 +193,8 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
   const hasDateFilter = yearFilter !== null
   const hasOwnerFilter = ownerFilter.length > 0
   const hasNextactionFilter = nextactionFilter !== 'all'
-  const hasAnyFilter = textFilter || sign !== 'all' || stageFilter !== 'all' || hasDateFilter || hasOwnerFilter || hasNextactionFilter
+  const hasProjectCodeFilter = !!projectCodeFilter
+  const hasAnyFilter = textFilter || sign !== 'all' || stageFilter !== 'all' || hasDateFilter || hasOwnerFilter || hasNextactionFilter || hasProjectCodeFilter
 
   // Get unique owners from available owners
   const uniqueOwners = [...new Set(availableOwners.filter(Boolean))].sort()
@@ -243,6 +244,23 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
             { value: 'without', label: 'Senza' },
           ]}
         />
+
+        <div className="relative w-32">
+          <Input
+            placeholder="Progetto"
+            value={projectCodeFilter || ''}
+            onChange={(e) => setProjectCodeFilter(e.target.value || null)}
+            className="h-8 text-sm"
+          />
+          {hasProjectCodeFilter && (
+            <button
+              onClick={() => setProjectCodeFilter(null)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
 
         {hasAnyFilter && (
           <Button variant="ghost" size="sm" onClick={resetFilters}>

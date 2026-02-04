@@ -8,16 +8,6 @@ from decimal import Decimal
 
 from pydantic import BaseModel, field_validator
 
-class ProjectInfo(BaseModel):
-    """Embedded project information."""
-
-    project_id: str
-    project_name: str
-    project_code: str | None = None
-    phase_id: str | None = None
-    phase_name: str | None = None
-    phase_sequence: int | None = None
-
 class RecordCreate(BaseModel):
     """Record creation request."""
 
@@ -36,8 +26,7 @@ class RecordCreate(BaseModel):
     stage: str
     transaction_id: str | None = None
     bank_account_id: str | None = None
-    project_id: str | None = None
-    phase_id: str | None = None
+    project_code: str | None = None
 
     @field_validator("area")
     @classmethod
@@ -64,8 +53,7 @@ class RecordUpdate(BaseModel):
     stage: str | None = None
     transaction_id: str | None = None
     bank_account_id: str | None = None
-    project_id: str | None = None
-    phase_id: str | None = None
+    project_code: str | None = None
 
 class TransferHistoryEntry(BaseModel):
     """Entry in transfer history."""
@@ -96,7 +84,7 @@ class RecordResponse(BaseModel):
     stage: str
     transaction_id: str | None = None
     bank_account_id: str | None = None
-    project: ProjectInfo | None = None
+    project_code: str | None = None
     classification: dict
     transfer_history: list[TransferHistoryEntry]
     version: int
@@ -114,7 +102,7 @@ class RecordFilter(BaseModel):
     date_end: date | None = None
     sign: str | None = None  # in, out, all
     text_filter: str | None = None
-    project_id: str | None = None
+    project_code: str | None = None
     bank_account_id: str | None = None
     session_id: str | None = None
     include_deleted: bool = False

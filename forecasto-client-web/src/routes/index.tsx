@@ -4,7 +4,6 @@ import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { CashflowPage } from '@/pages/CashflowPage'
-import { ProjectsPage } from '@/pages/ProjectsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { useAuthStore } from '@/stores/authStore'
@@ -57,7 +56,6 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'cashflow', element: <CashflowPage /> },
-      { path: 'projects', element: <ProjectsPage /> },
       { path: 'settings', element: <SettingsPage /> },
     ],
   },

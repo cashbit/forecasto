@@ -135,6 +135,13 @@ export function RecordGrid({
         ),
       },
       {
+        accessorKey: 'project_code',
+        header: 'Progetto',
+        cell: ({ row }) => (
+          <span className="truncate max-w-[100px] block font-mono text-xs">{row.original.project_code || '-'}</span>
+        ),
+      },
+      {
         accessorKey: 'amount',
         header: ({ column }) => (
           <Button

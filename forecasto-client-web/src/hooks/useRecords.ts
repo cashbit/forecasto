@@ -10,7 +10,7 @@ export function useRecords() {
   const {
     currentArea, dateRange, yearFilter, monthFilter, dayFilter,
     sign, stageFilter, ownerFilter, nextactionFilter,
-    textFilter, projectFilter, bankAccountFilter
+    textFilter, projectCodeFilter, bankAccountFilter
   } = useFilterStore()
   const { activeSessionId, fetchOperations } = useSessionStore()
   const queryClient = useQueryClient()
@@ -21,13 +21,13 @@ export function useRecords() {
     date_end: dateRange?.end,
     sign: sign !== 'all' ? sign : undefined,
     text_filter: textFilter || undefined,
-    project_id: projectFilter || undefined,
+    project_code: projectCodeFilter || undefined,
     bank_account_id: bankAccountFilter || undefined,
     session_id: activeSessionId || undefined,
   }
 
   const query = useQuery({
-    queryKey: ['records', currentWorkspaceId, filters, stageFilter, yearFilter, monthFilter, dayFilter, ownerFilter, nextactionFilter],
+    queryKey: ['records', currentWorkspaceId, filters, stageFilter, yearFilter, monthFilter, dayFilter, ownerFilter, nextactionFilter, projectCodeFilter],
     queryFn: () => recordsApi.list(currentWorkspaceId!, filters),
     enabled: !!currentWorkspaceId,
     select: (data) => {
