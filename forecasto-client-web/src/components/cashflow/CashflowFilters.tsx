@@ -1,5 +1,6 @@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -7,10 +8,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
 import { AREAS, AREA_LABELS } from '@/lib/constants'
 import type { CashflowParams } from '@/types/cashflow'
 import type { Area } from '@/types/record'
+import { cn } from '@/lib/utils'
 
 interface CashflowFiltersProps {
   params: CashflowParams
@@ -18,11 +19,15 @@ interface CashflowFiltersProps {
 }
 
 export function CashflowFilters({ params, onChange }: CashflowFiltersProps) {
-  const handleAreaToggle = (area: Area, checked: boolean) => {
-    const newAreas = checked
-      ? [...params.areas, area]
-      : params.areas.filter((a) => a !== area)
-    onChange({ ...params, areas: newAreas as Area[] })
+  const handleAreaToggle = (area: Area) => {
+    const isSelected = params.areas.includes(area)
+    const newAreas = isSelected
+      ? params.areas.filter((a) => a !== area)
+      : [...params.areas, area]
+    // Ensure at least one area is selected
+    if (newAreas.length > 0) {
+      onChange({ ...params, areas: newAreas as Area[] })
+    }
   }
 
   return (
@@ -66,19 +71,25 @@ export function CashflowFilters({ params, onChange }: CashflowFiltersProps) {
 
       <div className="space-y-2">
         <Label>Aree</Label>
-        <div className="flex gap-4">
-          {AREAS.map((area) => (
-            <div key={area} className="flex items-center space-x-2">
-              <Checkbox
-                id={`area-${area}`}
-                checked={params.areas.includes(area)}
-                onCheckedChange={(checked) => handleAreaToggle(area, checked as boolean)}
-              />
-              <Label htmlFor={`area-${area}`} className="text-sm font-normal">
+        <div className="flex gap-1">
+          {AREAS.map((area) => {
+            const isSelected = params.areas.includes(area)
+            return (
+              <Button
+                key={area}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleAreaToggle(area)}
+                className={cn(
+                  'transition-colors',
+                  isSelected && 'bg-primary text-primary-foreground hover:bg-primary/90'
+                )}
+              >
                 {AREA_LABELS[area]}
-              </Label>
-            </div>
-          ))}
+              </Button>
+            )
+          })}
         </div>
       </div>
     </div>

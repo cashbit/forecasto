@@ -47,6 +47,7 @@ class WorkspaceService:
 
         workspace = Workspace(
             name=data.name,
+            description=data.description,
             fiscal_year=data.fiscal_year,
             owner_id=owner.id,
             email_whitelist=data.email_whitelist or [],

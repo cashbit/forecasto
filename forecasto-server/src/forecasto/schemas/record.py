@@ -28,6 +28,8 @@ class RecordCreate(BaseModel):
     note: str | None = None
     date_cashflow: date
     date_offer: date
+    owner: str | None = None
+    nextaction: str | None = None
     amount: Decimal
     vat: Decimal = Decimal("0")
     total: Decimal
@@ -54,6 +56,8 @@ class RecordUpdate(BaseModel):
     note: str | None = None
     date_cashflow: date | None = None
     date_offer: date | None = None
+    owner: str | None = None
+    nextaction: str | None = None
     amount: Decimal | None = None
     vat: Decimal | None = None
     total: Decimal | None = None
@@ -84,6 +88,8 @@ class RecordResponse(BaseModel):
     note: str | None = None
     date_cashflow: date
     date_offer: date
+    owner: str | None = None
+    nextaction: str | None = None
     amount: Decimal
     vat: Decimal
     total: Decimal

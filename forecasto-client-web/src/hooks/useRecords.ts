@@ -7,8 +7,12 @@ import type { RecordCreate, RecordUpdate, Area } from '@/types/record'
 
 export function useRecords() {
   const { currentWorkspaceId } = useWorkspaceStore()
-  const { currentArea, dateRange, sign, textFilter, projectFilter, bankAccountFilter } = useFilterStore()
-  const { activeSessionId } = useSessionStore()
+  const {
+    currentArea, dateRange, yearFilter, monthFilter, dayFilter,
+    sign, stageFilter, ownerFilter, nextactionFilter,
+    textFilter, projectFilter, bankAccountFilter
+  } = useFilterStore()
+  const { activeSessionId, fetchOperations } = useSessionStore()
   const queryClient = useQueryClient()
 
   const filters = {
@@ -23,15 +27,66 @@ export function useRecords() {
   }
 
   const query = useQuery({
-    queryKey: ['records', currentWorkspaceId, filters],
+    queryKey: ['records', currentWorkspaceId, filters, stageFilter, yearFilter, monthFilter, dayFilter, ownerFilter, nextactionFilter],
     queryFn: () => recordsApi.list(currentWorkspaceId!, filters),
     enabled: !!currentWorkspaceId,
+    select: (data) => {
+      let items = data.items
+
+      // Apply stage filter
+      if (stageFilter !== 'all') {
+        const legacyMap: Record<string, string[]> = {
+          '0': ['0', 'unpaid', 'draft'],
+          '1': ['1', 'paid', 'approved'],
+        }
+        const validStages = legacyMap[stageFilter] || [stageFilter]
+        items = items.filter((r: { stage: string }) => validStages.includes(r.stage))
+      }
+
+      // Apply date filters
+      if (yearFilter !== null) {
+        items = items.filter((r: { date_cashflow: string }) => {
+          const date = new Date(r.date_cashflow)
+          if (date.getFullYear() !== yearFilter) return false
+          if (monthFilter !== null && (date.getMonth() + 1) !== monthFilter) return false
+          if (dayFilter !== null && date.getDate() !== dayFilter) return false
+          return true
+        })
+      }
+
+      // Apply owner filter
+      if (ownerFilter.length > 0) {
+        items = items.filter((r: { owner?: string }) => {
+          if (ownerFilter.includes('_noowner_')) {
+            // Include records without owner OR with selected owners
+            return !r.owner || ownerFilter.includes(r.owner)
+          }
+          return r.owner && ownerFilter.includes(r.owner)
+        })
+      }
+
+      // Apply nextaction filter
+      if (nextactionFilter === 'with') {
+        items = items.filter((r: { nextaction?: string }) => r.nextaction && r.nextaction.trim() !== '')
+      } else if (nextactionFilter === 'without') {
+        items = items.filter((r: { nextaction?: string }) => !r.nextaction || r.nextaction.trim() === '')
+      }
+
+      return { ...data, items }
+    },
   })
+
+  const refreshOperations = () => {
+    if (currentWorkspaceId && activeSessionId) {
+      fetchOperations(currentWorkspaceId, activeSessionId)
+    }
+  }
 
   const createMutation = useMutation({
     mutationFn: (data: RecordCreate) => recordsApi.create(currentWorkspaceId!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['records', currentWorkspaceId] })
+      refreshOperations()
     },
   })
 
@@ -40,6 +95,7 @@ export function useRecords() {
       recordsApi.update(currentWorkspaceId!, recordId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['records', currentWorkspaceId] })
+      refreshOperations()
     },
   })
 
@@ -47,6 +103,7 @@ export function useRecords() {
     mutationFn: (recordId: string) => recordsApi.delete(currentWorkspaceId!, recordId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['records', currentWorkspaceId] })
+      refreshOperations()
     },
   })
 
@@ -55,6 +112,7 @@ export function useRecords() {
       recordsApi.transfer(currentWorkspaceId!, recordId, { to_area: toArea, note }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['records', currentWorkspaceId] })
+      refreshOperations()
     },
   })
 

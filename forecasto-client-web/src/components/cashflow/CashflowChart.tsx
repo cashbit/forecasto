@@ -8,6 +8,7 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  ReferenceLine,
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
 import { it } from 'date-fns/locale'
@@ -16,9 +17,10 @@ import type { CashflowEntry } from '@/types/cashflow'
 
 interface CashflowChartProps {
   data: CashflowEntry[]
+  height?: number
 }
 
-export function CashflowChart({ data }: CashflowChartProps) {
+export function CashflowChart({ data, height = 400 }: CashflowChartProps) {
   const chartData = data.map((entry) => ({
     ...entry,
     date: entry.date,
@@ -26,9 +28,10 @@ export function CashflowChart({ data }: CashflowChartProps) {
   }))
 
   return (
-    <ResponsiveContainer width="100%" height={400}>
+    <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+        <ReferenceLine y={0} stroke="#888" strokeDasharray="3 3" />
         <XAxis
           dataKey="dateLabel"
           tick={{ fontSize: 12 }}

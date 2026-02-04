@@ -3,23 +3,23 @@ import type { Workspace, WorkspaceCreate, WorkspaceUpdate, WorkspaceMember } fro
 
 export const workspacesApi = {
   list: async (): Promise<Workspace[]> => {
-    const response = await apiClient.get<Workspace[]>('/workspaces')
-    return response.data
+    const response = await apiClient.get<{ success: boolean; workspaces: Workspace[] }>('/workspaces')
+    return response.data.workspaces
   },
 
   get: async (workspaceId: string): Promise<Workspace> => {
-    const response = await apiClient.get<Workspace>(`/workspaces/${workspaceId}`)
-    return response.data
+    const response = await apiClient.get<{ success: boolean; workspace: Workspace }>(`/workspaces/${workspaceId}`)
+    return response.data.workspace
   },
 
   create: async (data: WorkspaceCreate): Promise<Workspace> => {
-    const response = await apiClient.post<Workspace>('/workspaces', data)
-    return response.data
+    const response = await apiClient.post<{ success: boolean; workspace: Workspace }>('/workspaces', data)
+    return response.data.workspace
   },
 
   update: async (workspaceId: string, data: WorkspaceUpdate): Promise<Workspace> => {
-    const response = await apiClient.patch<Workspace>(`/workspaces/${workspaceId}`, data)
-    return response.data
+    const response = await apiClient.patch<{ success: boolean; workspace: Workspace }>(`/workspaces/${workspaceId}`, data)
+    return response.data.workspace
   },
 
   delete: async (workspaceId: string): Promise<void> => {

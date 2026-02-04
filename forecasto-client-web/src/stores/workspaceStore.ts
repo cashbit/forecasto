@@ -10,7 +10,7 @@ interface WorkspaceState {
   isLoading: boolean
   fetchWorkspaces: () => Promise<void>
   setCurrentWorkspace: (workspaceId: string | null) => void
-  createWorkspace: (name: string, description?: string) => Promise<Workspace>
+  createWorkspace: (name: string, description?: string) => Promise<Workspace | undefined>
   updateWorkspace: (workspaceId: string, data: Partial<Workspace>) => Promise<void>
   deleteWorkspace: (workspaceId: string) => Promise<void>
 }

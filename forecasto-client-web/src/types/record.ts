@@ -24,10 +24,12 @@ export interface Record {
   note?: string
   date_cashflow: string
   date_offer: string
+  owner?: string
   amount: string
   vat: string
   total: string
   stage: string
+  nextaction?: string
   transaction_id?: string
   bank_account_id?: string
   project_id?: string
@@ -48,9 +50,13 @@ export interface RecordCreate {
   note?: string
   date_cashflow: string
   date_offer: string
+  owner?: string
   amount: string
   vat?: string
+  total: string
   stage?: string
+  nextaction?: string
+  transaction_id: string
   bank_account_id?: string
   project_id?: string
   phase_id?: string
@@ -64,9 +70,13 @@ export interface RecordUpdate {
   note?: string
   date_cashflow?: string
   date_offer?: string
+  owner?: string
   amount?: string
   vat?: string
+  total?: string
   stage?: string
+  nextaction?: string
+  transaction_id?: string
   bank_account_id?: string
   project_id?: string
   phase_id?: string

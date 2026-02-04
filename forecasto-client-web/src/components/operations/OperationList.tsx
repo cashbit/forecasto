@@ -36,15 +36,18 @@ interface OperationItemProps {
 }
 
 function OperationItem({ operation }: OperationItemProps) {
-  const Icon = operationIcons[operation.type]
-  const color = operationColors[operation.type]
-  const label = operationLabels[operation.type]
+  const opType = operation.operation_type
+  const Icon = operationIcons[opType] || Pencil
+  const color = operationColors[opType] || 'text-muted-foreground'
+  const label = operationLabels[opType] || opType
+
+  const reference = String(operation.after_snapshot?.reference || operation.after_snapshot?.account || '')
 
   return (
     <div
       className={cn(
         'flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50',
-        operation.is_undone && 'opacity-50'
+        operation.is_undone && 'opacity-50 line-through'
       )}
     >
       <div className={cn('p-2 rounded-full bg-muted', color)}>
@@ -52,11 +55,11 @@ function OperationItem({ operation }: OperationItemProps) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium">
-          {label} {operation.entity_type}
+          {label} record
         </p>
-        <p className="text-xs text-muted-foreground truncate">
-          ID: {operation.entity_id.slice(0, 8)}...
-        </p>
+        {reference && (
+          <p className="text-xs text-muted-foreground truncate">{reference}</p>
+        )}
         <DateDisplay date={operation.created_at} format="datetime" className="text-xs" />
       </div>
     </div>

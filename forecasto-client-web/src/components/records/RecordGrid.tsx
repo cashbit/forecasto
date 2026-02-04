@@ -6,9 +6,11 @@ import {
   flexRender,
   type ColumnDef,
   type SortingState,
+  type RowSelectionState,
 } from '@tanstack/react-table'
 import { useState } from 'react'
-import { ArrowUpDown, MoreHorizontal, Pencil, Trash, ArrowRight } from 'lucide-react'
+import { ArrowUpDown, MoreHorizontal, Pencil, Trash, ArrowRight, Split, Merge, Calendar, Download, CheckCircle } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,6 +28,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import type { Record } from '@/types/record'
 import { FileSpreadsheet } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface RecordGridProps {
   records: Record[]
@@ -34,6 +37,14 @@ interface RecordGridProps {
   onEditRecord?: (record: Record) => void
   onDeleteRecord?: (record: Record) => void
   onTransferRecord?: (record: Record) => void
+  onSplitRecord?: (record: Record) => void
+  onBulkDelete?: (records: Record[]) => void
+  onBulkMerge?: (records: Record[]) => void
+  onBulkMoveDates?: (records: Record[]) => void
+  onBulkSetDay?: (records: Record[]) => void
+  onBulkExport?: (records: Record[]) => void
+  onBulkTransfer?: (records: Record[]) => void
+  onBulkSetStage?: (records: Record[]) => void
 }
 
 export function RecordGrid({
@@ -43,11 +54,52 @@ export function RecordGrid({
   onEditRecord,
   onDeleteRecord,
   onTransferRecord,
+  onSplitRecord,
+  onBulkDelete,
+  onBulkMerge,
+  onBulkMoveDates,
+  onBulkSetDay,
+  onBulkExport,
+  onBulkTransfer,
+  onBulkSetStage,
 }: RecordGridProps) {
   const [sorting, setSorting] = useState<SortingState>([])
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
 
   const columns: ColumnDef<Record>[] = useMemo(
     () => [
+      {
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Seleziona tutto"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Seleziona riga"
+          />
+        ),
+        enableSorting: false,
+      },
+      {
+        accessorKey: 'date_cashflow',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          >
+            Data
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: ({ row }) => <DateDisplay date={row.original.date_cashflow} />,
+      },
       {
         accessorKey: 'account',
         header: ({ column }) => (
@@ -66,6 +118,20 @@ export function RecordGrid({
         header: 'Riferimento',
         cell: ({ row }) => (
           <span className="truncate max-w-[200px] block">{row.original.reference}</span>
+        ),
+      },
+      {
+        accessorKey: 'transaction_id',
+        header: 'ID Transazione',
+        cell: ({ row }) => (
+          <span className="truncate max-w-[120px] block font-mono text-xs">{row.original.transaction_id || '-'}</span>
+        ),
+      },
+      {
+        accessorKey: 'owner',
+        header: 'Responsabile',
+        cell: ({ row }) => (
+          <span className="truncate max-w-[120px] block">{row.original.owner || '-'}</span>
         ),
       },
       {
@@ -96,22 +162,9 @@ export function RecordGrid({
         ),
       },
       {
-        accessorKey: 'date_cashflow',
-        header: ({ column }) => (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          >
-            Data
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        ),
-        cell: ({ row }) => <DateDisplay date={row.original.date_cashflow} />,
-      },
-      {
         accessorKey: 'stage',
         header: 'Stato',
-        cell: ({ row }) => <StatusBadge status={row.original.stage} />,
+        cell: ({ row }) => <StatusBadge status={row.original.stage} area={row.original.area} />,
       },
       {
         id: 'actions',
@@ -135,6 +188,10 @@ export function RecordGrid({
                   <ArrowRight className="mr-2 h-4 w-4" />
                   Trasferisci
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onSplitRecord?.(record)}>
+                  <Split className="mr-2 h-4 w-4" />
+                  Dividi in Rate
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => onDeleteRecord?.(record)}
@@ -149,7 +206,7 @@ export function RecordGrid({
         },
       },
     ],
-    [onEditRecord, onDeleteRecord, onTransferRecord]
+    [onEditRecord, onDeleteRecord, onTransferRecord, onSplitRecord]
   )
 
   const table = useReactTable({
@@ -158,8 +215,29 @@ export function RecordGrid({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
-    state: { sorting },
+    onRowSelectionChange: setRowSelection,
+    state: { sorting, rowSelection },
+    getRowId: (row) => row.id,
   })
+
+  // Calculate totals
+  const totals = useMemo(() => {
+    const allAmount = records.reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0)
+    const allTotal = records.reduce((sum, r) => sum + parseFloat(r.total || '0'), 0)
+
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    const selectedAmount = selectedRows.reduce((sum, row) => sum + parseFloat(row.original.amount || '0'), 0)
+    const selectedTotal = selectedRows.reduce((sum, row) => sum + parseFloat(row.original.total || '0'), 0)
+
+    return {
+      count: records.length,
+      allAmount,
+      allTotal,
+      selectedCount: selectedRows.length,
+      selectedAmount,
+      selectedTotal,
+    }
+  }, [records, table.getFilteredSelectedRowModel().rows])
 
   if (isLoading) {
     return (
@@ -179,8 +257,90 @@ export function RecordGrid({
     )
   }
 
+  const selectedRows = table.getFilteredSelectedRowModel().rows
+  const selectedRecords = selectedRows.map(row => row.original)
+
   return (
     <div className="rounded-md border">
+      {/* Bulk Actions Bar */}
+      {selectedRecords.length > 0 && (
+        <div className="border-b bg-primary/5 px-4 py-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">
+              {selectedRecords.length} {selectedRecords.length === 1 ? 'selezionato' : 'selezionati'}
+            </span>
+            <div className="w-px h-4 bg-border mx-2" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onBulkDelete?.(selectedRecords)}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash className="mr-1 h-3 w-3" />
+              Elimina
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onBulkMerge?.(selectedRecords)}
+              disabled={selectedRecords.length < 2}
+            >
+              <Merge className="mr-1 h-3 w-3" />
+              Unisci
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onBulkMoveDates?.(selectedRecords)}
+            >
+              <Calendar className="mr-1 h-3 w-3" />
+              Sposta Date
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onBulkSetDay?.(selectedRecords)}
+            >
+              <Calendar className="mr-1 h-3 w-3" />
+              Imposta Giorno
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onBulkExport?.(selectedRecords)}
+            >
+              <Download className="mr-1 h-3 w-3" />
+              Esporta CSV
+            </Button>
+            <div className="w-px h-4 bg-border mx-2" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onBulkTransfer?.(selectedRecords)}
+            >
+              <ArrowRight className="mr-1 h-3 w-3" />
+              Trasferisci
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onBulkSetStage?.(selectedRecords)}
+            >
+              <CheckCircle className="mr-1 h-3 w-3" />
+              Cambia Stage
+            </Button>
+            <div className="flex-1" />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => table.toggleAllRowsSelected(false)}
+            >
+              Deseleziona
+            </Button>
+          </div>
+        </div>
+      )}
+
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -199,11 +359,15 @@ export function RecordGrid({
           {table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              className="cursor-pointer"
+              className={cn(
+                "cursor-pointer",
+                row.getIsSelected() && "bg-primary/10",
+                ['0', 'unpaid', 'draft'].includes(row.original.stage) && new Date(row.original.date_cashflow) <= new Date() && !row.getIsSelected() && "bg-red-50 dark:bg-red-950/30"
+              )}
               onClick={() => onSelectRecord?.(row.original)}
             >
               {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
+                <TableCell key={cell.id} className="py-2">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
               ))}
@@ -211,6 +375,43 @@ export function RecordGrid({
           ))}
         </TableBody>
       </Table>
+
+      {/* Footer with totals */}
+      <div className="border-t bg-muted/50 px-4 py-3">
+        <div className="flex items-center justify-between text-sm">
+          <div className="text-muted-foreground">
+            {totals.count} {totals.count === 1 ? 'record' : 'record'}
+          </div>
+
+          <div className="flex items-center gap-6">
+            {totals.selectedCount > 0 && (
+              <>
+                <div className="text-muted-foreground">
+                  Selezionati ({totals.selectedCount}):
+                </div>
+                <div>
+                  <span className="text-muted-foreground mr-1">Imp:</span>
+                  <AmountDisplay amount={totals.selectedAmount} className="font-medium" />
+                </div>
+                <div>
+                  <span className="text-muted-foreground mr-1">Tot:</span>
+                  <AmountDisplay amount={totals.selectedTotal} className="font-medium" />
+                </div>
+                <div className="w-px h-4 bg-border" />
+              </>
+            )}
+
+            <div>
+              <span className="text-muted-foreground mr-1">Imponibile:</span>
+              <AmountDisplay amount={totals.allAmount} className="font-semibold" />
+            </div>
+            <div>
+              <span className="text-muted-foreground mr-1">Totale:</span>
+              <AmountDisplay amount={totals.allTotal} className="font-semibold" />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -19,16 +19,16 @@ interface SummaryCardProps {
 
 function SummaryCard({ title, value, icon, className }: SummaryCardProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+    <Card className="py-2">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-0 px-4">
+        <CardTitle className="text-xs font-medium">{title}</CardTitle>
         {icon}
       </CardHeader>
-      <CardContent>
+      <CardContent className="pb-0 px-4">
         {value !== undefined ? (
-          <AmountDisplay amount={value} className={`text-2xl font-bold ${className}`} showSign={false} />
+          <AmountDisplay amount={value} className={`text-xl font-bold ${className}`} showSign={false} />
         ) : (
-          <span className="text-2xl font-bold text-muted-foreground">-</span>
+          <span className="text-xl font-bold text-muted-foreground">-</span>
         )}
       </CardContent>
     </Card>
@@ -46,11 +46,7 @@ export function CashflowPage() {
   const { cashflow, summary, initialBalance, isLoading } = useCashflow(params)
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Cashflow Forecast</h1>
-      </div>
-
+    <div className="p-6 space-y-4">
       <CashflowFilters params={params} onChange={setParams} />
 
       {/* Summary Cards */}
@@ -86,13 +82,13 @@ export function CashflowPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center h-[400px]">
+            <div className="flex items-center justify-center h-[280px]">
               <LoadingSpinner size="lg" />
             </div>
           ) : cashflow.length > 0 ? (
-            <CashflowChart data={cashflow} />
+            <CashflowChart data={cashflow} height={280} />
           ) : (
-            <div className="flex items-center justify-center h-[400px] text-muted-foreground">
+            <div className="flex items-center justify-center h-[280px] text-muted-foreground">
               Nessun dato disponibile per il periodo selezionato
             </div>
           )}

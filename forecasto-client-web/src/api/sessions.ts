@@ -3,43 +3,43 @@ import type { Session, SessionCreate, SessionCommit, Operation, ChatMessage } fr
 
 export const sessionsApi = {
   list: async (workspaceId: string): Promise<Session[]> => {
-    const response = await apiClient.get<Session[]>(`/workspaces/${workspaceId}/sessions`)
-    return response.data
+    const response = await apiClient.get<{ success: boolean; sessions: Session[] }>(`/workspaces/${workspaceId}/sessions`)
+    return response.data.sessions
   },
 
   get: async (workspaceId: string, sessionId: string): Promise<Session> => {
-    const response = await apiClient.get<Session>(`/workspaces/${workspaceId}/sessions/${sessionId}`)
-    return response.data
+    const response = await apiClient.get<{ success: boolean; session: Session }>(`/workspaces/${workspaceId}/sessions/${sessionId}`)
+    return response.data.session
   },
 
   create: async (workspaceId: string, data: SessionCreate): Promise<Session> => {
-    const response = await apiClient.post<Session>(`/workspaces/${workspaceId}/sessions`, data)
-    return response.data
+    const response = await apiClient.post<{ success: boolean; session: Session }>(`/workspaces/${workspaceId}/sessions`, data)
+    return response.data.session
   },
 
   commit: async (workspaceId: string, sessionId: string, data: SessionCommit): Promise<Session> => {
-    const response = await apiClient.post<Session>(`/workspaces/${workspaceId}/sessions/${sessionId}/commit`, data)
-    return response.data
+    const response = await apiClient.post<{ success: boolean; session: Session }>(`/workspaces/${workspaceId}/sessions/${sessionId}/commit`, data)
+    return response.data.session
   },
 
   discard: async (workspaceId: string, sessionId: string): Promise<Session> => {
-    const response = await apiClient.post<Session>(`/workspaces/${workspaceId}/sessions/${sessionId}/discard`)
-    return response.data
+    const response = await apiClient.post<{ success: boolean; session: Session }>(`/workspaces/${workspaceId}/sessions/${sessionId}/discard`)
+    return response.data.session
   },
 
   getOperations: async (workspaceId: string, sessionId: string): Promise<Operation[]> => {
-    const response = await apiClient.get<Operation[]>(`/workspaces/${workspaceId}/sessions/${sessionId}/operations`)
-    return response.data
+    const response = await apiClient.get<{ success: boolean; operations: Operation[] }>(`/workspaces/${workspaceId}/sessions/${sessionId}/operations`)
+    return response.data.operations
   },
 
   undo: async (workspaceId: string, sessionId: string): Promise<Operation> => {
-    const response = await apiClient.post<Operation>(`/workspaces/${workspaceId}/sessions/${sessionId}/undo`)
-    return response.data
+    const response = await apiClient.post<{ success: boolean; operation: Operation }>(`/workspaces/${workspaceId}/sessions/${sessionId}/undo`)
+    return response.data.operation
   },
 
   redo: async (workspaceId: string, sessionId: string): Promise<Operation> => {
-    const response = await apiClient.post<Operation>(`/workspaces/${workspaceId}/sessions/${sessionId}/redo`)
-    return response.data
+    const response = await apiClient.post<{ success: boolean; operation: Operation }>(`/workspaces/${workspaceId}/sessions/${sessionId}/redo`)
+    return response.data.operation
   },
 
   getMessages: async (workspaceId: string, sessionId: string): Promise<ChatMessage[]> => {

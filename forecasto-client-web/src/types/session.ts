@@ -23,13 +23,14 @@ export interface SessionCommit {
 
 export interface Operation {
   id: string
-  session_id: string
-  type: OperationType
-  entity_type: 'record' | 'project' | 'phase'
-  entity_id: string
-  data: Record<string, unknown>
-  previous_data?: Record<string, unknown>
   sequence: number
+  operation_type: OperationType
+  record_id: string
+  area: string
+  before_snapshot?: Record<string, unknown>
+  after_snapshot: Record<string, unknown>
+  from_area?: string
+  to_area?: string
   is_undone: boolean
   created_at: string
 }

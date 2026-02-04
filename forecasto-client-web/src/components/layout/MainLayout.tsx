@@ -4,6 +4,7 @@ import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 import { Footer } from './Footer'
 import { CreateSessionDialog } from '@/components/sessions/CreateSessionDialog'
+import { CreateWorkspaceDialog } from '@/components/workspaces/CreateWorkspaceDialog'
 import { CommitDialog } from '@/components/sessions/CommitDialog'
 import { DiscardDialog } from '@/components/sessions/DiscardDialog'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
@@ -39,6 +40,7 @@ export function MainLayout() {
 
       {/* Dialogs */}
       <CreateSessionDialog />
+      <CreateWorkspaceDialog />
       <CommitDialog />
       <DiscardDialog />
     </div>

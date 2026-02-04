@@ -1,5 +1,7 @@
-import { BarChart3, LogOut, Settings, User, Menu } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { LogOut, Settings, User, PanelLeftClose, PanelLeft, Plus } from 'lucide-react'
+import logoIcon from '@/assets/logo-icon.png'
+import { Link, useLocation } from 'react-router-dom'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -22,9 +24,10 @@ import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useUiStore } from '@/stores/uiStore'
 
 export function Header() {
+  const location = useLocation()
   const { user, logout } = useAuthStore()
   const { workspaces, currentWorkspaceId, setCurrentWorkspace } = useWorkspaceStore()
-  const { toggleSidebar } = useUiStore()
+  const { sidebarOpen, toggleSidebar } = useUiStore()
 
   const initials = user?.name
     .split(' ')
@@ -36,18 +39,17 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center px-4 gap-4">
-        <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden">
-          <Menu className="h-5 w-5" />
+        <Button variant="ghost" size="icon" onClick={toggleSidebar} title={sidebarOpen ? 'Nascondi sessioni' : 'Mostra sessioni'}>
+          {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
         </Button>
 
-        <Link to="/dashboard" className="flex items-center gap-2 font-semibold">
-          <BarChart3 className="h-6 w-6" />
-          <span className="hidden sm:inline">Forecasto</span>
+        <Link to="/dashboard" className="flex items-center">
+          <img src={logoIcon} alt="Forecasto" className="h-8" />
         </Link>
 
-        {workspaces.length > 0 && (
+        <div className="flex items-center gap-2">
           <Select value={currentWorkspaceId || ''} onValueChange={setCurrentWorkspace}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[280px]">
               <SelectValue placeholder="Seleziona workspace" />
             </SelectTrigger>
             <SelectContent>
@@ -58,18 +60,47 @@ export function Header() {
               ))}
             </SelectContent>
           </Select>
-        )}
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => useUiStore.getState().setCreateWorkspaceDialogOpen(true)}
+            title="Nuovo Workspace"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
 
         <div className="flex-1" />
 
-        <nav className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild>
+        <nav className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className={cn(
+              location.pathname === '/dashboard' && 'bg-primary/10 text-primary font-semibold'
+            )}
+          >
             <Link to="/dashboard">Dashboard</Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className={cn(
+              location.pathname === '/cashflow' && 'bg-primary/10 text-primary font-semibold'
+            )}
+          >
             <Link to="/cashflow">Cashflow</Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className={cn(
+              location.pathname === '/projects' && 'bg-primary/10 text-primary font-semibold'
+            )}
+          >
             <Link to="/projects">Progetti</Link>
           </Button>
         </nav>

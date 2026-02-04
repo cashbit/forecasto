@@ -4,23 +4,32 @@ import type { PaginatedResponse } from '@/types/api'
 
 export const recordsApi = {
   list: async (workspaceId: string, filters: RecordFilters): Promise<PaginatedResponse<Record>> => {
-    const response = await apiClient.get<PaginatedResponse<Record>>(`/workspaces/${workspaceId}/records`, { params: filters })
-    return response.data
+    const response = await apiClient.get<{ success: boolean; records: Record[]; total_records: number }>(`/workspaces/${workspaceId}/records`, { params: filters })
+    const page = filters.page || 1
+    const pageSize = filters.page_size || 100
+    const total = response.data.total_records
+    return {
+      items: response.data.records,
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: Math.ceil(total / pageSize)
+    }
   },
 
   get: async (workspaceId: string, recordId: string): Promise<Record> => {
-    const response = await apiClient.get<Record>(`/workspaces/${workspaceId}/records/${recordId}`)
-    return response.data
+    const response = await apiClient.get<{ success: boolean; record: Record }>(`/workspaces/${workspaceId}/records/${recordId}`)
+    return response.data.record
   },
 
   create: async (workspaceId: string, data: RecordCreate): Promise<Record> => {
-    const response = await apiClient.post<Record>(`/workspaces/${workspaceId}/records`, data)
-    return response.data
+    const response = await apiClient.post<{ success: boolean; record: Record }>(`/workspaces/${workspaceId}/records`, data)
+    return response.data.record
   },
 
   update: async (workspaceId: string, recordId: string, data: RecordUpdate): Promise<Record> => {
-    const response = await apiClient.patch<Record>(`/workspaces/${workspaceId}/records/${recordId}`, data)
-    return response.data
+    const response = await apiClient.patch<{ success: boolean; record: Record }>(`/workspaces/${workspaceId}/records/${recordId}`, data)
+    return response.data.record
   },
 
   delete: async (workspaceId: string, recordId: string): Promise<void> => {
@@ -28,8 +37,8 @@ export const recordsApi = {
   },
 
   transfer: async (workspaceId: string, recordId: string, data: RecordTransfer): Promise<Record> => {
-    const response = await apiClient.post<Record>(`/workspaces/${workspaceId}/records/${recordId}/transfer`, data)
-    return response.data
+    const response = await apiClient.post<{ success: boolean; record: Record }>(`/workspaces/${workspaceId}/records/${recordId}/transfer`, data)
+    return response.data.record
   },
 
   bulkCreate: async (workspaceId: string, records: RecordCreate[]): Promise<Record[]> => {

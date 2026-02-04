@@ -2,7 +2,7 @@ import { formatDate, formatDateTime, formatDateLong } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
 
 interface DateDisplayProps {
-  date: string | Date
+  date: string | Date | null | undefined
   format?: 'short' | 'long' | 'datetime'
   className?: string
 }

@@ -12,11 +12,11 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-14 z-40 h-[calc(100vh-3.5rem)] w-64 border-r bg-background transition-transform md:relative md:top-0 md:h-full md:translate-x-0',
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        'h-full w-64 border-r bg-background transition-all duration-300 flex-shrink-0',
+        sidebarOpen ? 'w-64' : 'w-0 overflow-hidden border-r-0'
       )}
     >
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col w-64">
         <div className="flex items-center justify-between p-4">
           <h2 className="text-lg font-semibold">Sessioni</h2>
           <Button size="sm" onClick={() => setCreateSessionDialogOpen(true)}>

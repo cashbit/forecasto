@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from forecasto.config import settings
 from forecasto.exceptions import UnauthorizedException, ValidationException
 from forecasto.models.user import RefreshToken, User
+from forecasto.models.workspace import Workspace, WorkspaceMember
 from forecasto.schemas.auth import LoginResponse, TokenResponse, UserInfo
 from forecasto.utils.security import (
     create_access_token,
@@ -153,5 +154,31 @@ class AuthService:
         )
         self.db.add(user)
         await self.db.flush()
+
+        # Create default workspace for the user
+        current_year = datetime.utcnow().year
+        workspace = Workspace(
+            name=f"Workspace di {name}",
+            fiscal_year=current_year,
+            owner_id=user.id,
+            email_whitelist=[],
+            settings={},
+        )
+        self.db.add(workspace)
+        await self.db.flush()
+
+        # Add user as owner of the workspace
+        member = WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=user.id,
+            role="owner",
+            area_permissions={
+                "actual": "write",
+                "orders": "write",
+                "prospect": "write",
+                "budget": "write",
+            },
+        )
+        self.db.add(member)
 
         return user

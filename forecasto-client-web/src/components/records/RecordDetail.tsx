@@ -17,18 +17,18 @@ interface RecordDetailProps {
 
 export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
   return (
-    <Card className="h-full border-0 rounded-none">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <Card className="h-full border-0 rounded-none flex flex-col">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 flex-shrink-0">
         <CardTitle className="text-lg">Dettaglio Record</CardTitle>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>
       </CardHeader>
-      <Separator />
-      <CardContent className="pt-4 space-y-4">
+      <Separator className="flex-shrink-0" />
+      <CardContent className="pt-4 space-y-4 flex-1 overflow-y-auto">
         <div className="flex items-center justify-between">
           <Badge variant="outline">{AREA_LABELS[record.area]}</Badge>
-          <StatusBadge status={record.stage} />
+          <StatusBadge status={record.stage} area={record.area} />
         </div>
 
         <div>
@@ -39,6 +39,21 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
         <div>
           <p className="text-sm text-muted-foreground">Riferimento</p>
           <p className="font-medium">{record.reference}</p>
+        </div>
+
+        <div>
+          <p className="text-sm text-muted-foreground">ID Transazione</p>
+          <p className="font-mono text-sm">{record.transaction_id || '-'}</p>
+        </div>
+
+        <div>
+          <p className="text-sm text-muted-foreground">Responsabile</p>
+          <p className="font-medium">{record.owner || '-'}</p>
+        </div>
+
+        <div>
+          <p className="text-sm text-muted-foreground">Prossima Azione</p>
+          <p className="font-medium text-amber-600 dark:text-amber-400">{record.nextaction || '-'}</p>
         </div>
 
         {record.note && (
@@ -57,7 +72,7 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">IVA</p>
-            <AmountDisplay amount={record.vat} className="text-lg" />
+            <p className="text-lg font-medium">{record.vat}%</p>
           </div>
         </div>
 
@@ -100,12 +115,12 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
           </>
         )}
 
-        <Separator />
-
+      </CardContent>
+      <div className="flex-shrink-0 p-4 border-t">
         <Button className="w-full" onClick={onEdit}>
           Modifica Record
         </Button>
-      </CardContent>
+      </div>
     </Card>
   )
 }

@@ -1,32 +1,33 @@
 import { Badge } from '@/components/ui/badge'
-import { STAGE_LABELS } from '@/lib/constants'
+import { getStageLabel } from '@/lib/constants'
 
 interface StatusBadgeProps {
   status: string
+  area?: string
   className?: string
 }
 
+// Map legacy values to 0/1 for variant lookup
+const LEGACY_VARIANT_MAP: Record<string, string> = {
+  unpaid: '0',
+  paid: '1',
+  draft: '0',
+  approved: '1',
+}
+
 const statusVariants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive' | 'income' | 'expense'> = {
-  draft: 'outline',
-  approved: 'default',
-  lead: 'secondary',
-  qualified: 'secondary',
-  proposal: 'default',
-  negotiation: 'default',
-  confirmed: 'income',
-  scheduled: 'default',
-  in_progress: 'default',
-  pending: 'outline',
-  reconciled: 'income',
+  '0': 'outline',
+  '1': 'income',
   active: 'income',
   completed: 'default',
   archived: 'secondary',
   discarded: 'destructive',
 }
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const variant = statusVariants[status] || 'outline'
-  const label = STAGE_LABELS[status] || status
+export function StatusBadge({ status, area, className }: StatusBadgeProps) {
+  const normalizedStatus = LEGACY_VARIANT_MAP[status] || status
+  const variant = statusVariants[normalizedStatus] || 'outline'
+  const label = getStageLabel(status, area)
 
   return (
     <Badge variant={variant} className={className}>

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 class AreaPermissions(BaseModel):
     """Permissions for each area."""
@@ -15,11 +15,15 @@ class AreaPermissions(BaseModel):
     prospect: str = "write"
     budget: str = "write"
 
+def _current_year() -> int:
+    return datetime.now().year
+
 class WorkspaceCreate(BaseModel):
     """Workspace creation request."""
 
     name: str
-    fiscal_year: int
+    description: str | None = None
+    fiscal_year: int = Field(default_factory=_current_year)
     email_whitelist: list[str] | None = None
     settings: dict | None = None
 
@@ -28,6 +32,7 @@ class WorkspaceResponse(BaseModel):
 
     id: str
     name: str
+    description: str | None = None
     fiscal_year: int
     is_archived: bool
     settings: dict
@@ -42,6 +47,7 @@ class WorkspaceWithRole(BaseModel):
 
     id: str
     name: str
+    description: str | None = None
     fiscal_year: int
     is_archived: bool
     role: str

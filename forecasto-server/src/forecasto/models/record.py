@@ -42,6 +42,8 @@ class Record(Base, UUIDMixin, TimestampMixin):
     vat: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))
     total: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
     stage: Mapped[str] = mapped_column(String(50), nullable=False)
+    owner: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    nextaction: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     transaction_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # Relations

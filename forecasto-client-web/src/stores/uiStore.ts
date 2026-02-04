@@ -6,6 +6,7 @@ interface UiState {
   rightPanelContent: 'details' | 'operations' | 'chat' | null
   selectedRecordId: string | null
   createSessionDialogOpen: boolean
+  createWorkspaceDialogOpen: boolean
   commitDialogOpen: boolean
   discardDialogOpen: boolean
   conflictDialogOpen: boolean
@@ -17,6 +18,7 @@ interface UiState {
   setRightPanelContent: (content: 'details' | 'operations' | 'chat' | null) => void
   setSelectedRecordId: (id: string | null) => void
   setCreateSessionDialogOpen: (open: boolean) => void
+  setCreateWorkspaceDialogOpen: (open: boolean) => void
   setCommitDialogOpen: (open: boolean) => void
   setDiscardDialogOpen: (open: boolean) => void
   setConflictDialogOpen: (open: boolean) => void
@@ -29,6 +31,7 @@ export const useUiStore = create<UiState>()((set) => ({
   rightPanelContent: null,
   selectedRecordId: null,
   createSessionDialogOpen: false,
+  createWorkspaceDialogOpen: false,
   commitDialogOpen: false,
   discardDialogOpen: false,
   conflictDialogOpen: false,
@@ -49,6 +52,7 @@ export const useUiStore = create<UiState>()((set) => ({
     }),
 
   setCreateSessionDialogOpen: (open) => set({ createSessionDialogOpen: open }),
+  setCreateWorkspaceDialogOpen: (open) => set({ createWorkspaceDialogOpen: open }),
   setCommitDialogOpen: (open) => set({ commitDialogOpen: open }),
   setDiscardDialogOpen: (open) => set({ discardDialogOpen: open }),
   setConflictDialogOpen: (open) => set({ conflictDialogOpen: open }),
@@ -56,6 +60,7 @@ export const useUiStore = create<UiState>()((set) => ({
   closeAllDialogs: () =>
     set({
       createSessionDialogOpen: false,
+      createWorkspaceDialogOpen: false,
       commitDialogOpen: false,
       discardDialogOpen: false,
       conflictDialogOpen: false,

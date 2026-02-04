@@ -3,11 +3,12 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { BarChart3 } from 'lucide-react'
+import logoText from '@/assets/logo-text.png'
+import logoIcon from '@/assets/logo-icon.png'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuthStore } from '@/stores/authStore'
 
 const schema = z.object({
@@ -42,15 +43,13 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="h-12 w-12 rounded-lg bg-primary flex items-center justify-center">
-              <BarChart3 className="h-6 w-6 text-primary-foreground" />
-            </div>
+          <div className="flex flex-col items-center gap-2 mb-4">
+            <img src={logoIcon} alt="Forecasto" className="h-20" />
+            <img src={logoText} alt="Forecasto" className="h-12" />
           </div>
-          <CardTitle className="text-2xl">Benvenuto in Forecasto</CardTitle>
-          <CardDescription>Accedi al tuo account per continuare</CardDescription>
+          <CardTitle className="text-2xl">Benvenuto, accedi al tuo account</CardTitle>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">

@@ -26,6 +26,7 @@ class Workspace(Base, UUIDMixin, TimestampMixin):
     __table_args__ = (UniqueConstraint("name", "fiscal_year", name="uq_workspace_name_year"),)
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     fiscal_year: Mapped[int] = mapped_column(Integer, nullable=False)
     owner_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=False, index=True
