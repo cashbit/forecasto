@@ -267,86 +267,96 @@ export function RecordGrid({
   const selectedRows = table.getFilteredSelectedRowModel().rows
   const selectedRecords = selectedRows.map(row => row.original)
 
+  const hasSelection = selectedRecords.length > 0
+
   return (
     <div className="rounded-md border">
       {/* Bulk Actions Bar */}
-      {selectedRecords.length > 0 && (
-        <div className="border-b bg-primary/5 px-4 py-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">
-              {selectedRecords.length} {selectedRecords.length === 1 ? 'selezionato' : 'selezionati'}
-            </span>
-            <div className="w-px h-4 bg-border mx-2" />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onBulkDelete?.(selectedRecords)}
-              className="text-destructive hover:text-destructive"
-            >
-              <Trash className="mr-1 h-3 w-3" />
-              Elimina
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onBulkMerge?.(selectedRecords)}
-              disabled={selectedRecords.length < 2}
-            >
-              <Merge className="mr-1 h-3 w-3" />
-              Unisci
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onBulkMoveDates?.(selectedRecords)}
-            >
-              <Calendar className="mr-1 h-3 w-3" />
-              Sposta Date
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onBulkSetDay?.(selectedRecords)}
-            >
-              <Calendar className="mr-1 h-3 w-3" />
-              Imposta Giorno
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onBulkExport?.(selectedRecords)}
-            >
-              <Download className="mr-1 h-3 w-3" />
-              Esporta CSV
-            </Button>
-            <div className="w-px h-4 bg-border mx-2" />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onBulkTransfer?.(selectedRecords)}
-            >
-              <ArrowRight className="mr-1 h-3 w-3" />
-              Trasferisci
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onBulkSetStage?.(selectedRecords)}
-            >
-              <CheckCircle className="mr-1 h-3 w-3" />
-              Cambia Stage
-            </Button>
-            <div className="flex-1" />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => table.toggleAllRowsSelected(false)}
-            >
-              Deseleziona
-            </Button>
-          </div>
+      <div className="border-b bg-muted/30 px-4 py-2">
+        <div className="flex items-center gap-2">
+          <span className={cn("text-sm font-medium min-w-[100px]", !hasSelection && "text-muted-foreground")}>
+            {hasSelection
+              ? `${selectedRecords.length} ${selectedRecords.length === 1 ? 'selezionato' : 'selezionati'}`
+              : 'Nessuna selezione'
+            }
+          </span>
+          <div className="w-px h-4 bg-border mx-2" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onBulkDelete?.(selectedRecords)}
+            disabled={!hasSelection}
+            className={cn(hasSelection && "text-destructive hover:text-destructive")}
+          >
+            <Trash className="mr-1 h-3 w-3" />
+            Elimina
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onBulkMerge?.(selectedRecords)}
+            disabled={selectedRecords.length < 2}
+          >
+            <Merge className="mr-1 h-3 w-3" />
+            Unisci
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onBulkMoveDates?.(selectedRecords)}
+            disabled={!hasSelection}
+          >
+            <Calendar className="mr-1 h-3 w-3" />
+            Sposta Date
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onBulkSetDay?.(selectedRecords)}
+            disabled={!hasSelection}
+          >
+            <Calendar className="mr-1 h-3 w-3" />
+            Imposta Giorno
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onBulkExport?.(selectedRecords)}
+            disabled={!hasSelection}
+          >
+            <Download className="mr-1 h-3 w-3" />
+            Esporta CSV
+          </Button>
+          <div className="w-px h-4 bg-border mx-2" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onBulkTransfer?.(selectedRecords)}
+            disabled={!hasSelection}
+          >
+            <ArrowRight className="mr-1 h-3 w-3" />
+            Trasferisci
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onBulkSetStage?.(selectedRecords)}
+            disabled={!hasSelection}
+          >
+            <CheckCircle className="mr-1 h-3 w-3" />
+            Cambia Stage
+          </Button>
+          <div className="flex-1" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => table.toggleAllRowsSelected(false)}
+            disabled={!hasSelection}
+          >
+            Deseleziona
+          </Button>
         </div>
-      )}
+      </div>
 
       <Table>
         <TableHeader>
