@@ -18,6 +18,7 @@ class UserInfo(BaseModel):
     email: str
     name: str
     invite_code: str
+    is_admin: bool = False
 
 class LoginResponse(BaseModel):
     """Login response with tokens."""

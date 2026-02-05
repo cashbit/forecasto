@@ -13,18 +13,20 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from forecasto.models.base import Base, TimestampMixin, UUIDMixin, generate_uuid
 
+if TYPE_CHECKING:
+    from forecasto.models.registration_code import RegistrationCode
+    from forecasto.models.workspace import WorkspaceMember
+
 
 def generate_invite_code() -> str:
     """Generate a unique invite code in format XXX-XXX-XXX.
 
     Uses alphabet without ambiguous characters: A-Z excluding O, I, L and 2-9 excluding 0, 1.
     """
-    alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
-    code = ''.join(secrets.choice(alphabet) for _ in range(9))
+    alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+    code = "".join(secrets.choice(alphabet) for _ in range(9))
     return f"{code[:3]}-{code[3:6]}-{code[6:9]}"
 
-if TYPE_CHECKING:
-    from forecasto.models.workspace import WorkspaceMember
 
 class User(Base, UUIDMixin, TimestampMixin):
     """User account model."""
@@ -48,6 +50,16 @@ class User(Base, UUIDMixin, TimestampMixin):
         },
     )
 
+    # Admin and registration fields
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    blocked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    blocked_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    registration_code_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("registration_codes.id", ondelete="SET NULL"), nullable=True
+    )
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     # Relationships
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"
@@ -55,6 +67,10 @@ class User(Base, UUIDMixin, TimestampMixin):
     workspace_memberships: Mapped[list["WorkspaceMember"]] = relationship(
         "WorkspaceMember", back_populates="user", cascade="all, delete-orphan"
     )
+    registration_code: Mapped[Optional["RegistrationCode"]] = relationship(
+        "RegistrationCode", foreign_keys=[registration_code_id]
+    )
+
 
 class RefreshToken(Base, UUIDMixin):
     """Refresh token for authentication."""

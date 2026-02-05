@@ -11,6 +11,7 @@ interface FilterState {
   stageFilter: '0' | '1' | 'all'
   ownerFilter: string[]
   nextactionFilter: 'all' | 'with' | 'without'
+  expiredFilter: 'all' | 'yes' | 'no'
   textFilter: string
   accountFilter: string[]
   projectCodeFilter: string | null
@@ -26,6 +27,7 @@ interface FilterState {
   toggleOwnerFilter: (owner: string) => void
   clearOwnerFilter: () => void
   setNextactionFilter: (filter: 'all' | 'with' | 'without') => void
+  setExpiredFilter: (filter: 'all' | 'yes' | 'no') => void
   setTextFilter: (text: string) => void
   setAccountFilter: (accounts: string[]) => void
   setProjectCodeFilter: (code: string | null) => void
@@ -43,6 +45,7 @@ const initialState = {
   stageFilter: 'all' as const,
   ownerFilter: [] as string[],
   nextactionFilter: 'all' as const,
+  expiredFilter: 'all' as const,
   textFilter: '',
   accountFilter: [],
   projectCodeFilter: null,
@@ -86,6 +89,8 @@ export const useFilterStore = create<FilterState>()((set) => ({
   clearOwnerFilter: () => set({ ownerFilter: [] }),
 
   setNextactionFilter: (filter) => set({ nextactionFilter: filter }),
+
+  setExpiredFilter: (filter) => set({ expiredFilter: filter }),
 
   setTextFilter: (text) => set({ textFilter: text }),
 

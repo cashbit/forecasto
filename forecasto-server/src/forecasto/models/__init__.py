@@ -8,6 +8,7 @@ from forecasto.models.bank_account import BankAccount, BankAccountBalance
 from forecasto.models.base import Base
 from forecasto.models.project import Project, ProjectPhase
 from forecasto.models.record import Record, RecordVersion
+from forecasto.models.registration_code import RegistrationCode, RegistrationCodeBatch
 from forecasto.models.session import (
     Session,
     SessionMessage,
@@ -37,5 +38,7 @@ __all__ = [
     "BankAccount",
     "BankAccountBalance",
     "AuditLog",
+    "RegistrationCode",
+    "RegistrationCodeBatch",
 ]
 

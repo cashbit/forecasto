@@ -25,10 +25,12 @@ async def register(
     data: UserCreate,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Register a new user."""
+    """Register a new user with a registration code."""
 
     service = AuthService(db)
-    user = await service.register(data.email, data.password, data.name)
+    user = await service.register(
+        data.email, data.password, data.name, data.registration_code
+    )
     return UserResponse.model_validate(user)
 
 @router.get("/me", response_model=UserResponse)

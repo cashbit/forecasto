@@ -55,6 +55,9 @@ async def get_current_user(
     if not user:
         raise UnauthorizedException("User not found")
 
+    if user.is_blocked:
+        raise UnauthorizedException("Account bloccato. Contatta l'amministratore.")
+
     return user
 
 async def get_current_workspace(
@@ -136,3 +139,12 @@ def check_area_permission(member: WorkspaceMember, area: str, required: str = "r
 
     if required == "read" and permission == "none":
         raise AreaPermissionDeniedException(area, "read")
+
+
+async def require_admin(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """Require the current user to be an admin."""
+    if not current_user.is_admin:
+        raise ForbiddenException("Accesso riservato agli amministratori")
+    return current_user

@@ -10,7 +10,7 @@ export function useRecords() {
   const selectedWorkspaceIds = useWorkspaceStore(state => state.selectedWorkspaceIds)
   const {
     currentArea, dateRange, yearFilter, monthFilter, dayFilter,
-    sign, stageFilter, ownerFilter, nextactionFilter,
+    sign, stageFilter, ownerFilter, nextactionFilter, expiredFilter,
     textFilter, projectCodeFilter, bankAccountFilter
   } = useFilterStore()
   const { fetchHistory } = useHistoryStore()
@@ -85,6 +85,18 @@ export function useRecords() {
         filteredRecords = filteredRecords.filter((r) => r.nextaction && r.nextaction.trim() !== '')
       } else if (nextactionFilter === 'without') {
         filteredRecords = filteredRecords.filter((r) => !r.nextaction || r.nextaction.trim() === '')
+      }
+
+      // Apply expired filter (date_cashflow < today)
+      if (expiredFilter !== 'all') {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        filteredRecords = filteredRecords.filter((r) => {
+          const date = new Date(r.date_cashflow)
+          date.setHours(0, 0, 0, 0)
+          const isExpired = date.getTime() < today.getTime()
+          return expiredFilter === 'yes' ? isExpired : !isExpired
+        })
       }
 
       // Sort by date (most recent first)

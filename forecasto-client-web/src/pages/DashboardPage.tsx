@@ -27,6 +27,7 @@ import { OperationList } from '@/components/operations/OperationList'
 import { useRecords } from '@/hooks/useRecords'
 import { useFilterStore } from '@/stores/filterStore'
 import { useUiStore } from '@/stores/uiStore'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { toast } from '@/hooks/useToast'
 import { AREA_LABELS, AREAS } from '@/lib/constants'
 import type { Record, Area, RecordCreate, RecordUpdate } from '@/types/record'
@@ -34,7 +35,9 @@ import type { Record, Area, RecordCreate, RecordUpdate } from '@/types/record'
 export function DashboardPage() {
   const { currentArea, setArea } = useFilterStore()
   const { rightPanelContent, createRecordDialogOpen, setCreateRecordDialogOpen } = useUiStore()
+  const { getPrimaryWorkspace } = useWorkspaceStore()
   const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord } = useRecords()
+  const primaryWorkspace = getPrimaryWorkspace()
 
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
@@ -388,11 +391,16 @@ export function DashboardPage() {
           setEditingRecord(null)
         }
       }}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader className="flex flex-row items-start justify-between">
             <DialogTitle>
               {editingRecord ? 'Modifica Record' : 'Nuovo Record'}
             </DialogTitle>
+            {!editingRecord && primaryWorkspace && (
+              <div className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">
+                {primaryWorkspace.name}
+              </div>
+            )}
           </DialogHeader>
           <RecordForm
             record={editingRecord || undefined}

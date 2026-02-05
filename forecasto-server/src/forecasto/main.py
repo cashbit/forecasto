@@ -9,7 +9,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from sqlalchemy import select
+
 from forecasto.api import (
+    admin,
     auth,
     bank_accounts,
     cashflow,
@@ -21,14 +24,40 @@ from forecasto.api import (
     users,
     workspaces,
 )
-from forecasto.database import init_db
+from forecasto.database import async_session_maker, init_db
 from forecasto.exceptions import ForecastoException
+from forecasto.models.user import User
+from forecasto.utils.security import hash_password
+
+async def seed_default_admin():
+    """Seed a default admin user if no admin exists."""
+    async with async_session_maker() as db:
+        # Check if any admin exists
+        result = await db.execute(
+            select(User).where(User.is_admin == True)  # noqa: E712
+        )
+        existing_admin = result.scalar_one_or_none()
+
+        if not existing_admin:
+            # Create default admin
+            admin_user = User(
+                email="admin@forecasto.app",
+                password_hash=hash_password("changeme123"),
+                name="Administrator",
+                is_admin=True,
+                must_change_password=True,
+            )
+            db.add(admin_user)
+            await db.commit()
+            print("Default admin user created: admin@forecasto.app / changeme123")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
 
     await init_db()
+    await seed_default_admin()
     yield
 
 app = FastAPI(
@@ -74,6 +103,7 @@ app.include_router(
 )
 app.include_router(cashflow.router, prefix="/api/v1", tags=["Cashflow"])
 app.include_router(history.router, prefix="/api/v1/workspaces", tags=["History"])
+app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 
 @app.get("/health")
 async def health_check():

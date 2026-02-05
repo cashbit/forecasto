@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -32,6 +33,7 @@ const schema = z.object({
   stage: z.string().min(1, 'Stato obbligatorio'),
   nextaction: z.string().optional(),
   project_code: z.string().optional(),
+  vat: z.string().optional(),
   sign: z.enum(['in', 'out'], { message: 'Seleziona entrata o uscita' }),
 })
 
@@ -87,6 +89,13 @@ export function RecordForm({ record, area, onSubmit, onCancel, isLoading }: Reco
       owner: record?.owner || '',
       amount: record?.amount ? Math.abs(parseFloat(record.amount)).toString() : '',
       total: record?.total ? Math.abs(parseFloat(record.total)).toString() : '',
+      vat: (() => {
+        if (!record?.amount || !record?.total) return ''
+        const a = Math.abs(parseFloat(record.amount))
+        const t = Math.abs(parseFloat(record.total))
+        if (a <= 0) return '0'
+        return (((t - a) / a) * 100).toFixed(1)
+      })(),
       stage: normalizeLegacyStage(record?.stage) || stages[0] || '0',
       nextaction: record?.nextaction || '',
       project_code: record?.project_code || '',
@@ -96,8 +105,9 @@ export function RecordForm({ record, area, onSubmit, onCancel, isLoading }: Reco
 
   const selectedStage = watch('stage')
   const selectedSign = watch('sign')
-  const watchAmount = watch('amount')
-  const watchTotal = watch('total')
+
+  // Track which field (vat or total) was last manually edited
+  const [lastEdited, setLastEdited] = useState<'vat' | 'total'>('total')
 
   // Check permission based on selected sign
   const canPerformAction = selectedSign
@@ -109,28 +119,58 @@ export function RecordForm({ record, area, onSubmit, onCancel, isLoading }: Reco
         : `Non hai i permessi per creare record ${selectedSign === 'in' ? 'in entrata' : 'in uscita'} in quest'area`)
     : null
 
-  // Calculate VAT% from amount and total: VAT% = ((total - amount) / amount) * 100
-  const calculatedVat = (() => {
-    const amountNum = parseFloat(watchAmount) || 0
-    const totalNum = parseFloat(watchTotal) || 0
-    if (amountNum <= 0) return '0'
-    const vatPercent = ((totalNum - amountNum) / amountNum) * 100
-    return vatPercent.toFixed(1)
-  })()
+  // Recalculate total from amount + vat
+  const calcTotalFromVat = (amount: string, vat: string) => {
+    const a = parseFloat(amount) || 0
+    const v = parseFloat(vat) || 0
+    if (a <= 0) return
+    setValue('total', (a * (1 + v / 100)).toFixed(2))
+  }
+
+  // Recalculate vat from amount + total
+  const calcVatFromTotal = (amount: string, total: string) => {
+    const a = parseFloat(amount) || 0
+    const t = parseFloat(total) || 0
+    if (a <= 0) { setValue('vat', '0'); return }
+    setValue('vat', (((t - a) / a) * 100).toFixed(1))
+  }
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setValue('amount', val)
+    if (lastEdited === 'vat') {
+      calcTotalFromVat(val, watch('vat'))
+    } else {
+      calcVatFromTotal(val, watch('total'))
+    }
+  }
+
+  const handleVatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setValue('vat', val)
+    setLastEdited('vat')
+    calcTotalFromVat(watch('amount'), val)
+  }
+
+  const handleTotalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setValue('total', val)
+    setLastEdited('total')
+    calcVatFromTotal(watch('amount'), val)
+  }
 
   const handleFormSubmit = (data: FormData) => {
-    // Calculate VAT% for storage
     const amountNum = parseFloat(data.amount) || 0
     const totalNum = parseFloat(data.total) || 0
-    const vat = amountNum > 0 ? (((totalNum - amountNum) / amountNum) * 100).toFixed(1) : '0'
+    const vat = data.vat || (amountNum > 0 ? (((totalNum - amountNum) / amountNum) * 100).toFixed(1) : '0')
 
     // Apply sign: out = negative
     const signMultiplier = data.sign === 'out' ? -1 : 1
     const signedAmount = (amountNum * signMultiplier).toString()
     const signedTotal = (totalNum * signMultiplier).toString()
 
-    // Remove sign from data (it's only for UI), keep all other fields
-    const { sign, ...submitData } = data
+    // Remove sign and vat from data (UI-only fields)
+    const { sign, vat: _vat, ...submitData } = data
 
     if (record) {
       onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat } as RecordUpdate)
@@ -197,19 +237,19 @@ export function RecordForm({ record, area, onSubmit, onCancel, isLoading }: Reco
       <div className="grid grid-cols-4 gap-4">
         <div className="space-y-1">
           <Label htmlFor="amount">Imponibile</Label>
-          <Input id="amount" type="number" step="0.01" {...register('amount')} />
+          <Input id="amount" type="number" step="0.01" value={watch('amount')} onChange={handleAmountChange} />
           {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="total">Totale</Label>
-          <Input id="total" type="number" step="0.01" {...register('total')} />
-          {errors.total && <p className="text-sm text-destructive">{errors.total.message}</p>}
+          <Label htmlFor="vat">IVA %</Label>
+          <Input id="vat" type="number" step="0.1" value={watch('vat')} onChange={handleVatChange} />
         </div>
 
         <div className="space-y-1">
-          <Label>IVA %</Label>
-          <Input value={calculatedVat} readOnly className="bg-muted" />
+          <Label htmlFor="total">Totale</Label>
+          <Input id="total" type="number" step="0.01" value={watch('total')} onChange={handleTotalChange} />
+          {errors.total && <p className="text-sm text-destructive">{errors.total.message}</p>}
         </div>
 
         <div className="space-y-1">

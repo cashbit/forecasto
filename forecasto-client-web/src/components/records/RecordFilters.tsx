@@ -183,9 +183,9 @@ interface RecordFiltersProps {
 export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
   const {
     currentArea, sign, stageFilter, textFilter,
-    yearFilter, ownerFilter, nextactionFilter, projectCodeFilter,
+    yearFilter, ownerFilter, nextactionFilter, expiredFilter, projectCodeFilter,
     setSign, setStageFilter, setTextFilter, resetFilters,
-    toggleOwnerFilter, clearOwnerFilter, setNextactionFilter, setProjectCodeFilter
+    toggleOwnerFilter, clearOwnerFilter, setNextactionFilter, setExpiredFilter, setProjectCodeFilter
   } = useFilterStore()
 
   const stageLabels = STAGE_LABELS_BY_AREA[currentArea] || { '0': 'Stato 0', '1': 'Stato 1' }
@@ -193,15 +193,16 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
   const hasDateFilter = yearFilter !== null
   const hasOwnerFilter = ownerFilter.length > 0
   const hasNextactionFilter = nextactionFilter !== 'all'
+  const hasExpiredFilter = expiredFilter !== 'all'
   const hasProjectCodeFilter = !!projectCodeFilter
-  const hasAnyFilter = textFilter || sign !== 'all' || stageFilter !== 'all' || hasDateFilter || hasOwnerFilter || hasNextactionFilter || hasProjectCodeFilter
+  const hasAnyFilter = textFilter || sign !== 'all' || stageFilter !== 'all' || hasDateFilter || hasOwnerFilter || hasNextactionFilter || hasExpiredFilter || hasProjectCodeFilter
 
   // Get unique owners from available owners
   const uniqueOwners = [...new Set(availableOwners.filter(Boolean))].sort()
 
   return (
     <div className="flex flex-col gap-2 p-4 border-b">
-      {/* Main filters row */}
+      {/* Search fields row */}
       <div className="flex items-center gap-4">
         <DateFilter />
 
@@ -215,6 +216,26 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
           />
         </div>
 
+        <div className="relative w-32">
+          <Input
+            placeholder="Progetto"
+            value={projectCodeFilter || ''}
+            onChange={(e) => setProjectCodeFilter(e.target.value || null)}
+            className="h-8 text-sm"
+          />
+          {hasProjectCodeFilter && (
+            <button
+              onClick={() => setProjectCodeFilter(null)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Buttons row */}
+      <div className="flex items-center gap-4">
         <ToggleButtonGroup
           value={sign}
           onChange={(v) => setSign(v as 'in' | 'out' | 'all')}
@@ -239,28 +260,21 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
           value={nextactionFilter}
           onChange={(v) => setNextactionFilter(v as 'all' | 'with' | 'without')}
           options={[
-            { value: 'all', label: 'Azioni' },
-            { value: 'with', label: 'Con' },
-            { value: 'without', label: 'Senza' },
+            { value: 'all', label: 'Tutti' },
+            { value: 'with', label: 'Con NextAction' },
+            { value: 'without', label: 'Senza NextAction' },
           ]}
         />
 
-        <div className="relative w-32">
-          <Input
-            placeholder="Progetto"
-            value={projectCodeFilter || ''}
-            onChange={(e) => setProjectCodeFilter(e.target.value || null)}
-            className="h-8 text-sm"
-          />
-          {hasProjectCodeFilter && (
-            <button
-              onClick={() => setProjectCodeFilter(null)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
-        </div>
+        <ToggleButtonGroup
+          value={expiredFilter}
+          onChange={(v) => setExpiredFilter(v as 'all' | 'yes' | 'no')}
+          options={[
+            { value: 'all', label: 'Tutti' },
+            { value: 'yes', label: 'Scaduti' },
+            { value: 'no', label: 'Non scaduti' },
+          ]}
+        />
 
         {hasAnyFilter && (
           <Button variant="ghost" size="sm" onClick={resetFilters}>

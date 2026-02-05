@@ -13,6 +13,7 @@ from forecasto.exceptions import UnauthorizedException, ValidationException
 from forecasto.models.user import RefreshToken, User
 from forecasto.models.workspace import Workspace, WorkspaceMember
 from forecasto.schemas.auth import LoginResponse, TokenResponse, UserInfo
+from forecasto.services.admin_service import AdminService
 from forecasto.utils.security import (
     create_access_token,
     create_refresh_token,
@@ -35,6 +36,9 @@ class AuthService:
         if not user or not verify_password(password, user.password_hash):
             raise UnauthorizedException("Invalid email or password")
 
+        if user.is_blocked:
+            raise UnauthorizedException("Account bloccato. Contatta l'amministratore.")
+
         access_token = create_access_token({"sub": user.id, "email": user.email})
         refresh_token = create_refresh_token({"sub": user.id})
 
@@ -53,7 +57,13 @@ class AuthService:
             access_token=access_token,
             refresh_token=refresh_token,
             expires_in=settings.access_token_expire_minutes * 60,
-            user=UserInfo(id=user.id, email=user.email, name=user.name, invite_code=user.invite_code),
+            user=UserInfo(
+                id=user.id,
+                email=user.email,
+                name=user.name,
+                invite_code=user.invite_code,
+                is_admin=user.is_admin,
+            ),
         )
 
     async def refresh_token(self, refresh_token: str) -> TokenResponse:
@@ -140,8 +150,14 @@ class AuthService:
                 token.revoked_at = datetime.utcnow()
                 break
 
-    async def register(self, email: str, password: str, name: str) -> User:
-        """Register a new user."""
+    async def register(
+        self, email: str, password: str, name: str, registration_code: str
+    ) -> User:
+        """Register a new user with a registration code."""
+        # Validate registration code first
+        admin_service = AdminService(self.db)
+        code = await admin_service.validate_registration_code(registration_code)
+
         # Check if email exists
         result = await self.db.execute(select(User).where(User.email == email))
         if result.scalar_one_or_none():
@@ -151,9 +167,13 @@ class AuthService:
             email=email,
             password_hash=hash_password(password),
             name=name,
+            registration_code_id=code.id,
         )
         self.db.add(user)
         await self.db.flush()
+
+        # Mark code as used
+        await admin_service.mark_code_used(code, user.id)
 
         # Create default workspace for the user
         current_year = datetime.utcnow().year

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Building2, Plus, Trash, Merge, CheckSquare, Square } from 'lucide-react'
+import { Building2, Plus, Trash, Merge, CheckSquare, Square, Copy } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -39,6 +39,7 @@ export function Sidebar() {
     selectAllWorkspaces,
     deselectAllWorkspaces,
     deleteWorkspace,
+    duplicateWorkspace,
     mergeWorkspaces
   } = useWorkspaceStore()
 
@@ -49,9 +50,12 @@ export function Sidebar() {
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showMergeDialog, setShowMergeDialog] = useState(false)
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false)
   const [mergeTargetName, setMergeTargetName] = useState('')
+  const [duplicateName, setDuplicateName] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
   const [isMerging, setIsMerging] = useState(false)
+  const [isDuplicating, setIsDuplicating] = useState(false)
   const [workspacesToDelete, setWorkspacesToDelete] = useState<string[]>([])
 
   const handleDeleteClick = () => {
@@ -114,6 +118,35 @@ export function Sidebar() {
     }
   }
 
+  const handleDuplicateClick = () => {
+    if (selectedWorkspaceIds.length !== 1) {
+      toast({ title: 'Seleziona un solo workspace da duplicare', variant: 'destructive' })
+      return
+    }
+    const ws = workspaces.find(w => w.id === selectedWorkspaceIds[0])
+    setDuplicateName(ws ? `${ws.name} (copia)` : '')
+    setShowDuplicateDialog(true)
+  }
+
+  const handleDuplicateConfirm = async () => {
+    if (!duplicateName.trim()) {
+      toast({ title: 'Inserisci un nome per il workspace', variant: 'destructive' })
+      return
+    }
+
+    setIsDuplicating(true)
+    try {
+      await duplicateWorkspace(selectedWorkspaceIds[0], duplicateName.trim())
+      toast({ title: 'Workspace duplicato con successo', description: 'Tutti i record sono stati copiati nel nuovo workspace', variant: 'success' })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto'
+      toast({ title: 'Errore durante la duplicazione', description: errorMessage, variant: 'destructive' })
+    } finally {
+      setIsDuplicating(false)
+      setShowDuplicateDialog(false)
+    }
+  }
+
   const allSelected = selectedWorkspaceIds.length === workspaces.length
   const someSelected = selectedWorkspaceIds.length > 0 && selectedWorkspaceIds.length < workspaces.length
 
@@ -171,6 +204,15 @@ export function Sidebar() {
               title="Unisci workspace selezionati"
             >
               <Merge className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDuplicateClick}
+              disabled={selectedWorkspaceIds.length !== 1}
+              title="Duplica workspace selezionato"
+            >
+              <Copy className="h-4 w-4" />
             </Button>
           </div>
 
@@ -307,6 +349,43 @@ export function Sidebar() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Duplicate Dialog */}
+      <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplica workspace</DialogTitle>
+            <DialogDescription>
+              Crea una copia del workspace selezionato con tutti i suoi record.
+              {selectedWorkspaceIds.length === 1 && (
+                <span className="block mt-2 font-medium text-foreground">
+                  {selectedWorkspaceNames[0]}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="duplicate-name">Nome del nuovo workspace</Label>
+            <Input
+              id="duplicate-name"
+              value={duplicateName}
+              onChange={(e) => setDuplicateName(e.target.value)}
+              placeholder="Es: Workspace Copia"
+              className="mt-2"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDuplicateDialog(false)} disabled={isDuplicating}>
+              Annulla
+            </Button>
+            <Button onClick={handleDuplicateConfirm} disabled={isDuplicating || !duplicateName.trim()}>
+              {isDuplicating ? 'Duplicazione in corso...' : 'Duplica'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </>
   )
 }

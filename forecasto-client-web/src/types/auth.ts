@@ -3,6 +3,7 @@ export interface User {
   email: string
   name: string
   invite_code: string
+  is_admin: boolean
   is_active: boolean
   created_at: string
   updated_at: string
@@ -24,6 +25,7 @@ export interface RegisterRequest {
   email: string
   password: string
   name: string
+  registration_code: string
 }
 
 export interface RefreshTokenRequest {

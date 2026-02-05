@@ -16,6 +16,7 @@ const schema = z.object({
   email: z.string().email('Email non valida'),
   password: z.string().min(6, 'Password deve avere almeno 6 caratteri'),
   confirmPassword: z.string(),
+  registrationCode: z.string().min(1, 'Codice invito richiesto'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Le password non coincidono',
   path: ['confirmPassword'],
@@ -39,10 +40,11 @@ export function RegisterPage() {
   const onSubmit = async (data: FormData) => {
     setError('')
     try {
-      await registerUser(data.email, data.password, data.name)
+      await registerUser(data.email, data.password, data.name, data.registrationCode)
       navigate('/dashboard')
-    } catch {
-      setError('Errore durante la registrazione')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Errore durante la registrazione'
+      setError(errorMessage)
     }
   }
 
@@ -110,6 +112,20 @@ export function RegisterPage() {
               {errors.confirmPassword && (
                 <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
               )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="registrationCode">Codice Invito</Label>
+              <Input
+                id="registrationCode"
+                placeholder="XXXX-XXXX-XXXX"
+                {...register('registrationCode')}
+              />
+              {errors.registrationCode && (
+                <p className="text-sm text-destructive">{errors.registrationCode.message}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Inserisci il codice invito ricevuto per registrarti
+              </p>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">

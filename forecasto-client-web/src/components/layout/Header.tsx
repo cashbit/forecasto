@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LogOut, Settings, User, PanelLeftClose, PanelLeft, Bell, Check, Copy } from 'lucide-react'
+import { LogOut, Settings, User, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload } from 'lucide-react'
 import logoIcon from '@/assets/logo-icon.png'
 import logoText from '@/assets/logo-text.png'
 import { Link, useLocation } from 'react-router-dom'
@@ -19,16 +19,27 @@ import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { workspacesApi } from '@/api/workspaces'
+import { recordsApi } from '@/api/records'
 import { toast } from '@/hooks/useToast'
+import { useQueryClient } from '@tanstack/react-query'
+import { ImportDialog } from '@/components/records/ImportDialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { PendingInvitation } from '@/types/workspace'
+import type { Area } from '@/types/record'
 
 export function Header() {
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { sidebarOpen, toggleSidebar } = useUiStore()
-  const { fetchWorkspaces } = useWorkspaceStore()
+  const { fetchWorkspaces, getPrimaryWorkspace, selectedWorkspaceIds } = useWorkspaceStore()
+  const queryClient = useQueryClient()
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
   const [isAccepting, setIsAccepting] = useState<string | null>(null)
+  const [showImportDialog, setShowImportDialog] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+
+  const primaryWorkspace = getPrimaryWorkspace()
+  const canImportExport = selectedWorkspaceIds.length === 1 && primaryWorkspace
 
   useEffect(() => {
     loadInvitations()
@@ -66,6 +77,82 @@ export function Header() {
       toast({ title: 'Errore nell\'accettare l\'invito', variant: 'destructive' })
     } finally {
       setIsAccepting(null)
+    }
+  }
+
+  const handleExport = async () => {
+    if (!primaryWorkspace) return
+
+    setIsExporting(true)
+    try {
+      const areas: Area[] = ['budget', 'prospect', 'orders', 'actual']
+      const areaTypeMap: Record<Area, string> = {
+        'actual': '0',
+        'orders': '1',
+        'prospect': '2',
+        'budget': '3',
+      }
+
+      const allRecords: Array<{
+        id: string
+        type: string
+        account: string
+        reference: string
+        note: string
+        date_cashflow: string
+        date_offer: string
+        amount: string
+        vat: string
+        total: string
+        stage: string
+        transaction_id: string
+        project_code?: string
+        owner?: string
+        nextaction?: string
+      }> = []
+
+      for (const area of areas) {
+        const response = await recordsApi.list(primaryWorkspace.id, {
+          area,
+          page: 1,
+          page_size: 10000,
+        })
+
+        for (const record of response.items) {
+          allRecords.push({
+            id: record.id,
+            type: areaTypeMap[record.area],
+            account: record.account,
+            reference: record.reference,
+            note: record.note || '',
+            date_cashflow: record.date_cashflow,
+            date_offer: record.date_offer,
+            amount: record.amount,
+            vat: record.vat,
+            total: record.total,
+            stage: record.stage,
+            transaction_id: record.transaction_id || '',
+            project_code: record.project_code || undefined,
+            owner: record.owner || undefined,
+            nextaction: record.nextaction || undefined,
+          })
+        }
+      }
+
+      const json = JSON.stringify(allRecords, null, 2)
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${primaryWorkspace.name.replace(/[^a-z0-9]/gi, '_')}-${new Date().toISOString().split('T')[0]}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+
+      toast({ title: 'Export completato', description: `${allRecords.length} record esportati`, variant: 'success' })
+    } catch {
+      toast({ title: 'Errore durante l\'export', variant: 'destructive' })
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -112,6 +199,41 @@ export function Header() {
             <Link to="/cashflow">Cashflow</Link>
           </Button>
         </nav>
+
+        {/* Import/Export Buttons */}
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowImportDialog(true)}
+                disabled={!canImportExport}
+              >
+                <Download className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {canImportExport ? `Importa in ${primaryWorkspace?.name}` : 'Seleziona un workspace'}
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleExport}
+                disabled={!canImportExport || isExporting}
+              >
+                <Upload className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {canImportExport ? `Esporta da ${primaryWorkspace?.name}` : 'Seleziona un workspace'}
+            </TooltipContent>
+          </Tooltip>
+        </div>
 
         {/* Pending Invitations */}
         <DropdownMenu>
@@ -201,6 +323,17 @@ export function Header() {
                 Impostazioni
               </Link>
             </DropdownMenuItem>
+            {user?.is_admin && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/admin">
+                    <Shield className="mr-2 h-4 w-4" />
+                    Pannello Admin
+                  </Link>
+                </DropdownMenuItem>
+              </>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout}>
               <LogOut className="mr-2 h-4 w-4" />
@@ -209,6 +342,19 @@ export function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Import Dialog */}
+      {primaryWorkspace && (
+        <ImportDialog
+          open={showImportDialog}
+          onOpenChange={setShowImportDialog}
+          workspaceId={primaryWorkspace.id}
+          workspaceName={primaryWorkspace.name}
+          onImportComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ['records'] })
+          }}
+        />
+      )}
     </header>
   )
 }

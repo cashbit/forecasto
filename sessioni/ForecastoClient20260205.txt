@@ -1,0 +1,557 @@
+
+╭─── Claude Code v2.1.32 ──────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                   │ Tips for getting started                                         │
+│                   Welcome back!                   │ Run /init to create a CLAUDE.md file with instructions for Clau… │
+│                                                   │ ──────────────────────────────────────────────────────────────── │
+│                                                   │ Recent activity                                                  │
+│                     ▗ ▗   ▖ ▖                     │ No recent activity                                               │
+│                                                   │                                                                  │
+│                       ▘▘ ▝▝                       │                                                                  │
+│   Opus 4.6 · API Usage Billing · Techmakers srl   │                                                                  │
+│                  ~/dev/forecasto                  │                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+  Welcome to Opus 4.6
+
+❯ lancia il server e poi il client 
+
+⏺ Let me check how to start both the server and client.
+
+⏺ Searched for 3 patterns, read 2 files (ctrl+o to expand)
+  ⎿  Loaded forecasto-client-web/CLAUDE.md
+
+⏺ Avvio il server (FastAPI con uvicorn) in background e poi il client (Vite).
+
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-server && python -m uvicorn forecasto.main:app --reload --port 8000)
+  ⎿  Running in the background (↓ to manage)
+
+⏺ Task Output(non-blocking) b73283b
+  ⎿  [stderr] (eval):1: command not found: python
+
+⏺ Bash(which python3 && cd /Users/cashbit/dev/forecasto/forecasto-server && python3 -m uvicorn forecasto.main:app
+      --reload --port 8000)
+  ⎿  Running in the background (↓ to manage)
+
+⏺ Task Output(non-blocking) b3eeafa
+  ⎿ /usr/bin/python3
+    [stderr] INFO:     Will watch for changes in these directories: ['/Users/cashbit/dev/forecasto/forecasto-server
+    ']
+    … +5 lines (ctrl+o to expand)
+
+
+⏺ Server avviato su http://127.0.0.1:8000. Ora avvio il client.
+
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-client-web && npm run dev)
+  ⎿  Running in the background (↓ to manage)
+
+⏺ Task Output(non-blocking) b458e7f
+  ⎿  
+     > forecasto-client-web@0.0.0 dev
+     > vite
+     … +6 lines (ctrl+o to expand)
+
+⏺ Entrambi sono in esecuzione:
+
+  - Server (FastAPI): http://127.0.0.1:8000
+  - Client (Vite/React): http://localhost:3000
+
+⏺ Background command "Start FastAPI server on port 8000 with auto-reload" failed with exit code 127
+
+⏺ That was the first failed attempt (using python instead of python3). The server is running correctly via the second
+  command — both services are up and running.
+
+❯ la parte filtri della dashboard va divisa su due righe, prima riga: i campi di ricerca, seconda riga tutti i      
+  pulsanti                                                                                                          
+
+⏺ Let me look at the current dashboard layout.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Now let me see the RecordFilters component where the search fields and buttons are.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Ora vedo la struttura. Attualmente tutto è su una riga sola. Separo i campi di ricerca (data, testo, progetto) sulla
+  prima riga e i pulsanti (segno, stage, azioni, owner, reset) sulla seconda.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordFilters.tsx)
+  ⎿  Added 21 lines, removed 18 lines
+      201
+      202    return (
+      203      <div className="flex flex-col gap-2 p-4 border-b">
+      204 -      {/* Main filters row */}                                                                        
+      204 +      {/* Search fields row */}                                                                       
+      205        <div className="flex items-center gap-4">
+      206          <DateFilter />
+      207
+     ...
+      215            />
+      216          </div>
+      217
+      218 +        <div className="relative w-32">                                                               
+      219 +          <Input                                                                                      
+      220 +            placeholder="Progetto"                                                                    
+      221 +            value={projectCodeFilter || ''}                                                           
+      222 +            onChange={(e) => setProjectCodeFilter(e.target.value || null)}                            
+      223 +            className="h-8 text-sm"                                                                   
+      224 +          />                                                                                          
+      225 +          {hasProjectCodeFilter && (                                                                  
+      226 +            <button                                                                                   
+      227 +              onClick={() => setProjectCodeFilter(null)}                                              
+      228 +              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground              
+          +hover:text-foreground"                                                                                
+      229 +            >                                                                                         
+      230 +              <X className="h-3 w-3" />                                                               
+      231 +            </button>                                                                                 
+      232 +          )}                                                                                          
+      233 +        </div>                                                                                        
+      234 +      </div>                                                                                          
+      235 +                                                                                                      
+      236 +      {/* Buttons row */}                                                                             
+      237 +      <div className="flex items-center gap-4">                                                       
+      238          <ToggleButtonGroup
+      239            value={sign}
+      240            onChange={(v) => setSign(v as 'in' | 'out' | 'all')}
+     ...
+      245            ]}
+      246          />
+      247
+      248 -        <div className="relative w-32">                                                               
+      249 -          <Input                                                                                      
+      250 -            placeholder="Progetto"                                                                    
+      251 -            value={projectCodeFilter || ''}                                                           
+      252 -            onChange={(e) => setProjectCodeFilter(e.target.value || null)}                            
+      253 -            className="h-8 text-sm"                                                                   
+      254 -          />                                                                                          
+      255 -          {hasProjectCodeFilter && (                                                                  
+      256 -            <button                                                                                   
+      257 -              onClick={() => setProjectCodeFilter(null)}                                              
+      258 -              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground              
+          -hover:text-foreground"                                                                                
+      259 -            >                                                                                         
+      260 -              <X className="h-3 w-3" />                                                               
+      261 -            </button>                                                                                 
+      262 -          )}                                                                                          
+      263 -        </div>                                                                                        
+      264 -                                                                                                      
+      248          {hasAnyFilter && (
+      249            <Button variant="ghost" size="sm" onClick={resetFilters}>
+      250              <X className="h-4 w-4 mr-1" />
+
+⏺ Fatto. Ora i filtri sono divisi su due righe:
+
+  - Riga 1 (campi di ricerca): filtro data, campo testo di ricerca, campo progetto
+  - Riga 2 (pulsanti): Entrate/Uscite, Stage, Azioni, Reset
+
+  La riga Owner resta invariata come terza riga sotto i pulsanti.
+
+❯ la dialog di creazione nuovo record potrebbe sfruttare un po' di più la larghezza dello schermo in modo da avere  
+  campi più grandi                                                                                                  
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ La dialog attualmente usa max-w-3xl (48rem/768px). Aumento la larghezza a max-w-5xl (64rem/1024px) per dare più spazio
+   ai campi.
+
+⏺ Update(forecasto-client-web/src/pages/DashboardPage.tsx)
+  ⎿  Added 1 line, removed 1 line
+      391            setEditingRecord(null)
+      392          }
+      393        }}>
+      394 -        <DialogContent className="max-w-3xl">                                                         
+      394 +        <DialogContent className="max-w-5xl">                                                         
+      395            <DialogHeader className="flex flex-row items-start justify-between">
+      396              <DialogTitle>
+      397                {editingRecord ? 'Modifica Record' : 'Nuovo Record'}
+
+⏺ Fatto. La dialog di creazione/modifica record ora usa max-w-5xl (1024px) invece di max-w-3xl (768px), dando circa il
+  33% di spazio in più ai campi del form.
+
+❯ Il calcolo dell'iva va bene, ma devo poter variare il campo iva a mano. Se inserisco imponibile e digito iva      
+  allora mi calcola il totale. Se inserisco imponibile poi totale, allora mi calcola iva.                           
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 1 line
+      1 +import { useState } from 'react'                                                                        
+      2  import { useForm } from 'react-hook-form'
+      3  import { zodResolver } from '@hookform/resolvers/zod'
+      4  import { z } from 'zod'
+
+⏺ Ora aggiungo il campo vat allo schema e la logica bidirezionale.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 42 lines, removed 10 lines
+       97
+       98    const selectedStage = watch('stage')
+       99    const selectedSign = watch('sign')
+      100 -  const watchAmount = watch('amount')                                                                 
+      101 -  const watchTotal = watch('total')                                                                   
+      100
+      101 +  // Track which field (vat or total) was last manually edited                                        
+      102 +  const [lastEdited, setLastEdited] = useState<'vat' | 'total'>('total')                              
+      103 +                                                                                                      
+      104    // Check permission based on selected sign
+      105    const canPerformAction = selectedSign
+      106      ? (isEditing ? getCanEdit(selectedSign) : getCanCreate(selectedSign))
+     ...
+      110          : `Non hai i permessi per creare record ${selectedSign === 'in' ? 'in entrata' : 'in uscita'}
+            in quest'area`)
+      111      : null
+      112
+      113 -  // Calculate VAT% from amount and total: VAT% = ((total - amount) / amount) * 100                   
+      114 -  const calculatedVat = (() => {                                                                      
+      115 -    const amountNum = parseFloat(watchAmount) || 0                                                    
+      116 -    const totalNum = parseFloat(watchTotal) || 0                                                      
+      117 -    if (amountNum <= 0) return '0'                                                                    
+      118 -    const vatPercent = ((totalNum - amountNum) / amountNum) * 100                                     
+      119 -    return vatPercent.toFixed(1)                                                                      
+      120 -  })()                                                                                                
+      113 +  // Recalculate total from amount + vat                                                              
+      114 +  const calcTotalFromVat = (amount: string, vat: string) => {                                         
+      115 +    const a = parseFloat(amount) || 0                                                                 
+      116 +    const v = parseFloat(vat) || 0                                                                    
+      117 +    if (a <= 0) return                                                                                
+      118 +    setValue('total', (a * (1 + v / 100)).toFixed(2))                                                 
+      119 +  }                                                                                                   
+      120
+      121 +  // Recalculate vat from amount + total                                                              
+      122 +  const calcVatFromTotal = (amount: string, total: string) => {                                       
+      123 +    const a = parseFloat(amount) || 0                                                                 
+      124 +    const t = parseFloat(total) || 0                                                                  
+      125 +    if (a <= 0) { setValue('vat', '0'); return }                                                      
+      126 +    setValue('vat', (((t - a) / a) * 100).toFixed(1))                                                 
+      127 +  }                                                                                                   
+      128 +                                                                                                      
+      129 +  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {                            
+      130 +    const val = e.target.value                                                                        
+      131 +    setValue('amount', val)                                                                           
+      132 +    if (lastEdited === 'vat') {                                                                       
+      133 +      calcTotalFromVat(val, watch('vat'))                                                             
+      134 +    } else {                                                                                          
+      135 +      calcVatFromTotal(val, watch('total'))                                                           
+      136 +    }                                                                                                 
+      137 +  }                                                                                                   
+      138 +                                                                                                      
+      139 +  const handleVatChange = (e: React.ChangeEvent<HTMLInputElement>) => {                               
+      140 +    const val = e.target.value                                                                        
+      141 +    setValue('vat', val)                                                                              
+      142 +    setLastEdited('vat')                                                                              
+      143 +    calcTotalFromVat(watch('amount'), val)                                                            
+      144 +  }                                                                                                   
+      145 +                                                                                                      
+      146 +  const handleTotalChange = (e: React.ChangeEvent<HTMLInputElement>) => {                             
+      147 +    const val = e.target.value                                                                        
+      148 +    setValue('total', val)                                                                            
+      149 +    setLastEdited('total')                                                                            
+      150 +    calcVatFromTotal(watch('amount'), val)                                                            
+      151 +  }                                                                                                   
+      152 +                                                                                                      
+      153    const handleFormSubmit = (data: FormData) => {
+      154      // Calculate VAT% for storage
+      155      const amountNum = parseFloat(data.amount) || 0
+
+⏺ Ora aggiungo vat allo schema zod e ai defaultValues.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 1 line
+      33    stage: z.string().min(1, 'Stato obbligatorio'),
+      34    nextaction: z.string().optional(),
+      35    project_code: z.string().optional(),
+      36 +  vat: z.string().optional(),                                                                          
+      37    sign: z.enum(['in', 'out'], { message: 'Seleziona entrata o uscita' }),
+      38  })
+      39
+
+⏺ Ora aggiungo il defaultValue per vat.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 7 lines
+       89        owner: record?.owner || '',
+       90        amount: record?.amount ? Math.abs(parseFloat(record.amount)).toString() : '',
+       91        total: record?.total ? Math.abs(parseFloat(record.total)).toString() : '',
+       92 +      vat: (() => {                                                                                   
+       93 +        if (!record?.amount || !record?.total) return ''                                              
+       94 +        const a = Math.abs(parseFloat(record.amount))                                                 
+       95 +        const t = Math.abs(parseFloat(record.total))                                                  
+       96 +        if (a <= 0) return '0'                                                                        
+       97 +        return (((t - a) / a) * 100).toFixed(1)                                                       
+       98 +      })(),                                                                                           
+       99        stage: normalizeLegacyStage(record?.stage) || stages[0] || '0',
+      100        nextaction: record?.nextaction || '',
+      101        project_code: record?.project_code || '',
+
+⏺ Ora aggiorno i campi del form per usare i nuovi handler e rendere IVA editabile.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 6 lines, removed 6 lines
+      238        <div className="grid grid-cols-4 gap-4">
+      239          <div className="space-y-1">
+      240            <Label htmlFor="amount">Imponibile</Label>
+      241 -          <Input id="amount" type="number" step="0.01" {...register('amount')} />                     
+      241 +          <Input id="amount" type="number" step="0.01" value={watch('amount')}                        
+          +onChange={handleAmountChange} />                                                                      
+      242            {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
+      243          </div>
+      244
+      245          <div className="space-y-1">
+      246 -          <Label htmlFor="total">Totale</Label>                                                       
+      247 -          <Input id="total" type="number" step="0.01" {...register('total')} />                       
+      248 -          {errors.total && <p className="text-sm text-destructive">{errors.total.message}</p>}        
+      246 +          <Label htmlFor="vat">IVA %</Label>                                                          
+      247 +          <Input id="vat" type="number" step="0.1" value={watch('vat')} onChange={handleVatChange} /> 
+      248          </div>
+      249
+      250          <div className="space-y-1">
+      251 -          <Label>IVA %</Label>                                                                        
+      252 -          <Input value={calculatedVat} readOnly className="bg-muted" />                               
+      251 +          <Label htmlFor="total">Totale</Label>                                                       
+      252 +          <Input id="total" type="number" step="0.01" value={watch('total')}                          
+          +onChange={handleTotalChange} />                                                                       
+      253 +          {errors.total && <p className="text-sm text-destructive">{errors.total.message}</p>}        
+      254          </div>
+      255
+      256          <div className="space-y-1">
+
+⏺ Infine aggiorno il submit handler per usare il vat dal form.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 3 lines, removed 4 lines
+      160    }
+      161
+      162    const handleFormSubmit = (data: FormData) => {
+      163 -    // Calculate VAT% for storage                                                                     
+      163      const amountNum = parseFloat(data.amount) || 0
+      164      const totalNum = parseFloat(data.total) || 0
+      165 -    const vat = amountNum > 0 ? (((totalNum - amountNum) / amountNum) * 100).toFixed(1) : '0'         
+      165 +    const vat = data.vat || (                                                                         
+          +amountNum > 0 ? (((totalNum - amountNum) / amountNum) * 100).toFixed(1) : '0')                        
+      166
+      167      // Apply sign: out = negative
+      168      const signMultiplier = data.sign === 'out' ? -1 : 1
+      169      const signedAmount = (amountNum * signMultiplier).toString()
+      170      const signedTotal = (totalNum * signMultiplier).toString()
+      171
+      172 -    // Remove sign from data (it's only for UI), keep all other fields                                
+      173 -    const { sign, ...submitData } = data                                                              
+      172 +    // Remove sign and vat from data (UI-only fields)                                                 
+      173 +    const { sign, vat: _vat, ...submitData } = data                                                   
+      174
+      175      if (record) {
+      176        onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat } as RecordUpdate)
+
+⏺ Fatto. Ora l'ordine dei campi nella riga importi è Imponibile → IVA % → Totale → Stato e la logica funziona così:
+
+  - Digiti Imponibile + IVA % → viene calcolato il Totale automaticamente
+  - Digiti Imponibile + Totale → viene calcolata l'IVA % automaticamente
+  - Modifichi Imponibile → ricalcola in base all'ultimo campo che hai toccato (IVA o Totale)
+
+✻ Cogitated for 1m 8s
+
+❯ aggiungiamo un filtro "scaduto" Si, No, Tutti nel filtro di ricerca 
+
+⏺ Let me check the filter store to understand how to add the new filter.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Ora vedo dove viene applicato il filtro ai record per aggiungere anche la logica "scaduto".
+
+⏺ Searched for 2 patterns, read 1 file (ctrl+o to expand)
+
+⏺ Ora ho il quadro completo. Devo modificare 3 file: il filterStore (aggiungere stato), useRecords (applicare il
+  filtro), RecordFilters (UI del toggle).
+
+⏺ Update(forecasto-client-web/src/stores/filterStore.ts)
+  ⎿  Added 2 lines
+      11    stageFilter: '0' | '1' | 'all'
+      12    ownerFilter: string[]
+      13    nextactionFilter: 'all' | 'with' | 'without'
+      14 +  expiredFilter: 'all' | 'yes' | 'no'                                                                  
+      15    textFilter: string
+      16    accountFilter: string[]
+      17    projectCodeFilter: string | null
+     ...
+      26    toggleOwnerFilter: (owner: string) => void
+      27    clearOwnerFilter: () => void
+      28    setNextactionFilter: (filter: 'all' | 'with' | 'without') => void
+      29 +  setExpiredFilter: (filter: 'all' | 'yes' | 'no') => void                                             
+      30    setTextFilter: (text: string) => void
+      31    setAccountFilter: (accounts: string[]) => void
+      32    setProjectCodeFilter: (code: string | null) => void
+
+⏺ Update(forecasto-client-web/src/stores/filterStore.ts)
+  ⎿  Added 1 line
+      45    stageFilter: 'all' as const,
+      46    ownerFilter: [] as string[],
+      47    nextactionFilter: 'all' as const,
+      48 +  expiredFilter: 'all' as const,                                                                       
+      49    textFilter: '',
+      50    accountFilter: [],
+      51    projectCodeFilter: null,
+
+⏺ Update(forecasto-client-web/src/stores/filterStore.ts)
+  ⎿  Added 2 lines
+      90
+      91    setNextactionFilter: (filter) => set({ nextactionFilter: filter }),
+      92
+      93 +  setExpiredFilter: (filter) => set({ expiredFilter: filter }),                                        
+      94 +                                                                                                       
+      95    setTextFilter: (text) => set({ textFilter: text }),
+      96
+      97    setAccountFilter: (accounts) => set({ accountFilter: accounts }),
+
+⏺ Ora aggiungo la logica di filtro in useRecords.ts.
+
+⏺ Update(forecasto-client-web/src/hooks/useRecords.ts)
+  ⎿  Added 1 line, removed 1 line
+      10    const selectedWorkspaceIds = useWorkspaceStore(state => state.selectedWorkspaceIds)
+      11    const {
+      12      currentArea, dateRange, yearFilter, monthFilter, dayFilter,
+      13 -    sign, stageFilter, ownerFilter, nextactionFilter,                                                  
+      13 +    sign, stageFilter, ownerFilter, nextactionFilter, expiredFilter,                                   
+      14      textFilter, projectCodeFilter, bankAccountFilter
+      15    } = useFilterStore()
+      16    const { fetchHistory } = useHistoryStore()
+
+⏺ Update(forecasto-client-web/src/hooks/useRecords.ts)
+  ⎿  Added 12 lines
+       87          filteredRecords = filteredRecords.filter((r) => !r.nextaction || r.nextaction.trim() === '')
+       88        }
+       89
+       90 +      // Apply expired filter (date_cashflow < today)                                                 
+       91 +      if (expiredFilter !== 'all') {                                                                  
+       92 +        const today = new Date()                                                                      
+       93 +        today.setHours(0, 0, 0, 0)                                                                    
+       94 +        filteredRecords = filteredRecords.filter((r) => {                                             
+       95 +          const date = new Date(r.date_cashflow)                                                      
+       96 +          date.setHours(0, 0, 0, 0)                                                                   
+       97 +          const isExpired = date.getTime() < today.getTime()                                          
+       98 +          return expiredFilter === 'yes' ? isExpired : !isExpired                                     
+       99 +        })                                                                                            
+      100 +      }                                                                                               
+      101 +                                                                                                      
+      102        // Sort by date (most recent first)
+      103        filteredRecords.sort((a, b) => new Date(b.date_cashflow).getTime() - new
+           Date(a.date_cashflow).getTime())
+      104
+
+⏺ Infine aggiungo il toggle nella UI dei filtri.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Update(forecasto-client-web/src/components/records/RecordFilters.tsx)
+  ⎿  Added 4 lines, removed 3 lines
+      183  export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
+      184    const {
+      185      currentArea, sign, stageFilter, textFilter,
+      186 -    yearFilter, ownerFilter, nextactionFilter, projectCodeFilter,                                     
+      186 +    yearFilter, ownerFilter, nextactionFilter, expiredFilter, projectCodeFilter,                      
+      187      setSign, setStageFilter, setTextFilter, resetFilters,
+      188 -    toggleOwnerFilter, clearOwnerFilter, setNextactionFilter, setProjectCodeFilter                    
+      188 +    toggleOwnerFilter, clearOwnerFilter, setNextactionFilter, setExpiredFilter, setProjectCodeFilter  
+      189    } = useFilterStore()
+      190
+      191    const stageLabels = STAGE_LABELS_BY_AREA[currentArea] || { '0': 'Stato 0', '1': 'Stato 1' }
+     ...
+      193    const hasDateFilter = yearFilter !== null
+      194    const hasOwnerFilter = ownerFilter.length > 0
+      195    const hasNextactionFilter = nextactionFilter !== 'all'
+      196 +  const hasExpiredFilter = expiredFilter !== 'all'                                                    
+      197    const hasProjectCodeFilter = !!projectCodeFilter
+      198 -  const hasAnyFilter = textFilter || sign !== 'all' || stageFilter !== 'all' || hasDateFilter ||      
+          -hasOwnerFilter || hasNextactionFilter || hasProjectCodeFilter                                         
+      198 +  const hasAnyFilter = textFilter || sign !== 'all' || stageFilter !== 'all' || hasDateFilter ||      
+          +hasOwnerFilter || hasNextactionFilter || hasExpiredFilter || hasProjectCodeFilter                     
+      199
+      200    // Get unique owners from available owners
+      201    const uniqueOwners = [...new Set(availableOwners.filter(Boolean))].sort()
+
+⏺ Ora aggiungo il toggle button nella riga dei pulsanti.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordFilters.tsx)
+  ⎿  Added 10 lines
+      266            ]}
+      267          />
+      268
+      269 +        <ToggleButtonGroup                                                                            
+      270 +          value={expiredFilter}                                                                       
+      271 +          onChange={(v) => setExpiredFilter(v as 'all' | 'yes' | 'no')}                               
+      272 +          options={[                                                                                  
+      273 +            { value: 'all', label: 'Scaduto' },                                                       
+      274 +            { value: 'yes', label: 'Si' },                                                            
+      275 +            { value: 'no', label: 'No' },                                                             
+      276 +          ]}                                                                                          
+      277 +        />                                                                                            
+      278 +                                                                                                      
+      279          {hasAnyFilter && (
+      280            <Button variant="ghost" size="sm" onClick={resetFilters}>
+      281              <X className="h-4 w-4 mr-1" />
+
+⏺ Fatto. Ho aggiunto il filtro "Scaduto" con tre opzioni:
+
+  - Scaduto (Tutti) - mostra tutti i record
+  - Si - mostra solo record con date_cashflow precedente a oggi
+  - No - mostra solo record con date_cashflow da oggi in poi
+
+  Il filtro è nella seconda riga dei pulsanti, dopo il filtro Azioni.
+
+✻ Cogitated for 1m 4s
+
+❯ i toggle dei filtri Azione e Scaduto li rinominerei in Tutti, Con, Senza NextAction e Tutti, Scaduti, Non scaduti 
+
+⏺ Update(forecasto-client-web/src/components/records/RecordFilters.tsx)
+  ⎿  Added 6 lines, removed 6 lines
+      260            value={nextactionFilter}
+      261            onChange={(v) => setNextactionFilter(v as 'all' | 'with' | 'without')}
+      262            options={[
+      263 -            { value: 'all', label: 'Azioni' },                                                        
+      264 -            { value: 'with', label: 'Con' },                                                          
+      265 -            { value: 'without', label: 'Senza' },                                                     
+      263 +            { value: 'all', label: 'Tutti' },                                                         
+      264 +            { value: 'with', label: 'Con NextAction' },                                               
+      265 +            { value: 'without', label: 'Senza NextAction' },                                          
+      266            ]}
+      267          />
+      268
+     ...
+      270            value={expiredFilter}
+      271            onChange={(v) => setExpiredFilter(v as 'all' | 'yes' | 'no')}
+      272            options={[
+      273 -            { value: 'all', label: 'Scaduto' },                                                       
+      274 -            { value: 'yes', label: 'Si' },                                                            
+      275 -            { value: 'no', label: 'No' },                                                             
+      273 +            { value: 'all', label: 'Tutti' },                                                         
+      274 +            { value: 'yes', label: 'Scaduti' },                                                       
+      275 +            { value: 'no', label: 'Non scaduti' },                                                    
+      276            ]}
+      277          />
+      278
+
+⏺ Fatto. Le etichette ora sono:
+  - NextAction: Tutti / Con NextAction / Senza NextAction
+  - Scaduto: Tutti / Scaduti / Non scaduti
+
+❯ /exit 
+  ⎿  Catch you later!
+
+⏺ Background command "Start FastAPI server with python3" was stopped
+
+✽ Embellishing…                                                                                                         
+   
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯                                                                               
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ accept edits on (shift+tab to cycle) · 41 files +576 -68 · esc to interrupt
+
+Resume this session with:
+claude --resume 1a4d0e35-b980-4de5-b282-ca084a5c4655
+
+Total cost:            $1.71
+Total duration (API):  4m 2s
+Total duration (wall): 16m 53s
+Total code changes:    120 lines added, 49 lines removed
+Usage by model:
+    claude-haiku-4-5:  8.6k input, 297 output, 0 cache read, 0 cache write ($0.0101)
+     claude-opus-4-6:  74 input, 12.2k output, 1.9m cache read, 70.4k cache write ($1.70)
+cashbit@MacBook-Air-di-Carlo forecasto % 

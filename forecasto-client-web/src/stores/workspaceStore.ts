@@ -18,9 +18,11 @@ interface WorkspaceState {
   createWorkspace: (name: string, description?: string) => Promise<Workspace | undefined>
   updateWorkspace: (workspaceId: string, data: Partial<Workspace>) => Promise<void>
   deleteWorkspace: (workspaceId: string) => Promise<void>
+  duplicateWorkspace: (workspaceId: string, newName: string) => Promise<Workspace | undefined>
   mergeWorkspaces: (workspaceIds: string[], targetName: string) => Promise<void>
   setCurrentMember: (member: WorkspaceMember | null) => void
   checkPermission: (area: WsArea, sign: Sign, permission: PermissionType, recordCreatorId?: string, currentUserId?: string) => boolean
+  getPrimaryWorkspace: () => Workspace | undefined
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -119,6 +121,64 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             selectedWorkspaceIds: selectedIds,
           }
         })
+      },
+
+      duplicateWorkspace: async (workspaceId, newName) => {
+        const sourceWorkspace = get().workspaces.find(w => w.id === workspaceId)
+        if (!sourceWorkspace) return undefined
+
+        // Create a new workspace with the new name
+        const newWorkspace = await workspacesApi.create({
+          name: newName,
+          description: sourceWorkspace.description,
+        })
+
+        // Copy all records from source workspace to the new workspace
+        const areas: Area[] = ['budget', 'prospect', 'orders', 'actual']
+
+        for (const area of areas) {
+          try {
+            const response = await recordsApi.list(workspaceId, {
+              area,
+              page: 1,
+              page_size: 10000 // Get all records
+            })
+
+            // Create copies in the new workspace
+            for (const record of response.items) {
+              const recordData: RecordCreate = {
+                area: record.area,
+                type: record.type,
+                account: record.account,
+                reference: record.reference,
+                note: record.note,
+                date_cashflow: record.date_cashflow,
+                date_offer: record.date_offer,
+                owner: record.owner,
+                amount: record.amount,
+                vat: record.vat,
+                total: record.total,
+                stage: record.stage,
+                nextaction: record.nextaction,
+                transaction_id: `dup-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                bank_account_id: record.bank_account_id,
+                project_code: record.project_code,
+                classification: record.classification,
+              }
+              await recordsApi.create(newWorkspace.id, recordData)
+            }
+          } catch {
+            // Continue with other areas even if one fails
+            console.error(`Failed to duplicate records from area ${area}`)
+          }
+        }
+
+        set((state) => ({
+          workspaces: [...state.workspaces, newWorkspace],
+          selectedWorkspaceIds: [newWorkspace.id], // Select only the new workspace
+        }))
+
+        return newWorkspace
       },
 
       mergeWorkspaces: async (workspaceIds, targetName) => {
@@ -221,6 +281,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
 
         // No currentMember and not owner/admin - default to true for backwards compatibility
         return true
+      },
+
+      getPrimaryWorkspace: () => {
+        const { workspaces, selectedWorkspaceIds } = get()
+        if (selectedWorkspaceIds.length === 0) return undefined
+        return workspaces.find(w => w.id === selectedWorkspaceIds[0])
       },
     }),
     {
