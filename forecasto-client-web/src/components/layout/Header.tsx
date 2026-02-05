@@ -1,5 +1,6 @@
-import { LogOut, Settings, User, PanelLeftClose, PanelLeft, Plus } from 'lucide-react'
+import { LogOut, Settings, User, PanelLeftClose, PanelLeft } from 'lucide-react'
 import logoIcon from '@/assets/logo-icon.png'
+import logoText from '@/assets/logo-text.png'
 import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -12,21 +13,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { useAuthStore } from '@/stores/authStore'
-import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useUiStore } from '@/stores/uiStore'
 
 export function Header() {
   const location = useLocation()
   const { user, logout } = useAuthStore()
-  const { workspaces, currentWorkspaceId, setCurrentWorkspace } = useWorkspaceStore()
   const { sidebarOpen, toggleSidebar } = useUiStore()
 
   const initials = user?.name
@@ -39,36 +31,14 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center px-4 gap-4">
-        <Button variant="ghost" size="icon" onClick={toggleSidebar} title={sidebarOpen ? 'Nascondi sessioni' : 'Mostra sessioni'}>
+        <Button variant="ghost" size="icon" onClick={toggleSidebar} title={sidebarOpen ? 'Nascondi workspace' : 'Mostra workspace'}>
           {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
         </Button>
 
-        <Link to="/dashboard" className="flex items-center">
+        <Link to="/dashboard" className="flex items-center gap-2">
           <img src={logoIcon} alt="Forecasto" className="h-8" />
+          <img src={logoText} alt="Forecasto" className="h-6" />
         </Link>
-
-        <div className="flex items-center gap-2">
-          <Select value={currentWorkspaceId || ''} onValueChange={setCurrentWorkspace}>
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Seleziona workspace" />
-            </SelectTrigger>
-            <SelectContent>
-              {workspaces.map((ws) => (
-                <SelectItem key={ws.id} value={ws.id}>
-                  {ws.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            size="icon"
-            variant="outline"
-            onClick={() => useUiStore.getState().setCreateWorkspaceDialogOpen(true)}
-            title="Nuovo Workspace"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
 
         <div className="flex-1" />
 

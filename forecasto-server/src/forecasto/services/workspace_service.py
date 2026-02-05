@@ -128,6 +128,21 @@ class WorkspaceService:
 
         return member
 
+    async def delete_workspace(
+        self,
+        workspace_id: str,
+        requesting_member: WorkspaceMember,
+    ) -> None:
+        """Delete a workspace. Only owners can delete workspaces."""
+        if requesting_member.role != "owner":
+            raise ForbiddenException("Only owners can delete workspaces")
+
+        workspace = await self.get_workspace(workspace_id)
+
+        # Delete the workspace - all related objects (members, records, sessions, etc.)
+        # will be automatically deleted via ORM cascade="all, delete-orphan"
+        await self.db.delete(workspace)
+
     async def create_invitation(
         self,
         workspace_id: str,

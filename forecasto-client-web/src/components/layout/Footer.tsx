@@ -1,122 +1,51 @@
-import { Undo, Redo, Save, X, AlertTriangle, Plus, ClipboardList } from 'lucide-react'
+import { Plus, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
-import { useSessionStore } from '@/stores/sessionStore'
-import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useUiStore } from '@/stores/uiStore'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
 
 export function Footer() {
-  const { activeSession, operations, canUndo, canRedo, undo, redo } = useSessionStore()
-  const { currentWorkspaceId } = useWorkspaceStore()
-  const { rightPanelContent, setRightPanelContent, setCommitDialogOpen, setDiscardDialogOpen, setCreateRecordDialogOpen } = useUiStore()
+  const { selectedWorkspaceIds, workspaces } = useWorkspaceStore()
+  const { rightPanelContent, setRightPanelContent, setCreateRecordDialogOpen } = useUiStore()
 
-  const handleUndo = () => {
-    if (currentWorkspaceId && canUndo) {
-      undo(currentWorkspaceId)
-    }
-  }
-
-  const handleRedo = () => {
-    if (currentWorkspaceId && canRedo) {
-      redo(currentWorkspaceId)
-    }
-  }
+  const selectedNames = workspaces
+    .filter(w => selectedWorkspaceIds.includes(w.id))
+    .map(w => w.name)
 
   return (
-    <TooltipProvider>
-      <footer className="sticky bottom-0 z-50 w-full border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-12 items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            {activeSession ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-income animate-pulse" />
-                  <span className="text-sm font-medium">{activeSession.title}</span>
-                </div>
-                <Badge variant="secondary">{operations.length} operazioni</Badge>
-              </>
-            ) : (
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <AlertTriangle className="h-4 w-4" />
-                <span className="text-sm">Nessuna sessione attiva - crea una sessione per modificare i dati</span>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => setCreateRecordDialogOpen(true)}
-              disabled={!activeSession}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Nuovo Record
-            </Button>
-
-            <Button
-              variant={rightPanelContent === 'operations' ? 'secondary' : 'outline'}
-              size="sm"
-              onClick={() => setRightPanelContent(rightPanelContent === 'operations' ? null : 'operations')}
-            >
-              <ClipboardList className="h-4 w-4 mr-1" />
-              Operazioni
-            </Button>
-
-            <Separator orientation="vertical" className="h-6" />
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleUndo}
-                  disabled={!activeSession || !canUndo}
-                >
-                  <Undo className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Annulla (Cmd+Z)</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRedo}
-                  disabled={!activeSession || !canRedo}
-                >
-                  <Redo className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Ripeti (Cmd+Shift+Z)</TooltipContent>
-            </Tooltip>
-
-            <Separator orientation="vertical" className="h-6" />
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDiscardDialogOpen(true)}
-              disabled={!activeSession}
-            >
-              <X className="h-4 w-4 mr-1" />
-              Annulla Sessione
-            </Button>
-
-            <Button
-              size="sm"
-              onClick={() => setCommitDialogOpen(true)}
-              disabled={!activeSession || operations.length === 0}
-            >
-              <Save className="h-4 w-4 mr-1" />
-              Salva Modifiche
-            </Button>
-          </div>
+    <footer className="sticky bottom-0 z-50 w-full border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-12 items-center justify-between px-4">
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-muted-foreground truncate max-w-md" title={selectedNames.join(', ')}>
+            {selectedWorkspaceIds.length === 1
+              ? selectedNames[0]
+              : `${selectedWorkspaceIds.length} workspace selezionati`
+            }
+          </span>
         </div>
-      </footer>
-    </TooltipProvider>
+
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => setCreateRecordDialogOpen(true)}
+            disabled={selectedWorkspaceIds.length === 0}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Nuovo Record
+          </Button>
+
+          <Separator orientation="vertical" className="h-6" />
+
+          <Button
+            variant={rightPanelContent === 'operations' ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => setRightPanelContent(rightPanelContent === 'operations' ? null : 'operations')}
+          >
+            <ClipboardList className="h-4 w-4 mr-1" />
+            Cronologia
+          </Button>
+        </div>
+      </div>
+    </footer>
   )
 }

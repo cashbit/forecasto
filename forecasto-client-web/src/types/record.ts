@@ -88,7 +88,6 @@ export interface RecordFilters {
   text_filter?: string
   project_code?: string
   bank_account_id?: string
-  session_id?: string
   page?: number
   page_size?: number
 }
@@ -96,22 +95,4 @@ export interface RecordFilters {
 export interface RecordTransfer {
   to_area: Area
   note?: string
-}
-
-export interface Conflict {
-  record_id: string
-  reference: string
-  your_version: Record
-  current_version: Record
-  modified_by: {
-    id: string
-    name: string
-    email: string
-  }
-  fields_changed: string[]
-}
-
-export interface ConflictResolution {
-  record_id: string
-  resolution: 'keep_mine' | 'keep_theirs'
 }

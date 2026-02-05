@@ -104,7 +104,6 @@ class RecordFilter(BaseModel):
     text_filter: str | None = None
     project_code: str | None = None
     bank_account_id: str | None = None
-    session_id: str | None = None
     include_deleted: bool = False
 
 class TransferRequest(BaseModel):

@@ -101,8 +101,9 @@ class RecordVersion(Base):
     changed_by: Mapped[Optional[str]] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=True
     )
+    # session_id kept for backwards compatibility but without FK constraint
     session_id: Mapped[Optional[str]] = mapped_column(
-        String(36), ForeignKey("sessions.id"), nullable=True, index=True
+        String(36), nullable=True, index=True
     )
     change_type: Mapped[str] = mapped_column(
         String(50), nullable=False

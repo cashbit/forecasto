@@ -1,18 +1,19 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { recordsApi } from '@/api/records'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useFilterStore } from '@/stores/filterStore'
-import { useSessionStore } from '@/stores/sessionStore'
-import type { RecordCreate, RecordUpdate, Area } from '@/types/record'
+import { useHistoryStore } from '@/stores/historyStore'
+import type { Record, RecordCreate, RecordUpdate, Area } from '@/types/record'
 
 export function useRecords() {
-  const { currentWorkspaceId } = useWorkspaceStore()
+  // Use selectors for better performance and proper reactivity
+  const selectedWorkspaceIds = useWorkspaceStore(state => state.selectedWorkspaceIds)
   const {
     currentArea, dateRange, yearFilter, monthFilter, dayFilter,
     sign, stageFilter, ownerFilter, nextactionFilter,
     textFilter, projectCodeFilter, bankAccountFilter
   } = useFilterStore()
-  const { activeSessionId, fetchOperations } = useSessionStore()
+  const { fetchHistory } = useHistoryStore()
   const queryClient = useQueryClient()
 
   const filters = {
@@ -23,29 +24,44 @@ export function useRecords() {
     text_filter: textFilter || undefined,
     project_code: projectCodeFilter || undefined,
     bank_account_id: bankAccountFilter || undefined,
-    session_id: activeSessionId || undefined,
   }
 
-  const query = useQuery({
-    queryKey: ['records', currentWorkspaceId, filters, stageFilter, yearFilter, monthFilter, dayFilter, ownerFilter, nextactionFilter, projectCodeFilter],
-    queryFn: () => recordsApi.list(currentWorkspaceId!, filters),
-    enabled: !!currentWorkspaceId,
-    select: (data) => {
-      let items = data.items
+  // Fetch records from all selected workspaces using combine
+  const { records, total, isLoading, isError, error } = useQueries({
+    queries: selectedWorkspaceIds.map(workspaceId => ({
+      queryKey: ['records', workspaceId, filters],
+      queryFn: () => recordsApi.list(workspaceId, filters),
+      staleTime: 30000,
+    })),
+    combine: (results) => {
+      const isLoading = results.some(r => r.isLoading)
+      const isError = results.some(r => r.isError)
+      const error = results.find(r => r.error)?.error
+
+      // Merge all records from all workspaces
+      let allRecords: Record[] = []
+      for (const result of results) {
+        if (result.data?.items) {
+          allRecords = allRecords.concat(result.data.items)
+        }
+      }
+
+      // Apply client-side filters
+      let filteredRecords = allRecords
 
       // Apply stage filter
       if (stageFilter !== 'all') {
-        const legacyMap: Record<string, string[]> = {
+        const legacyMap: { [key: string]: string[] } = {
           '0': ['0', 'unpaid', 'draft'],
           '1': ['1', 'paid', 'approved'],
         }
         const validStages = legacyMap[stageFilter] || [stageFilter]
-        items = items.filter((r: { stage: string }) => validStages.includes(r.stage))
+        filteredRecords = filteredRecords.filter((r) => validStages.includes(r.stage))
       }
 
       // Apply date filters
       if (yearFilter !== null) {
-        items = items.filter((r: { date_cashflow: string }) => {
+        filteredRecords = filteredRecords.filter((r) => {
           const date = new Date(r.date_cashflow)
           if (date.getFullYear() !== yearFilter) return false
           if (monthFilter !== null && (date.getMonth() + 1) !== monthFilter) return false
@@ -56,9 +72,8 @@ export function useRecords() {
 
       // Apply owner filter
       if (ownerFilter.length > 0) {
-        items = items.filter((r: { owner?: string }) => {
+        filteredRecords = filteredRecords.filter((r) => {
           if (ownerFilter.includes('_noowner_')) {
-            // Include records without owner OR with selected owners
             return !r.owner || ownerFilter.includes(r.owner)
           }
           return r.owner && ownerFilter.includes(r.owner)
@@ -67,68 +82,86 @@ export function useRecords() {
 
       // Apply nextaction filter
       if (nextactionFilter === 'with') {
-        items = items.filter((r: { nextaction?: string }) => r.nextaction && r.nextaction.trim() !== '')
+        filteredRecords = filteredRecords.filter((r) => r.nextaction && r.nextaction.trim() !== '')
       } else if (nextactionFilter === 'without') {
-        items = items.filter((r: { nextaction?: string }) => !r.nextaction || r.nextaction.trim() === '')
+        filteredRecords = filteredRecords.filter((r) => !r.nextaction || r.nextaction.trim() === '')
       }
 
-      return { ...data, items }
+      // Sort by date (most recent first)
+      filteredRecords.sort((a, b) => new Date(b.date_cashflow).getTime() - new Date(a.date_cashflow).getTime())
+
+      return {
+        records: filteredRecords,
+        total: filteredRecords.length,
+        isLoading,
+        isError,
+        error,
+      }
     },
   })
 
-  const refreshOperations = () => {
-    if (currentWorkspaceId && activeSessionId) {
-      fetchOperations(currentWorkspaceId, activeSessionId)
-    }
+  const refreshHistory = () => {
+    selectedWorkspaceIds.forEach(id => fetchHistory(id))
   }
 
+  const invalidateAllWorkspaces = () => {
+    selectedWorkspaceIds.forEach(workspaceId => {
+      queryClient.invalidateQueries({ queryKey: ['records', workspaceId] })
+    })
+  }
+
+  // For mutations, use the first selected workspace
+  const primaryWorkspaceId = selectedWorkspaceIds[0]
+
   const createMutation = useMutation({
-    mutationFn: (data: RecordCreate) => recordsApi.create(currentWorkspaceId!, data),
+    mutationFn: (data: RecordCreate) => recordsApi.create(primaryWorkspaceId!, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['records', currentWorkspaceId] })
-      refreshOperations()
+      invalidateAllWorkspaces()
+      refreshHistory()
     },
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ recordId, data }: { recordId: string; data: RecordUpdate }) =>
-      recordsApi.update(currentWorkspaceId!, recordId, data),
+    mutationFn: ({ recordId, data, workspaceId }: { recordId: string; data: RecordUpdate; workspaceId?: string }) =>
+      recordsApi.update(workspaceId || primaryWorkspaceId!, recordId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['records', currentWorkspaceId] })
-      refreshOperations()
+      invalidateAllWorkspaces()
+      refreshHistory()
     },
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (recordId: string) => recordsApi.delete(currentWorkspaceId!, recordId),
+    mutationFn: ({ recordId, workspaceId }: { recordId: string; workspaceId?: string }) =>
+      recordsApi.delete(workspaceId || primaryWorkspaceId!, recordId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['records', currentWorkspaceId] })
-      refreshOperations()
+      invalidateAllWorkspaces()
+      refreshHistory()
     },
   })
 
   const transferMutation = useMutation({
-    mutationFn: ({ recordId, toArea, note }: { recordId: string; toArea: Area; note?: string }) =>
-      recordsApi.transfer(currentWorkspaceId!, recordId, { to_area: toArea, note }),
+    mutationFn: ({ recordId, toArea, note, workspaceId }: { recordId: string; toArea: Area; note?: string; workspaceId?: string }) =>
+      recordsApi.transfer(workspaceId || primaryWorkspaceId!, recordId, { to_area: toArea, note }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['records', currentWorkspaceId] })
-      refreshOperations()
+      invalidateAllWorkspaces()
+      refreshHistory()
     },
   })
 
   return {
-    records: query.data?.items || [],
-    total: query.data?.total || 0,
-    isLoading: query.isLoading,
-    isError: query.isError,
-    error: query.error,
+    records,
+    total,
+    isLoading,
+    isError,
+    error,
     createRecord: createMutation.mutateAsync,
-    updateRecord: updateMutation.mutateAsync,
-    deleteRecord: deleteMutation.mutateAsync,
-    transferRecord: transferMutation.mutateAsync,
+    updateRecord: (params: { recordId: string; data: RecordUpdate; workspaceId?: string }) => updateMutation.mutateAsync(params),
+    deleteRecord: (recordId: string, workspaceId?: string) => deleteMutation.mutateAsync({ recordId, workspaceId }),
+    transferRecord: (params: { recordId: string; toArea: Area; note?: string; workspaceId?: string }) => transferMutation.mutateAsync(params),
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isTransferring: transferMutation.isPending,
+    primaryWorkspaceId,
   }
 }

@@ -77,6 +77,22 @@ async def get_workspace(
         "area_permissions": member.area_permissions,
     }
 
+@router.delete("/{workspace_id}", response_model=dict)
+async def delete_workspace(
+    workspace_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Delete a workspace. Only owners can delete workspaces."""
+    workspace, member = workspace_data
+    service = WorkspaceService(db)
+    await service.delete_workspace(workspace_id, member)
+    await db.commit()
+    return {"success": True, "message": "Workspace deleted"}
+
+
 @router.get("/{workspace_id}/members", response_model=dict)
 async def list_members(
     workspace_id: str,

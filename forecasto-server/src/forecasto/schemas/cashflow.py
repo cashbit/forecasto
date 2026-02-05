@@ -5,8 +5,30 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_serializer
+
+
+class DecimalAsFloat(BaseModel):
+    """Base model that serializes Decimal as float for JSON."""
+
+    @model_serializer(mode='wrap')
+    def serialize_model(self, handler: Any) -> dict[str, Any]:
+        data = handler(self)
+        # Convert any Decimal values to float recursively
+        return self._convert_decimals(data)
+
+    @staticmethod
+    def _convert_decimals(obj: Any) -> Any:
+        if isinstance(obj, Decimal):
+            return float(obj)
+        elif isinstance(obj, dict):
+            return {k: DecimalAsFloat._convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [DecimalAsFloat._convert_decimals(v) for v in obj]
+        return obj
+
 
 class CashflowRequest(BaseModel):
     """Cashflow request parameters."""
@@ -19,7 +41,7 @@ class CashflowRequest(BaseModel):
     group_by: str = "day"  # day, week, month
     sign_filter: str | None = None  # in, out, all
 
-class CashflowRecordSummary(BaseModel):
+class CashflowRecordSummary(DecimalAsFloat):
     """Summary of a record in cashflow."""
 
     id: str
@@ -27,7 +49,7 @@ class CashflowRecordSummary(BaseModel):
     amount: Decimal
     area: str
 
-class CashflowEntry(BaseModel):
+class CashflowEntry(DecimalAsFloat):
     """Single cashflow entry."""
 
     date: date
@@ -37,27 +59,27 @@ class CashflowEntry(BaseModel):
     running_balance: Decimal
     records: list[CashflowRecordSummary] | None = None
 
-class AccountBalance(BaseModel):
+class AccountBalance(DecimalAsFloat):
     """Balance for a single account."""
 
     name: str
     balance: Decimal
     credit_limit: Decimal
 
-class InitialBalance(BaseModel):
+class InitialBalance(DecimalAsFloat):
     """Initial balance information."""
 
     date: date
     total: Decimal
     by_account: dict[str, AccountBalance]
 
-class BalancePoint(BaseModel):
+class BalancePoint(DecimalAsFloat):
     """A point with date and balance."""
 
     date: date
     amount: Decimal
 
-class CashflowSummary(BaseModel):
+class CashflowSummary(DecimalAsFloat):
     """Summary of cashflow calculation."""
 
     total_inflows: Decimal
@@ -68,7 +90,7 @@ class CashflowSummary(BaseModel):
     max_balance: BalancePoint
     credit_limit_breaches: list[BalancePoint]
 
-class CashflowResponse(BaseModel):
+class CashflowResponse(DecimalAsFloat):
     """Cashflow response."""
 
     success: bool = True

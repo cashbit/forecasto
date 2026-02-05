@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { Record, RecordCreate, RecordUpdate, RecordFilters, RecordTransfer, Conflict, ConflictResolution } from '@/types/record'
+import type { Record, RecordCreate, RecordUpdate, RecordFilters, RecordTransfer } from '@/types/record'
 import type { PaginatedResponse } from '@/types/api'
 
 export const recordsApi = {
@@ -55,12 +55,8 @@ export const recordsApi = {
     await apiClient.delete(`/workspaces/${workspaceId}/records/bulk`, { data: { ids: recordIds } })
   },
 
-  checkConflicts: async (workspaceId: string, sessionId: string): Promise<Conflict[]> => {
-    const response = await apiClient.get<Conflict[]>(`/workspaces/${workspaceId}/sessions/${sessionId}/conflicts`)
+  getHistory: async (workspaceId: string, recordId: string): Promise<{ history: Array<{ id: string; version: number; change_type: string; changed_at: string; changed_by: string; snapshot: Record<string, unknown> }> }> => {
+    const response = await apiClient.get(`/workspaces/${workspaceId}/records/${recordId}/history`)
     return response.data
-  },
-
-  resolveConflicts: async (workspaceId: string, sessionId: string, resolutions: ConflictResolution[]): Promise<void> => {
-    await apiClient.post(`/workspaces/${workspaceId}/sessions/${sessionId}/conflicts/resolve`, { resolutions })
   },
 }

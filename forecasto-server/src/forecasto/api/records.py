@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.database import get_db
@@ -14,9 +14,7 @@ from forecasto.dependencies import (
     check_area_permission,
     get_current_user,
     get_current_workspace,
-    require_active_session,
 )
-from forecasto.models.session import Session
 from forecasto.models.user import User
 from forecasto.models.workspace import Workspace, WorkspaceMember
 from forecasto.schemas.record import (
@@ -73,7 +71,6 @@ async def list_records(
     text_filter: str | None = Query(None),
     project_code: str | None = Query(None),
     bank_account_id: str | None = Query(None),
-    x_session_id: str | None = Header(None),
 ):
     """List records with filters."""
     workspace, member = workspace_data
@@ -92,7 +89,6 @@ async def list_records(
         text_filter=text_filter,
         project_code=project_code,
         bank_account_id=bank_account_id,
-        session_id=x_session_id,
     )
 
     records = await service.list_records(workspace_id, filters)
@@ -118,7 +114,6 @@ async def create_record(
         tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
     ],
     current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[Session, Depends(require_active_session)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Create a new record."""
@@ -126,16 +121,11 @@ async def create_record(
     check_area_permission(member, data.area, "write")
 
     service = RecordService(db)
-    record = await service.create_record(workspace_id, data, current_user, session)
+    record = await service.create_record(workspace_id, data, current_user)
 
     return {
         "success": True,
         "record": _record_to_response(record),
-        "operation": {
-            "id": record.id,
-            "operation_type": "create",
-            "sequence": 1,
-        },
     }
 
 @router.get("/{workspace_id}/records/{record_id}", response_model=dict)
@@ -166,7 +156,6 @@ async def update_record(
         tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
     ],
     current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[Session, Depends(require_active_session)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update a record."""
@@ -177,7 +166,7 @@ async def update_record(
 
     check_area_permission(member, record.area, "write")
 
-    record = await service.update_record(record, data, current_user, session)
+    record = await service.update_record(record, data, current_user)
 
     return {"success": True, "record": _record_to_response(record)}
 
@@ -189,7 +178,6 @@ async def delete_record(
         tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
     ],
     current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[Session, Depends(require_active_session)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Soft delete a record."""
@@ -200,6 +188,100 @@ async def delete_record(
 
     check_area_permission(member, record.area, "write")
 
-    await service.delete_record(record, current_user, session)
+    await service.delete_record(record, current_user)
 
     return {"success": True, "message": "Record deleted"}
+
+@router.get("/{workspace_id}/history", response_model=dict)
+async def get_global_history(
+    workspace_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = Query(100, le=500),
+):
+    """Get global operation history for the workspace."""
+    workspace, member = workspace_data
+
+    service = RecordService(db)
+    versions = await service.get_global_history(workspace_id, limit)
+
+    return {
+        "success": True,
+        "history": [
+            {
+                "id": v.id,
+                "record_id": v.record_id,
+                "version": v.version,
+                "change_type": v.change_type,
+                "change_note": v.change_note,
+                "changed_at": v.changed_at.isoformat(),
+                "changed_by": v.changed_by,
+                "snapshot": v.snapshot,
+            }
+            for v in versions
+        ],
+    }
+
+@router.get("/{workspace_id}/records/{record_id}/history", response_model=dict)
+async def get_record_history(
+    workspace_id: str,
+    record_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get version history for a specific record."""
+    workspace, member = workspace_data
+
+    service = RecordService(db)
+    record = await service.get_record(record_id, workspace_id)
+
+    check_area_permission(member, record.area, "read")
+
+    versions = await service.get_history(record)
+
+    return {
+        "success": True,
+        "history": [
+            {
+                "id": v.id,
+                "version": v.version,
+                "change_type": v.change_type,
+                "change_note": v.change_note,
+                "changed_at": v.changed_at.isoformat(),
+                "changed_by": v.changed_by,
+                "snapshot": v.snapshot,
+            }
+            for v in versions
+        ],
+    }
+
+@router.post("/{workspace_id}/rollback/{version_id}", response_model=dict)
+async def rollback_to_version(
+    workspace_id: str,
+    version_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Rollback all changes after a specific version."""
+    workspace, member = workspace_data
+
+    # Admin permission required for rollback
+    if member.role not in ["owner", "admin"]:
+        from forecasto.exceptions import ForbiddenException
+        raise ForbiddenException("Admin permission required for rollback")
+
+    service = RecordService(db)
+    restored_records = await service.rollback_to_version(workspace_id, version_id, current_user)
+
+    return {
+        "success": True,
+        "message": f"Rolled back {len(restored_records)} records",
+        "restored_count": len(restored_records),
+    }

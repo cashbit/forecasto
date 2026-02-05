@@ -12,24 +12,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.exceptions import NotFoundException
 from forecasto.models.record import Record, RecordVersion
-from forecasto.models.session import Session, SessionRecordLock
 from forecasto.models.user import User
 from forecasto.schemas.record import RecordCreate, RecordFilter, RecordUpdate
-from forecasto.services.session_service import SessionService
 
 class RecordService:
     """Service for record operations."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.session_service = SessionService(db)
 
     async def create_record(
         self,
         workspace_id: str,
         data: RecordCreate,
         user: User,
-        session: Session,
     ) -> Record:
         """Create a new record."""
         record = Record(
@@ -56,26 +52,8 @@ class RecordService:
         self.db.add(record)
         await self.db.flush()
 
-        # Create record version
-        await self._create_version(record, user.id, session.id, "create")
-
-        # Add session operation
-        await self.session_service.add_operation(
-            session=session,
-            operation_type="create",
-            record=record,
-            before_snapshot=None,
-            after_snapshot=self._record_to_snapshot(record),
-        )
-
-        # Create session lock
-        lock = SessionRecordLock(
-            session_id=session.id,
-            record_id=record.id,
-            draft_snapshot=self._record_to_snapshot(record),
-            base_version=record.version,
-        )
-        self.db.add(lock)
+        # Create record version for history
+        await self._create_version(record, user.id, "create")
 
         return record
 
@@ -96,7 +74,6 @@ class RecordService:
         self,
         workspace_id: str,
         filters: RecordFilter,
-        session: Session | None = None,
     ) -> list[Record]:
         """List records with filters."""
         query = select(Record).where(Record.workspace_id == workspace_id)
@@ -139,18 +116,6 @@ class RecordService:
         result = await self.db.execute(query)
         records = list(result.scalars().all())
 
-        # Merge with session drafts if provided
-        if session:
-            result = await self.db.execute(
-                select(SessionRecordLock).where(SessionRecordLock.session_id == session.id)
-            )
-            locks = {lock.record_id: lock for lock in result.scalars().all()}
-
-            # Mark records that have drafts
-            for record in records:
-                if record.id in locks:
-                    record._draft = True  # type: ignore
-
         return records
 
     async def update_record(
@@ -158,11 +123,8 @@ class RecordService:
         record: Record,
         data: RecordUpdate,
         user: User,
-        session: Session,
     ) -> Record:
         """Update a record."""
-        before_snapshot = self._record_to_snapshot(record)
-
         # Apply updates
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
@@ -171,37 +133,10 @@ class RecordService:
 
         record.updated_by = user.id
         record.updated_at = datetime.utcnow()
+        record.version += 1
 
-        after_snapshot = self._record_to_snapshot(record)
-
-        # Create or update session lock
-        result = await self.db.execute(
-            select(SessionRecordLock).where(
-                SessionRecordLock.session_id == session.id,
-                SessionRecordLock.record_id == record.id,
-            )
-        )
-        lock = result.scalar_one_or_none()
-
-        if lock:
-            lock.draft_snapshot = after_snapshot
-        else:
-            lock = SessionRecordLock(
-                session_id=session.id,
-                record_id=record.id,
-                draft_snapshot=after_snapshot,
-                base_version=record.version,
-            )
-            self.db.add(lock)
-
-        # Add operation
-        await self.session_service.add_operation(
-            session=session,
-            operation_type="update",
-            record=record,
-            before_snapshot=before_snapshot,
-            after_snapshot=after_snapshot,
-        )
+        # Create version for history
+        await self._create_version(record, user.id, "update")
 
         return record
 
@@ -209,29 +144,14 @@ class RecordService:
         self,
         record: Record,
         user: User,
-        session: Session,
     ) -> Record:
         """Soft delete a record."""
-        before_snapshot = self._record_to_snapshot(record)
-
         record.deleted_at = datetime.utcnow()
         record.deleted_by = user.id
-        record.version += 1  # Increment version for delete
+        record.version += 1
 
-        after_snapshot = self._record_to_snapshot(record)
-        after_snapshot["deleted_at"] = record.deleted_at.isoformat()
-
-        # Add operation
-        await self.session_service.add_operation(
-            session=session,
-            operation_type="delete",
-            record=record,
-            before_snapshot=before_snapshot,
-            after_snapshot=after_snapshot,
-        )
-
-        # Create version
-        await self._create_version(record, user.id, session.id, "delete")
+        # Create version for history
+        await self._create_version(record, user.id, "delete")
 
         return record
 
@@ -244,12 +164,26 @@ class RecordService:
         )
         return list(result.scalars().all())
 
+    async def get_global_history(
+        self,
+        workspace_id: str,
+        limit: int = 100,
+    ) -> list[RecordVersion]:
+        """Get global operation history for a workspace."""
+        result = await self.db.execute(
+            select(RecordVersion)
+            .join(Record)
+            .where(Record.workspace_id == workspace_id)
+            .order_by(RecordVersion.changed_at.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
     async def restore_version(
         self,
         record: Record,
         version_number: int,
         user: User,
-        session: Session,
         note: str | None = None,
     ) -> Record:
         """Restore record to a previous version."""
@@ -264,36 +198,84 @@ class RecordService:
         if not version:
             raise NotFoundException(f"Version {version_number} not found")
 
-        before_snapshot = self._record_to_snapshot(record)
-
         # Apply snapshot
-        self.session_service._apply_snapshot(record, version.snapshot)
+        self._apply_snapshot(record, version.snapshot)
         record.updated_by = user.id
         record.updated_at = datetime.utcnow()
+        record.version += 1
 
-        after_snapshot = self._record_to_snapshot(record)
-
-        # Add operation
-        await self.session_service.add_operation(
-            session=session,
-            operation_type="update",
-            record=record,
-            before_snapshot=before_snapshot,
-            after_snapshot=after_snapshot,
-        )
-
-        # Create version
+        # Create version for history
         await self._create_version(
-            record, user.id, session.id, "restore", note or f"Restored to version {version_number}"
+            record, user.id, "restore", note or f"Restored to version {version_number}"
         )
 
         return record
+
+    async def rollback_to_version(
+        self,
+        workspace_id: str,
+        version_id: str,
+        user: User,
+    ) -> list[Record]:
+        """Rollback all changes after a specific version in a workspace."""
+        # Get the target version
+        result = await self.db.execute(
+            select(RecordVersion).where(RecordVersion.id == version_id)
+        )
+        target_version = result.scalar_one_or_none()
+        if not target_version:
+            raise NotFoundException(f"Version {version_id} not found")
+
+        # Get all versions after this one in the workspace
+        result = await self.db.execute(
+            select(RecordVersion)
+            .join(Record)
+            .where(
+                Record.workspace_id == workspace_id,
+                RecordVersion.changed_at > target_version.changed_at,
+            )
+            .order_by(RecordVersion.changed_at.desc())
+        )
+        versions_to_rollback = list(result.scalars().all())
+
+        restored_records = []
+        processed_record_ids = set()
+
+        # Group versions by record and restore each to the state before the rollback point
+        for ver in versions_to_rollback:
+            if ver.record_id in processed_record_ids:
+                continue
+
+            record = await self.get_record(ver.record_id, workspace_id)
+
+            # Find the version just before or at the target time for this record
+            result = await self.db.execute(
+                select(RecordVersion)
+                .where(
+                    RecordVersion.record_id == ver.record_id,
+                    RecordVersion.changed_at <= target_version.changed_at,
+                )
+                .order_by(RecordVersion.changed_at.desc())
+                .limit(1)
+            )
+            restore_to = result.scalar_one_or_none()
+
+            if restore_to:
+                self._apply_snapshot(record, restore_to.snapshot)
+                record.updated_by = user.id
+                record.updated_at = datetime.utcnow()
+                record.version += 1
+                await self._create_version(record, user.id, "rollback", f"Rollback to {target_version.changed_at}")
+                restored_records.append(record)
+
+            processed_record_ids.add(ver.record_id)
+
+        return restored_records
 
     async def _create_version(
         self,
         record: Record,
         user_id: str,
-        session_id: str,
         change_type: str,
         change_note: str | None = None,
     ) -> RecordVersion:
@@ -303,7 +285,6 @@ class RecordService:
             version=record.version,
             snapshot=self._record_to_snapshot(record),
             changed_by=user_id,
-            session_id=session_id,
             change_type=change_type,
             change_note=change_note,
         )
@@ -329,4 +310,39 @@ class RecordService:
             "transaction_id": record.transaction_id,
             "bank_account_id": record.bank_account_id,
             "project_code": record.project_code,
+            "deleted_at": record.deleted_at.isoformat() if record.deleted_at else None,
         }
+
+    def _apply_snapshot(self, record: Record, snapshot: dict[str, Any]) -> None:
+        """Apply a snapshot to a record."""
+        from datetime import date as date_type
+        from decimal import Decimal
+
+        record.area = snapshot.get("area", record.area)
+        record.type = snapshot.get("type", record.type)
+        record.account = snapshot.get("account", record.account)
+        record.reference = snapshot.get("reference", record.reference)
+        record.note = snapshot.get("note")
+        record.owner = snapshot.get("owner")
+        record.nextaction = snapshot.get("nextaction")
+        record.stage = snapshot.get("stage", record.stage)
+        record.transaction_id = snapshot.get("transaction_id")
+        record.bank_account_id = snapshot.get("bank_account_id")
+        record.project_code = snapshot.get("project_code")
+
+        if snapshot.get("date_cashflow"):
+            record.date_cashflow = date_type.fromisoformat(snapshot["date_cashflow"])
+        if snapshot.get("date_offer"):
+            record.date_offer = date_type.fromisoformat(snapshot["date_offer"])
+        if snapshot.get("amount"):
+            record.amount = Decimal(snapshot["amount"])
+        if snapshot.get("vat"):
+            record.vat = Decimal(snapshot["vat"])
+        if snapshot.get("total"):
+            record.total = Decimal(snapshot["total"])
+
+        # Handle deleted_at for restore from delete
+        if snapshot.get("deleted_at"):
+            record.deleted_at = datetime.fromisoformat(snapshot["deleted_at"])
+        else:
+            record.deleted_at = None

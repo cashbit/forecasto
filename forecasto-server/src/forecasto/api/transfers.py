@@ -13,13 +13,10 @@ from forecasto.dependencies import (
     check_area_permission,
     get_current_user,
     get_current_workspace,
-    require_active_session,
 )
-from forecasto.models.session import Session
 from forecasto.models.user import User
 from forecasto.models.workspace import Workspace, WorkspaceMember
 from forecasto.schemas.record import TransferRequest, TransferResponse
-from forecasto.services.project_service import ProjectService
 from forecasto.services.record_service import RecordService
 from forecasto.services.transfer_service import TransferService
 
@@ -34,7 +31,6 @@ async def transfer_record(
         tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
     ],
     current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[Session, Depends(require_active_session)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Transfer a record to another area."""
@@ -50,7 +46,7 @@ async def transfer_record(
 
     transfer_service = TransferService(db)
     record = await transfer_service.transfer_record(
-        record, data.to_area, current_user, session, data.note
+        record, data.to_area, current_user, data.note
     )
 
     from forecasto.schemas.record import RecordResponse
@@ -65,6 +61,8 @@ async def transfer_record(
         note=record.note,
         date_cashflow=record.date_cashflow,
         date_offer=record.date_offer,
+        owner=record.owner,
+        nextaction=record.nextaction,
         amount=record.amount,
         vat=record.vat,
         total=record.total,
@@ -91,43 +89,3 @@ async def transfer_record(
             "to_area": data.to_area,
         },
     )
-
-@router.post(
-    "/{workspace_id}/projects/{project_id}/phases/{phase_id}/transfer",
-    response_model=dict,
-)
-async def transfer_phase(
-    workspace_id: str,
-    project_id: str,
-    phase_id: str,
-    data: TransferRequest,
-    workspace_data: Annotated[
-        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
-    ],
-    current_user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[Session, Depends(require_active_session)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-):
-    """Transfer all records in a phase to another area."""
-    workspace, member = workspace_data
-
-    project_service = ProjectService(db)
-    phase = await project_service.get_phase(phase_id, project_id)
-
-    # Check write permission on source area
-    check_area_permission(member, phase.current_area, "write")
-    check_area_permission(member, data.to_area, "write")
-
-    transferred = await project_service.transfer_phase(
-        phase, data.to_area, current_user, session, data.note
-    )
-
-    return {
-        "success": True,
-        "transferred_count": len(transferred),
-        "phase": {
-            "id": phase.id,
-            "name": phase.name,
-            "current_area": phase.current_area,
-        },
-    }

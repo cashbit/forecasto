@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { AxiosError } from 'axios'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -16,8 +16,6 @@ import { BulkMergeDialog } from '@/components/records/BulkMergeDialog'
 import { OperationList } from '@/components/operations/OperationList'
 import { useRecords } from '@/hooks/useRecords'
 import { useFilterStore } from '@/stores/filterStore'
-import { useSessionStore } from '@/stores/sessionStore'
-import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useUiStore } from '@/stores/uiStore'
 import { toast } from '@/hooks/useToast'
 import { AREA_LABELS, AREAS } from '@/lib/constants'
@@ -25,8 +23,6 @@ import type { Record, Area, RecordCreate, RecordUpdate } from '@/types/record'
 
 export function DashboardPage() {
   const { currentArea, setArea } = useFilterStore()
-  const { activeSession, activeSessionId, fetchOperations } = useSessionStore()
-  const { currentWorkspaceId } = useWorkspaceStore()
   const { rightPanelContent, createRecordDialogOpen, setCreateRecordDialogOpen } = useUiStore()
   const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord } = useRecords()
 
@@ -43,22 +39,7 @@ export function DashboardPage() {
   const [showBulkStage, setShowBulkStage] = useState(false)
   const [showBulkMerge, setShowBulkMerge] = useState(false)
 
-  // Fetch operations when session changes
-  useEffect(() => {
-    if (currentWorkspaceId && activeSessionId) {
-      fetchOperations(currentWorkspaceId, activeSessionId)
-    }
-  }, [currentWorkspaceId, activeSessionId, fetchOperations])
-
   const handleCreateRecord = async (data: RecordCreate) => {
-    if (!activeSession) {
-      toast({
-        title: 'Sessione richiesta',
-        description: 'Devi avere una sessione attiva per creare record.',
-        variant: 'destructive',
-      })
-      return
-    }
     try {
       await createRecord(data)
       setCreateRecordDialogOpen(false)
@@ -84,14 +65,6 @@ export function DashboardPage() {
 
   const handleUpdateRecord = async (data: RecordUpdate) => {
     if (!editingRecord) return
-    if (!activeSession) {
-      toast({
-        title: 'Sessione richiesta',
-        description: 'Devi avere una sessione attiva per modificare i record.',
-        variant: 'destructive',
-      })
-      return
-    }
     try {
       await updateRecord({ recordId: editingRecord.id, data })
       setEditingRecord(null)
@@ -105,14 +78,6 @@ export function DashboardPage() {
   }
 
   const handleDeleteRecord = async (record: Record) => {
-    if (!activeSession) {
-      toast({
-        title: 'Sessione richiesta',
-        description: 'Devi avere una sessione attiva per eliminare i record.',
-        variant: 'destructive',
-      })
-      return
-    }
     if (confirm('Sei sicuro di voler eliminare questo record?')) {
       try {
         await deleteRecord(record.id)
@@ -138,16 +103,7 @@ export function DashboardPage() {
     }
   }
 
-  const handleSplit = async (records: RecordCreate[]) => {
-    if (!activeSession) {
-      toast({
-        title: 'Sessione richiesta',
-        description: 'Devi avere una sessione attiva per dividere i record.',
-        variant: 'destructive',
-      })
-      return
-    }
-
+  const handleSplit = async (newRecords: RecordCreate[]) => {
     try {
       // First delete the original record
       if (splitRecord_) {
@@ -155,14 +111,14 @@ export function DashboardPage() {
       }
 
       // Then create all the new installment records
-      for (const recordData of records) {
+      for (const recordData of newRecords) {
         await createRecord(recordData)
       }
 
       setSplitRecord(null)
       toast({
         title: 'Record diviso',
-        description: `Creati ${records.length} record`,
+        description: `Creati ${newRecords.length} record`,
         variant: 'success'
       })
     } catch (error) {
@@ -174,14 +130,6 @@ export function DashboardPage() {
 
   // Bulk operations handlers
   const handleBulkDelete = async (selectedRecords: Record[]) => {
-    if (!activeSession) {
-      toast({
-        title: 'Sessione richiesta',
-        description: 'Devi avere una sessione attiva per eliminare i record.',
-        variant: 'destructive',
-      })
-      return
-    }
     if (confirm(`Sei sicuro di voler eliminare ${selectedRecords.length} record?`)) {
       try {
         for (const record of selectedRecords) {
@@ -197,7 +145,7 @@ export function DashboardPage() {
   }
 
   const handleBulkMerge = async () => {
-    if (!activeSession || !bulkRecords || bulkRecords.length < 2) return
+    if (!bulkRecords || bulkRecords.length < 2) return
 
     try {
       const totalAmount = bulkRecords.reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0)
@@ -236,7 +184,7 @@ export function DashboardPage() {
   }
 
   const handleBulkMoveDates = async (days: number, months: number) => {
-    if (!activeSession || !bulkRecords) return
+    if (!bulkRecords) return
 
     try {
       for (const record of bulkRecords) {
@@ -260,7 +208,7 @@ export function DashboardPage() {
   }
 
   const handleBulkSetDay = async (day: number) => {
-    if (!activeSession || !bulkRecords) return
+    if (!bulkRecords) return
 
     try {
       for (const record of bulkRecords) {
@@ -303,7 +251,7 @@ export function DashboardPage() {
   }
 
   const handleBulkSetStage = async (stage: string) => {
-    if (!activeSession || !bulkRecords) return
+    if (!bulkRecords) return
 
     try {
       for (const record of bulkRecords) {

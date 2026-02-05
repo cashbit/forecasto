@@ -12,8 +12,11 @@ import { useWorkspaceStore } from '@/stores/workspaceStore'
 
 export function SettingsPage() {
   const { user } = useAuthStore()
-  const { currentWorkspace, updateWorkspace } = useWorkspaceStore()
+  const { workspaces, selectedWorkspaceIds, updateWorkspace } = useWorkspaceStore()
   const [isLoading, setIsLoading] = useState(false)
+
+  // Use the first selected workspace for settings
+  const primaryWorkspace = workspaces.find(w => w.id === selectedWorkspaceIds[0])
 
   const profileForm = useForm({
     defaultValues: {
@@ -24,8 +27,8 @@ export function SettingsPage() {
 
   const workspaceForm = useForm({
     defaultValues: {
-      name: currentWorkspace?.name || '',
-      description: currentWorkspace?.description || '',
+      name: primaryWorkspace?.name || '',
+      description: primaryWorkspace?.description || '',
     },
   })
 
@@ -36,10 +39,10 @@ export function SettingsPage() {
   }
 
   const handleWorkspaceSave = async (data: { name: string; description: string }) => {
-    if (!currentWorkspace) return
+    if (!primaryWorkspace) return
     setIsLoading(true)
     try {
-      await updateWorkspace(currentWorkspace.id, data)
+      await updateWorkspace(primaryWorkspace.id, data)
     } finally {
       setIsLoading(false)
     }
@@ -114,8 +117,8 @@ export function SettingsPage() {
                 <div className="space-y-2">
                   <Label>Impostazioni</Label>
                   <div className="text-sm text-muted-foreground">
-                    <p>Valuta: {currentWorkspace?.settings?.currency || 'EUR'}</p>
-                    <p>Timezone: {currentWorkspace?.settings?.timezone || 'Europe/Rome'}</p>
+                    <p>Valuta: {primaryWorkspace?.settings?.currency || 'EUR'}</p>
+                    <p>Timezone: {primaryWorkspace?.settings?.timezone || 'Europe/Rome'}</p>
                   </div>
                 </div>
                 <Button type="submit" disabled={isLoading}>

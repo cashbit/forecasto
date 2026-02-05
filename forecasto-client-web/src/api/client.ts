@@ -6,7 +6,7 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Request interceptor - add auth token and session ID
+// Request interceptor - add auth token
 apiClient.interceptors.request.use((config) => {
   // Get token from localStorage (will be set by auth store)
   const authData = localStorage.getItem('forecasto-auth')
@@ -15,19 +15,6 @@ apiClient.interceptors.request.use((config) => {
       const parsed = JSON.parse(authData)
       if (parsed.state?.accessToken) {
         config.headers.Authorization = `Bearer ${parsed.state.accessToken}`
-      }
-    } catch {
-      // Ignore parse errors
-    }
-  }
-
-  // Get session ID from localStorage
-  const sessionData = localStorage.getItem('forecasto-session')
-  if (sessionData) {
-    try {
-      const parsed = JSON.parse(sessionData)
-      if (parsed.state?.activeSessionId) {
-        config.headers['X-Session-Id'] = parsed.state.activeSessionId
       }
     } catch {
       // Ignore parse errors
@@ -51,3 +38,4 @@ apiClient.interceptors.response.use(
 )
 
 export default apiClient
+export { apiClient }

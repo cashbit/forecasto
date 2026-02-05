@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ChatMessage } from './ChatMessage'
-import { useSessionStore } from '@/stores/sessionStore'
-import type { ChatMessage as ChatMessageType } from '@/types/session'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
+import type { ChatMessage as ChatMessageType } from '@/types/chat'
 
 interface ChatAreaProps {
   messages: ChatMessageType[]
@@ -14,7 +14,7 @@ interface ChatAreaProps {
 }
 
 export function ChatArea({ messages, onSendMessage, isLoading }: ChatAreaProps) {
-  const { activeSession } = useSessionStore()
+  const { selectedWorkspaceIds } = useWorkspaceStore()
   const [input, setInput] = useState('')
 
   const handleSend = () => {
@@ -30,7 +30,7 @@ export function ChatArea({ messages, onSendMessage, isLoading }: ChatAreaProps) 
     }
   }
 
-  if (!activeSession) return null
+  if (selectedWorkspaceIds.length === 0) return null
 
   return (
     <div className="border-t bg-muted/30">
