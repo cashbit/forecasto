@@ -89,6 +89,8 @@ class RecordResponse(BaseModel):
     transfer_history: list[TransferHistoryEntry]
     version: int
     is_draft: bool = False
+    created_by: str | None = None
+    updated_by: str | None = None
     created_at: datetime
     updated_at: datetime
 

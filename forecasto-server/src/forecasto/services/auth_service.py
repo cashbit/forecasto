@@ -53,7 +53,7 @@ class AuthService:
             access_token=access_token,
             refresh_token=refresh_token,
             expires_in=settings.access_token_expire_minutes * 60,
-            user=UserInfo(id=user.id, email=user.email, name=user.name),
+            user=UserInfo(id=user.id, email=user.email, name=user.name, invite_code=user.invite_code),
         )
 
     async def refresh_token(self, refresh_token: str) -> TokenResponse:

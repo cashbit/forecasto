@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 
+import secrets
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
@@ -11,6 +12,16 @@ from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from forecasto.models.base import Base, TimestampMixin, UUIDMixin, generate_uuid
+
+
+def generate_invite_code() -> str:
+    """Generate a unique invite code in format XXX-XXX-XXX.
+
+    Uses alphabet without ambiguous characters: A-Z excluding O, I, L and 2-9 excluding 0, 1.
+    """
+    alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+    code = ''.join(secrets.choice(alphabet) for _ in range(9))
+    return f"{code[:3]}-{code[3:6]}-{code[6:9]}"
 
 if TYPE_CHECKING:
     from forecasto.models.workspace import WorkspaceMember
@@ -23,6 +34,9 @@ class User(Base, UUIDMixin, TimestampMixin):
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    invite_code: Mapped[str] = mapped_column(
+        String(11), unique=True, nullable=False, index=True, default=generate_invite_code
+    )
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     notification_preferences: Mapped[dict] = mapped_column(

@@ -2,12 +2,13 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { workspacesApi } from '@/api/workspaces'
 import { recordsApi } from '@/api/records'
-import type { Workspace } from '@/types/workspace'
+import type { Workspace, WorkspaceMember, Area as WsArea, Sign, PermissionType } from '@/types/workspace'
 import type { RecordCreate, Area } from '@/types/record'
 
 interface WorkspaceState {
   workspaces: Workspace[]
   selectedWorkspaceIds: string[]
+  currentMember: WorkspaceMember | null
   isLoading: boolean
   fetchWorkspaces: () => Promise<void>
   toggleWorkspaceSelection: (workspaceId: string) => void
@@ -18,6 +19,8 @@ interface WorkspaceState {
   updateWorkspace: (workspaceId: string, data: Partial<Workspace>) => Promise<void>
   deleteWorkspace: (workspaceId: string) => Promise<void>
   mergeWorkspaces: (workspaceIds: string[], targetName: string) => Promise<void>
+  setCurrentMember: (member: WorkspaceMember | null) => void
+  checkPermission: (area: WsArea, sign: Sign, permission: PermissionType, recordCreatorId?: string, currentUserId?: string) => boolean
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -25,6 +28,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     (set, get) => ({
       workspaces: [],
       selectedWorkspaceIds: [],
+      currentMember: null,
       isLoading: false,
 
       fetchWorkspaces: async () => {
@@ -174,6 +178,49 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             selectedWorkspaceIds: [newWorkspace.id], // Select only the new merged workspace
           }
         })
+      },
+
+      setCurrentMember: (member) => {
+        set({ currentMember: member })
+      },
+
+      checkPermission: (area, sign, permission, recordCreatorId, currentUserId) => {
+        const { currentMember, workspaces, selectedWorkspaceIds } = get()
+
+        // Check if user is owner/admin on any selected workspace
+        const selectedWorkspaces = workspaces.filter(w => selectedWorkspaceIds.includes(w.id))
+        const isOwnerOrAdmin = selectedWorkspaces.some(w => w.role === 'owner' || w.role === 'admin')
+
+        if (isOwnerOrAdmin) {
+          return true
+        }
+
+        // Fall back to currentMember if set
+        if (currentMember) {
+          if (currentMember.role === 'owner' || currentMember.role === 'admin') {
+            return true
+          }
+
+          // Get granular permissions with fallback to default all-true
+          const granular = currentMember.granular_permissions || {}
+          const areaPerms = granular[area] || {}
+          const signPerms = areaPerms[sign] || {}
+
+          // Default to true for backwards compatibility
+          const permValue = signPerms[permission] ?? true
+
+          // Special handling for can_edit_others/can_delete_others: if editing/deleting own record, always allowed
+          if (permission === 'can_edit_others' || permission === 'can_delete_others') {
+            if (recordCreatorId && currentUserId && recordCreatorId === currentUserId) {
+              return true // Can always edit/delete own records
+            }
+          }
+
+          return permValue
+        }
+
+        // No currentMember and not owner/admin - default to true for backwards compatibility
+        return true
       },
     }),
     {

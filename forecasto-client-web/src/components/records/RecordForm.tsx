@@ -14,6 +14,10 @@ import {
 } from '@/components/ui/select'
 import { STAGES, STAGE_LABELS_BY_AREA, SIGN_OPTIONS } from '@/lib/constants'
 import type { Record as RecordType, RecordCreate, RecordUpdate, Area } from '@/types/record'
+import type { Sign } from '@/types/workspace'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { useAuthStore } from '@/stores/authStore'
+import { AlertCircle } from 'lucide-react'
 
 const schema = z.object({
   account: z.string().min(1, 'Conto obbligatorio'),
@@ -54,6 +58,16 @@ const normalizeLegacyStage = (stage?: string): string => {
 
 export function RecordForm({ record, area, onSubmit, onCancel, isLoading }: RecordFormProps) {
   const stages = STAGES[area] || []
+  const { checkPermission } = useWorkspaceStore()
+  const { user } = useAuthStore()
+
+  // Check permissions for create/edit
+  const isEditing = !!record
+  const getCanCreate = (sign: Sign) => checkPermission(area, sign, 'can_create')
+  const getCanEdit = (sign: Sign) => {
+    if (!record) return true
+    return checkPermission(area, sign, 'can_edit_others', record.created_by, user?.id)
+  }
 
   const {
     register,
@@ -84,6 +98,16 @@ export function RecordForm({ record, area, onSubmit, onCancel, isLoading }: Reco
   const selectedSign = watch('sign')
   const watchAmount = watch('amount')
   const watchTotal = watch('total')
+
+  // Check permission based on selected sign
+  const canPerformAction = selectedSign
+    ? (isEditing ? getCanEdit(selectedSign) : getCanCreate(selectedSign))
+    : false
+  const noPermissionMessage = selectedSign
+    ? (isEditing
+        ? `Non hai i permessi per modificare record ${selectedSign === 'in' ? 'in entrata' : 'in uscita'} di altri utenti in quest'area`
+        : `Non hai i permessi per creare record ${selectedSign === 'in' ? 'in entrata' : 'in uscita'} in quest'area`)
+    : null
 
   // Calculate VAT% from amount and total: VAT% = ((total - amount) / amount) * 100
   const calculatedVat = (() => {
@@ -216,27 +240,39 @@ export function RecordForm({ record, area, onSubmit, onCancel, isLoading }: Reco
         <div className="flex items-center gap-2">
           <Label className="text-sm font-medium">Tipo:</Label>
           <div className="flex gap-1">
-            {SIGN_OPTIONS.map((option) => (
-              <Button
-                key={option.value}
-                type="button"
-                size="sm"
-                variant={selectedSign === option.value ? (option.value === 'in' ? 'default' : 'destructive') : 'outline'}
-                onClick={() => setValue('sign', option.value as 'in' | 'out')}
-                className="min-w-[100px]"
-              >
-                {option.label}
-              </Button>
-            ))}
+            {SIGN_OPTIONS.map((option) => {
+              const signValue = option.value as Sign
+              const canUseSign = isEditing ? getCanEdit(signValue) : getCanCreate(signValue)
+              return (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={selectedSign === option.value ? (option.value === 'in' ? 'default' : 'destructive') : 'outline'}
+                  onClick={() => setValue('sign', option.value as 'in' | 'out')}
+                  className="min-w-[100px]"
+                  disabled={!canUseSign}
+                  title={!canUseSign ? `Non autorizzato per ${option.label}` : undefined}
+                >
+                  {option.label}
+                </Button>
+              )
+            })}
           </div>
           {errors.sign && <p className="text-sm text-destructive">{errors.sign.message}</p>}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {selectedSign && !canPerformAction && (
+            <div className="flex items-center gap-1 text-sm text-amber-600">
+              <AlertCircle className="h-4 w-4" />
+              <span>{noPermissionMessage}</span>
+            </div>
+          )}
           <Button type="button" variant="outline" onClick={onCancel}>
             Annulla
           </Button>
-          <Button type="submit" disabled={isLoading}>
+          <Button type="submit" disabled={isLoading || !canPerformAction}>
             {isLoading ? 'Salvataggio...' : record ? 'Aggiorna' : 'Crea'}
           </Button>
         </div>

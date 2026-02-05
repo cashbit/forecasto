@@ -2,6 +2,16 @@ import { useState } from 'react'
 import { AxiosError } from 'axios'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { RecordGrid } from '@/components/records/RecordGrid'
 import { RecordFilters } from '@/components/records/RecordFilters'
 import { RecordDetail } from '@/components/records/RecordDetail'
@@ -38,6 +48,10 @@ export function DashboardPage() {
   const [showBulkTransfer, setShowBulkTransfer] = useState(false)
   const [showBulkStage, setShowBulkStage] = useState(false)
   const [showBulkMerge, setShowBulkMerge] = useState(false)
+
+  // Delete confirmation state
+  const [recordToDelete, setRecordToDelete] = useState<Record | null>(null)
+  const [recordsToDelete, setRecordsToDelete] = useState<Record[] | null>(null)
 
   const handleCreateRecord = async (data: RecordCreate) => {
     try {
@@ -77,17 +91,22 @@ export function DashboardPage() {
     }
   }
 
-  const handleDeleteRecord = async (record: Record) => {
-    if (confirm('Sei sicuro di voler eliminare questo record?')) {
-      try {
-        await deleteRecord(record.id)
-        setSelectedRecord(null)
-        toast({ title: 'Record eliminato', variant: 'success' })
-      } catch (error) {
-        const axiosError = error as AxiosError<{ error?: string; message?: string }>
-        const message = axiosError.response?.data?.error || 'Errore durante l\'eliminazione.'
-        toast({ title: 'Errore', description: message, variant: 'destructive' })
-      }
+  const handleDeleteRecord = (record: Record) => {
+    setRecordToDelete(record)
+  }
+
+  const confirmDeleteRecord = async () => {
+    if (!recordToDelete) return
+    try {
+      await deleteRecord(recordToDelete.id)
+      setSelectedRecord(null)
+      toast({ title: 'Record eliminato', variant: 'success' })
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error?: string; message?: string }>
+      const message = axiosError.response?.data?.error || 'Errore durante l\'eliminazione.'
+      toast({ title: 'Errore', description: message, variant: 'destructive' })
+    } finally {
+      setRecordToDelete(null)
     }
   }
 
@@ -129,18 +148,23 @@ export function DashboardPage() {
   }
 
   // Bulk operations handlers
-  const handleBulkDelete = async (selectedRecords: Record[]) => {
-    if (confirm(`Sei sicuro di voler eliminare ${selectedRecords.length} record?`)) {
-      try {
-        for (const record of selectedRecords) {
-          await deleteRecord(record.id)
-        }
-        toast({ title: 'Record eliminati', description: `${selectedRecords.length} record eliminati`, variant: 'success' })
-      } catch (error) {
-        const axiosError = error as AxiosError<{ error?: string; message?: string }>
-        const message = axiosError.response?.data?.error || 'Errore durante l\'eliminazione.'
-        toast({ title: 'Errore', description: message, variant: 'destructive' })
+  const handleBulkDelete = (selectedRecords: Record[]) => {
+    setRecordsToDelete(selectedRecords)
+  }
+
+  const confirmBulkDelete = async () => {
+    if (!recordsToDelete) return
+    try {
+      for (const record of recordsToDelete) {
+        await deleteRecord(record.id)
       }
+      toast({ title: 'Record eliminati', description: `${recordsToDelete.length} record eliminati`, variant: 'success' })
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error?: string; message?: string }>
+      const message = axiosError.response?.data?.error || 'Errore durante l\'eliminazione.'
+      toast({ title: 'Errore', description: message, variant: 'destructive' })
+    } finally {
+      setRecordsToDelete(null)
     }
   }
 
@@ -319,7 +343,7 @@ export function DashboardPage() {
 
         <RecordFilters availableOwners={records.map(r => r.owner).filter(Boolean) as string[]} />
 
-        <div className="flex-1 overflow-auto p-4">
+        <div className="flex-1 min-h-0 p-4">
           <RecordGrid
             records={records}
             isLoading={isLoading}
@@ -441,6 +465,49 @@ export function DashboardPage() {
         onOpenChange={(open) => { if (!open) { setShowBulkMerge(false); setBulkRecords(null) } }}
         onConfirm={handleBulkMerge}
       />
+
+      {/* Delete Confirmation Dialog - Single Record */}
+      <AlertDialog open={!!recordToDelete} onOpenChange={(open) => !open && setRecordToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare questo record?
+              {recordToDelete && (
+                <span className="block mt-2 font-medium text-foreground">
+                  {recordToDelete.reference || recordToDelete.account}
+                </span>
+              )}
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteRecord} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog - Bulk */}
+      <AlertDialog open={!!recordsToDelete} onOpenChange={(open) => !open && setRecordsToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare {recordsToDelete?.length || 0} record?
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Elimina {recordsToDelete?.length || 0} record
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

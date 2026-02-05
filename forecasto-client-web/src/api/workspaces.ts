@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { Workspace, WorkspaceCreate, WorkspaceUpdate, WorkspaceMember } from '@/types/workspace'
+import type { Workspace, WorkspaceCreate, WorkspaceUpdate, WorkspaceMember, MemberUpdate, PendingInvitation, GranularAreaPermissions, WorkspaceInvitation } from '@/types/workspace'
 
 export const workspacesApi = {
   list: async (): Promise<Workspace[]> => {
@@ -27,16 +27,54 @@ export const workspacesApi = {
   },
 
   getMembers: async (workspaceId: string): Promise<WorkspaceMember[]> => {
-    const response = await apiClient.get<WorkspaceMember[]>(`/workspaces/${workspaceId}/members`)
-    return response.data
+    const response = await apiClient.get<{ success: boolean; members: WorkspaceMember[] }>(`/workspaces/${workspaceId}/members`)
+    return response.data.members
   },
 
-  inviteMember: async (workspaceId: string, email: string, role: string): Promise<WorkspaceMember> => {
-    const response = await apiClient.post<WorkspaceMember>(`/workspaces/${workspaceId}/members`, { email, role })
-    return response.data
+  getWorkspaceInvitations: async (workspaceId: string): Promise<WorkspaceInvitation[]> => {
+    const response = await apiClient.get<{ success: boolean; invitations: WorkspaceInvitation[] }>(`/workspaces/${workspaceId}/invitations`)
+    return response.data.invitations
   },
 
-  removeMember: async (workspaceId: string, memberId: string): Promise<void> => {
-    await apiClient.delete(`/workspaces/${workspaceId}/members/${memberId}`)
+  updateInvitation: async (workspaceId: string, invitationId: string, data: MemberUpdate): Promise<void> => {
+    await apiClient.patch(`/workspaces/${workspaceId}/invitations/${invitationId}`, data)
+  },
+
+  cancelInvitation: async (workspaceId: string, invitationId: string): Promise<void> => {
+    await apiClient.delete(`/workspaces/${workspaceId}/invitations/${invitationId}`)
+  },
+
+  inviteMember: async (workspaceId: string, inviteCode: string, role: string, granularPermissions?: GranularAreaPermissions): Promise<void> => {
+    await apiClient.post(`/workspaces/${workspaceId}/invitations`, {
+      invite_code: inviteCode,
+      role,
+      granular_permissions: granularPermissions,
+    })
+  },
+
+  lookupUserByCode: async (inviteCode: string): Promise<{ name: string; invite_code: string }> => {
+    const response = await apiClient.get<{ success: boolean; user: { name: string; invite_code: string } }>(`/users/lookup/${inviteCode}`)
+    return response.data.user
+  },
+
+  updateMember: async (workspaceId: string, userId: string, data: MemberUpdate): Promise<WorkspaceMember> => {
+    const response = await apiClient.patch<{ success: boolean; member: WorkspaceMember }>(
+      `/workspaces/${workspaceId}/members/${userId}`,
+      data
+    )
+    return response.data.member
+  },
+
+  removeMember: async (workspaceId: string, userId: string): Promise<void> => {
+    await apiClient.delete(`/workspaces/${workspaceId}/members/${userId}`)
+  },
+
+  getPendingInvitations: async (): Promise<PendingInvitation[]> => {
+    const response = await apiClient.get<{ success: boolean; invitations: PendingInvitation[] }>('/workspaces/invitations/pending')
+    return response.data.invitations
+  },
+
+  acceptInvitation: async (invitationId: string): Promise<void> => {
+    await apiClient.post(`/workspaces/invitations/${invitationId}/accept`)
   },
 }

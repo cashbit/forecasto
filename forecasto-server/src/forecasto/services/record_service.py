@@ -10,10 +10,63 @@ from typing import Any
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from forecasto.exceptions import NotFoundException
+from forecasto.exceptions import ForbiddenException, NotFoundException
 from forecasto.models.record import Record, RecordVersion
 from forecasto.models.user import User
+from forecasto.models.workspace import WorkspaceMember
 from forecasto.schemas.record import RecordCreate, RecordFilter, RecordUpdate
+
+
+def get_sign_from_amount(amount: Decimal | str | float) -> str:
+    """Get sign (in/out) from amount value."""
+    if isinstance(amount, str):
+        amount = Decimal(amount)
+    elif isinstance(amount, float):
+        amount = Decimal(str(amount))
+    return "in" if amount >= 0 else "out"
+
+
+def check_granular_permission(
+    member: WorkspaceMember,
+    area: str,
+    sign: str,
+    permission: str,
+    record_creator_id: str | None = None,
+    current_user_id: str | None = None,
+) -> bool:
+    """
+    Check if member has the specified granular permission.
+
+    Args:
+        member: The workspace member to check
+        area: The area (budget, prospect, orders, actual)
+        sign: The sign (in, out)
+        permission: The permission to check (can_read_others, can_create, can_edit_others)
+        record_creator_id: The user ID who created the record (for edit_others check)
+        current_user_id: The current user ID (for edit_others check)
+
+    Returns:
+        True if permitted, False otherwise
+    """
+    # Owner and admin have all permissions
+    if member.role in ("owner", "admin"):
+        return True
+
+    # Get granular permissions, with fallback to default all-true
+    granular = member.granular_permissions or {}
+    area_perms = granular.get(area, {})
+    sign_perms = area_perms.get(sign, {})
+
+    # Default to True for backwards compatibility
+    perm_value = sign_perms.get(permission, True)
+
+    # Special handling for can_edit_others/can_delete_others: if editing/deleting own record, always allowed
+    if permission in ("can_edit_others", "can_delete_others"):
+        if record_creator_id and current_user_id and record_creator_id == current_user_id:
+            return True  # Can always edit/delete own records
+
+    return perm_value
+
 
 class RecordService:
     """Service for record operations."""
@@ -26,8 +79,17 @@ class RecordService:
         workspace_id: str,
         data: RecordCreate,
         user: User,
+        member: WorkspaceMember | None = None,
     ) -> Record:
         """Create a new record."""
+        # Check granular permission if member provided
+        if member:
+            sign = get_sign_from_amount(data.amount)
+            if not check_granular_permission(member, data.area, sign, "can_create"):
+                raise ForbiddenException(
+                    f"You don't have permission to create {sign} records in {data.area}"
+                )
+
         record = Record(
             workspace_id=workspace_id,
             area=data.area,
@@ -74,8 +136,10 @@ class RecordService:
         self,
         workspace_id: str,
         filters: RecordFilter,
+        member: WorkspaceMember | None = None,
+        current_user_id: str | None = None,
     ) -> list[Record]:
-        """List records with filters."""
+        """List records with filters and permission-based filtering."""
         query = select(Record).where(Record.workspace_id == workspace_id)
 
         if filters.area:
@@ -116,6 +180,21 @@ class RecordService:
         result = await self.db.execute(query)
         records = list(result.scalars().all())
 
+        # Apply granular permission filtering if member provided
+        if member and current_user_id:
+            filtered_records = []
+            for record in records:
+                sign = get_sign_from_amount(record.amount)
+                # Check if user can read this record
+                can_read = check_granular_permission(
+                    member, record.area, sign, "can_read_others",
+                    record.created_by, current_user_id
+                )
+                # User can always see their own records
+                if can_read or record.created_by == current_user_id:
+                    filtered_records.append(record)
+            records = filtered_records
+
         return records
 
     async def update_record(
@@ -123,8 +202,20 @@ class RecordService:
         record: Record,
         data: RecordUpdate,
         user: User,
+        member: WorkspaceMember | None = None,
     ) -> Record:
         """Update a record."""
+        # Check granular permission if member provided
+        if member:
+            sign = get_sign_from_amount(record.amount)
+            if not check_granular_permission(
+                member, record.area, sign, "can_edit_others",
+                record.created_by, user.id
+            ):
+                raise ForbiddenException(
+                    f"You don't have permission to edit records created by others in {record.area}"
+                )
+
         # Apply updates
         update_data = data.model_dump(exclude_unset=True)
         for key, value in update_data.items():
@@ -144,8 +235,20 @@ class RecordService:
         self,
         record: Record,
         user: User,
+        member: WorkspaceMember | None = None,
     ) -> Record:
         """Soft delete a record."""
+        # Check granular permission if member provided
+        if member:
+            sign = get_sign_from_amount(record.amount)
+            if not check_granular_permission(
+                member, record.area, sign, "can_delete_others",
+                record.created_by, user.id
+            ):
+                raise ForbiddenException(
+                    f"You don't have permission to delete records created by others in {record.area}"
+                )
+
         record.deleted_at = datetime.utcnow()
         record.deleted_by = user.id
         record.version += 1

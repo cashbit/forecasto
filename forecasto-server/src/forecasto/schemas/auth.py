@@ -17,6 +17,7 @@ class UserInfo(BaseModel):
     id: str
     email: str
     name: str
+    invite_code: str
 
 class LoginResponse(BaseModel):
     """Login response with tokens."""

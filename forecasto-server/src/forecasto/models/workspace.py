@@ -66,6 +66,28 @@ class Workspace(Base, UUIDMixin, TimestampMixin):
         "ApiKey", back_populates="workspace", cascade="all, delete-orphan"
     )
 
+def _default_granular_permissions() -> dict:
+    """Default granular permissions - all permissions enabled."""
+    return {
+        "budget": {
+            "in": {"can_read_others": True, "can_create": True, "can_edit_others": True, "can_delete_others": True},
+            "out": {"can_read_others": True, "can_create": True, "can_edit_others": True, "can_delete_others": True},
+        },
+        "prospect": {
+            "in": {"can_read_others": True, "can_create": True, "can_edit_others": True, "can_delete_others": True},
+            "out": {"can_read_others": True, "can_create": True, "can_edit_others": True, "can_delete_others": True},
+        },
+        "orders": {
+            "in": {"can_read_others": True, "can_create": True, "can_edit_others": True, "can_delete_others": True},
+            "out": {"can_read_others": True, "can_create": True, "can_edit_others": True, "can_delete_others": True},
+        },
+        "actual": {
+            "in": {"can_read_others": True, "can_create": True, "can_edit_others": True, "can_delete_others": True},
+            "out": {"can_read_others": True, "can_create": True, "can_edit_others": True, "can_delete_others": True},
+        },
+    }
+
+
 class WorkspaceMember(Base, UUIDMixin):
     """Association between users and workspaces with role and permissions."""
 
@@ -89,6 +111,10 @@ class WorkspaceMember(Base, UUIDMixin):
             "budget": "write",
         },
     )
+    granular_permissions: Mapped[dict] = mapped_column(
+        JSON,
+        default=_default_granular_permissions,
+    )
     can_view_in_consolidated_cashflow: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
@@ -99,13 +125,13 @@ class Invitation(Base, UUIDMixin):
     """Pending invitation to join a workspace."""
 
     __tablename__ = "invitations"
-    __table_args__ = (UniqueConstraint("workspace_id", "email", name="uq_invitation_workspace_email"),)
+    __table_args__ = (UniqueConstraint("workspace_id", "invite_code", name="uq_invitation_workspace_invite_code"),)
 
     workspace_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
     )
     invited_by: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
-    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    invite_code: Mapped[str] = mapped_column(String(11), nullable=False, index=True)
     role: Mapped[str] = mapped_column(String(50), default="member")
     area_permissions: Mapped[dict] = mapped_column(
         JSON,
@@ -115,6 +141,10 @@ class Invitation(Base, UUIDMixin):
             "prospect": "write",
             "budget": "write",
         },
+    )
+    granular_permissions: Mapped[dict] = mapped_column(
+        JSON,
+        default=_default_granular_permissions,
     )
     token_hash: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

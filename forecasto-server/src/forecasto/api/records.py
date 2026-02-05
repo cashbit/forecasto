@@ -53,6 +53,8 @@ def _record_to_response(record, is_draft: bool = False) -> RecordResponse:
         transfer_history=record.transfer_history,
         version=record.version,
         is_draft=is_draft,
+        created_by=record.created_by,
+        updated_by=record.updated_by,
         created_at=record.created_at,
         updated_at=record.updated_at,
     )
@@ -63,6 +65,7 @@ async def list_records(
     workspace_data: Annotated[
         tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
     ],
+    current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     area: str | None = Query(None),
     date_start: date | None = Query(None),
@@ -91,7 +94,10 @@ async def list_records(
         bank_account_id=bank_account_id,
     )
 
-    records = await service.list_records(workspace_id, filters)
+    # Pass member and current_user_id for granular permission filtering
+    records = await service.list_records(
+        workspace_id, filters, member=member, current_user_id=current_user.id
+    )
 
     # Filter by readable areas if no specific area
     if not area:
@@ -121,7 +127,8 @@ async def create_record(
     check_area_permission(member, data.area, "write")
 
     service = RecordService(db)
-    record = await service.create_record(workspace_id, data, current_user)
+    # Pass member for granular permission check
+    record = await service.create_record(workspace_id, data, current_user, member=member)
 
     return {
         "success": True,
@@ -166,7 +173,8 @@ async def update_record(
 
     check_area_permission(member, record.area, "write")
 
-    record = await service.update_record(record, data, current_user)
+    # Pass member for granular permission check
+    record = await service.update_record(record, data, current_user, member=member)
 
     return {"success": True, "record": _record_to_response(record)}
 
@@ -188,7 +196,8 @@ async def delete_record(
 
     check_area_permission(member, record.area, "write")
 
-    await service.delete_record(record, current_user)
+    # Pass member for granular permission check
+    await service.delete_record(record, current_user, member=member)
 
     return {"success": True, "message": "Record deleted"}
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { User, Building, Bell, Shield } from 'lucide-react'
+import { User, Building, Bell, Shield, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -9,11 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { useAuthStore } from '@/stores/authStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { MembersDialog } from '@/components/workspace/MembersDialog'
 
 export function SettingsPage() {
   const { user } = useAuthStore()
   const { workspaces, selectedWorkspaceIds, updateWorkspace } = useWorkspaceStore()
   const [isLoading, setIsLoading] = useState(false)
+  const [membersDialogOpen, setMembersDialogOpen] = useState(false)
 
   // Use the first selected workspace for settings
   const primaryWorkspace = workspaces.find(w => w.id === selectedWorkspaceIds[0])
@@ -61,6 +63,10 @@ export function SettingsPage() {
           <TabsTrigger value="workspace">
             <Building className="mr-2 h-4 w-4" />
             Workspace
+          </TabsTrigger>
+          <TabsTrigger value="members">
+            <Users className="mr-2 h-4 w-4" />
+            Membri
           </TabsTrigger>
           <TabsTrigger value="notifications">
             <Bell className="mr-2 h-4 w-4" />
@@ -125,6 +131,35 @@ export function SettingsPage() {
                   {isLoading ? 'Salvataggio...' : 'Salva Modifiche'}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="members">
+          <Card>
+            <CardHeader>
+              <CardTitle>Membri del Workspace</CardTitle>
+              <CardDescription>Gestisci i membri e i permessi del workspace corrente</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {primaryWorkspace ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Gestisci chi ha accesso al workspace "{primaryWorkspace.name}" e configura i permessi granulari per ogni membro.
+                  </p>
+                  <Button onClick={() => setMembersDialogOpen(true)}>
+                    <Users className="mr-2 h-4 w-4" />
+                    Gestisci Membri
+                  </Button>
+                  <MembersDialog
+                    workspaceId={primaryWorkspace.id}
+                    open={membersDialogOpen}
+                    onOpenChange={setMembersDialogOpen}
+                  />
+                </>
+              ) : (
+                <p className="text-muted-foreground">Seleziona un workspace per gestire i membri</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

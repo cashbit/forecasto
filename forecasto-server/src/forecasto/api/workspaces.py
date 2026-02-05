@@ -115,6 +115,7 @@ async def list_members(
                 user=MemberUser(id=m.user.id, email=m.user.email, name=m.user.name),
                 role=m.role,
                 area_permissions=m.area_permissions,
+                granular_permissions=m.granular_permissions,
                 can_view_in_consolidated_cashflow=m.can_view_in_consolidated_cashflow,
                 joined_at=m.joined_at,
             )
@@ -137,6 +138,108 @@ async def create_invitation(
     service = WorkspaceService(db)
     invitation = await service.create_invitation(workspace_id, data, current_user, member)
     return {"success": True, "invitation": InvitationResponse.model_validate(invitation)}
+
+
+@router.get("/{workspace_id}/invitations", response_model=dict)
+async def list_workspace_invitations(
+    workspace_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """List pending invitations for a workspace."""
+    workspace, member = workspace_data
+    service = WorkspaceService(db)
+    invitations = await service.get_workspace_invitations_with_user(workspace_id)
+    return {
+        "success": True,
+        "invitations": invitations,
+    }
+
+
+@router.patch("/{workspace_id}/invitations/{invitation_id}", response_model=dict)
+async def update_invitation(
+    workspace_id: str,
+    invitation_id: str,
+    data: MemberUpdate,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Update a pending invitation's role and permissions."""
+    workspace, member = workspace_data
+    service = WorkspaceService(db)
+    invitation = await service.update_invitation(workspace_id, invitation_id, data, member)
+    return {"success": True, "invitation": InvitationResponse.model_validate(invitation)}
+
+
+@router.delete("/{workspace_id}/invitations/{invitation_id}", response_model=dict)
+async def cancel_invitation(
+    workspace_id: str,
+    invitation_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Cancel a pending invitation."""
+    workspace, member = workspace_data
+    service = WorkspaceService(db)
+    await service.cancel_invitation(workspace_id, invitation_id, member)
+    return {"success": True, "message": "Invito annullato"}
+
+
+@router.get("/invitations/pending", response_model=dict)
+async def list_pending_invitations(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """List pending invitations for the current user."""
+    service = WorkspaceService(db)
+    invitations = await service.get_pending_invitations_for_user(current_user)
+    return {
+        "success": True,
+        "invitations": [
+            {
+                "id": inv.id,
+                "workspace_id": inv.workspace_id,
+                "workspace_name": inv.workspace.name if inv.workspace else None,
+                "role": inv.role,
+                "area_permissions": inv.area_permissions,
+                "granular_permissions": inv.granular_permissions,
+                "created_at": inv.created_at,
+                "expires_at": inv.expires_at,
+            }
+            for inv in invitations
+        ],
+    }
+
+
+@router.post("/invitations/{invitation_id}/accept", response_model=dict)
+async def accept_invitation(
+    invitation_id: str,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Accept a pending invitation."""
+    service = WorkspaceService(db)
+    member = await service.accept_invitation(invitation_id, current_user)
+    await db.refresh(member, ["user"])
+    return {
+        "success": True,
+        "message": "Invitation accepted",
+        "member": MemberResponse(
+            id=member.id,
+            user=MemberUser(id=member.user.id, email=member.user.email, name=member.user.name),
+            role=member.role,
+            area_permissions=member.area_permissions,
+            granular_permissions=member.granular_permissions,
+            can_view_in_consolidated_cashflow=member.can_view_in_consolidated_cashflow,
+            joined_at=member.joined_at,
+        ),
+    }
 
 @router.patch("/{workspace_id}/members/{user_id}", response_model=dict)
 async def update_member(
@@ -161,6 +264,7 @@ async def update_member(
             user=MemberUser(id=member.user.id, email=member.user.email, name=member.user.name),
             role=member.role,
             area_permissions=member.area_permissions,
+            granular_permissions=member.granular_permissions,
             can_view_in_consolidated_cashflow=member.can_view_in_consolidated_cashflow,
             joined_at=member.joined_at,
         ),

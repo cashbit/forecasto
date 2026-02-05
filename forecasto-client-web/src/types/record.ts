@@ -37,6 +37,8 @@ export interface Record {
   transfer_history?: TransferEntry[]
   version: number
   is_draft?: boolean
+  created_by?: string
+  updated_by?: string
   created_at: string
   updated_at: string
 }

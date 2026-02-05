@@ -26,6 +26,7 @@ class UserResponse(BaseModel):
     id: str
     email: str
     name: str
+    invite_code: str
     email_verified: bool
     created_at: datetime
     last_login_at: datetime | None = None
