@@ -328,14 +328,14 @@ export function DashboardPage() {
     <div className="flex h-[calc(100vh-7rem)]">
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Area Tabs */}
-        <div className="border-b">
+        <div>
           <Tabs value={currentArea} onValueChange={(v) => setArea(v as Area)}>
-            <TabsList className="w-full justify-start rounded-none border-none bg-transparent p-0">
+            <TabsList className="w-full justify-start rounded-none border-none bg-transparent p-0 h-auto">
               {AREAS.map((area) => (
                 <TabsTrigger
                   key={area}
                   value={area}
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent"
+                  className="flex-1 rounded-none border-b-2 border-border py-2.5 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:font-semibold data-[state=active]:shadow-none"
                 >
                   {AREA_LABELS[area]}
                 </TabsTrigger>

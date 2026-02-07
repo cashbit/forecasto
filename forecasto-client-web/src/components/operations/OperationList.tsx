@@ -1,8 +1,18 @@
-import { useEffect } from 'react'
-import { Plus, Pencil, Trash, ArrowRight, RotateCcw, History } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Plus, Pencil, Trash, Trash2, ArrowRight, RotateCcw, History } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { EmptyState } from '@/components/common/EmptyState'
 import { DateDisplay } from '@/components/common/DateDisplay'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
@@ -43,9 +53,10 @@ interface HistoryItemProps {
   entry: HistoryEntry
   onRollback: (versionId: string) => void
   isRollingBack: boolean
+  showRollback: boolean
 }
 
-function HistoryItem({ entry, onRollback, isRollingBack }: HistoryItemProps) {
+function HistoryItem({ entry, onRollback, isRollingBack, showRollback }: HistoryItemProps) {
   const opType = entry.change_type
   const Icon = operationIcons[opType] || Pencil
   const color = operationColors[opType] || 'text-muted-foreground'
@@ -70,48 +81,79 @@ function HistoryItem({ entry, onRollback, isRollingBack }: HistoryItemProps) {
         )}
         <DateDisplay date={entry.changed_at} format="datetime" className="text-xs" />
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => onRollback(entry.id)}
-        disabled={isRollingBack}
-        className="opacity-0 group-hover:opacity-100 transition-opacity"
-        title="Torna a questo punto"
-      >
-        <RotateCcw className="h-4 w-4" />
-      </Button>
+      {showRollback && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation()
+            console.log('[History] Rollback clicked for entry:', entry.id, entry.change_type)
+            onRollback(entry.id)
+          }}
+          disabled={isRollingBack}
+          className="shrink-0 text-muted-foreground hover:text-foreground"
+          title="Torna a questo punto"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   )
 }
 
 export function OperationList() {
-  const { history, isLoading, fetchHistory, rollbackToVersion } = useHistoryStore()
+  const { history, isLoading, fetchHistory, rollbackToVersion, deleteHistory } = useHistoryStore()
   const { selectedWorkspaceIds } = useWorkspaceStore()
   const queryClient = useQueryClient()
+  const [rollbackTargetId, setRollbackTargetId] = useState<string | null>(null)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
 
   useEffect(() => {
     // Fetch history for all selected workspaces
     selectedWorkspaceIds.forEach(id => fetchHistory(id))
   }, [selectedWorkspaceIds, fetchHistory])
 
-  const handleRollback = async (versionId: string) => {
-    // Note: rollback only works for the primary workspace for now
+  const handleClearHistory = async () => {
     const primaryWorkspaceId = selectedWorkspaceIds[0]
     if (!primaryWorkspaceId) return
 
-    const confirmed = window.confirm(
-      'Sei sicuro di voler tornare a questo punto? Tutte le modifiche successive verranno annullate.'
-    )
-    if (!confirmed) return
+    try {
+      await deleteHistory(primaryWorkspaceId)
+      toast({ title: 'Cronologia cancellata', variant: 'success' })
+    } catch {
+      toast({ title: 'Errore durante la cancellazione', variant: 'destructive' })
+    } finally {
+      setShowClearConfirm(false)
+    }
+  }
+
+  const handleRollbackRequest = (versionId: string) => {
+    setRollbackTargetId(versionId)
+  }
+
+  const handleRollbackConfirm = async () => {
+    if (!rollbackTargetId) return
+
+    const primaryWorkspaceId = selectedWorkspaceIds[0]
+    if (!primaryWorkspaceId) {
+      console.error('[History] No workspace selected for rollback')
+      return
+    }
+
+    console.log('[History] Confirming rollback:', { workspaceId: primaryWorkspaceId, versionId: rollbackTargetId })
 
     try {
-      await rollbackToVersion(primaryWorkspaceId, versionId)
+      await rollbackToVersion(primaryWorkspaceId, rollbackTargetId)
+      console.log('[History] Rollback successful')
       selectedWorkspaceIds.forEach(id => {
         queryClient.invalidateQueries({ queryKey: ['records', id] })
       })
       toast({ title: 'Rollback completato', variant: 'success' })
     } catch (error) {
+      console.error('[History] Rollback failed:', error)
       toast({ title: 'Errore durante il rollback', variant: 'destructive' })
+    } finally {
+      setRollbackTargetId(null)
     }
   }
 
@@ -125,9 +167,23 @@ export function OperationList() {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4">
-        <h3 className="font-semibold">Cronologia Operazioni</h3>
-        <p className="text-sm text-muted-foreground">{history.length} operazioni</p>
+      <div className="p-4 flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold">Cronologia Operazioni</h3>
+          <p className="text-sm text-muted-foreground">{history.length} operazioni</p>
+        </div>
+        {history.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowClearConfirm(true)}
+            disabled={isLoading}
+            className="text-muted-foreground hover:text-destructive"
+            title="Pulisci cronologia"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       <Separator />
@@ -142,17 +198,52 @@ export function OperationList() {
               className="py-8"
             />
           ) : (
-            history.map((entry) => (
+            history.map((entry, index) => (
               <HistoryItem
                 key={entry.id}
                 entry={entry}
-                onRollback={handleRollback}
+                onRollback={handleRollbackRequest}
                 isRollingBack={isLoading}
+                showRollback={index > 0}
               />
             ))
           )}
         </div>
       </ScrollArea>
+
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Pulisci cronologia</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler cancellare tutta la cronologia? Questa azione è irreversibile e non sarà più possibile effettuare rollback.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearHistory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Cancella tutto
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={rollbackTargetId !== null} onOpenChange={(open) => { if (!open) setRollbackTargetId(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma rollback</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler tornare a questo punto? Tutte le modifiche successive verranno annullate.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRollbackConfirm}>
+              Conferma
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

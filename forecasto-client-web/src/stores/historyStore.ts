@@ -19,6 +19,7 @@ interface HistoryState {
 
   fetchHistory: (workspaceId: string, limit?: number) => Promise<void>
   rollbackToVersion: (workspaceId: string, versionId: string) => Promise<void>
+  deleteHistory: (workspaceId: string) => Promise<void>
   clearHistory: () => void
 }
 
@@ -30,7 +31,7 @@ export const useHistoryStore = create<HistoryState>()((set) => ({
   fetchHistory: async (workspaceId, limit = 100) => {
     set({ isLoading: true, error: null })
     try {
-      const response = await apiClient.get(`/api/${workspaceId}/history`, {
+      const response = await apiClient.get(`/workspaces/${workspaceId}/history`, {
         params: { limit },
       })
       set({
@@ -46,19 +47,39 @@ export const useHistoryStore = create<HistoryState>()((set) => ({
   },
 
   rollbackToVersion: async (workspaceId, versionId) => {
+    console.log('[HistoryStore] rollbackToVersion called:', { workspaceId, versionId })
     set({ isLoading: true, error: null })
     try {
-      await apiClient.post(`/api/${workspaceId}/rollback/${versionId}`)
+      const rollbackRes = await apiClient.post(`/workspaces/${workspaceId}/rollback/${versionId}`)
+      console.log('[HistoryStore] Rollback API response:', rollbackRes.data)
       // Refetch history after rollback
-      const response = await apiClient.get(`/api/${workspaceId}/history`)
+      const response = await apiClient.get(`/workspaces/${workspaceId}/history`)
       set({
         history: response.data.history,
         isLoading: false,
       })
-    } catch (error) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { status: number; data: unknown } }
+      console.error('[HistoryStore] Rollback failed:', axiosError.response?.status, axiosError.response?.data)
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to rollback',
+      })
+      throw error
+    }
+  },
+
+  deleteHistory: async (workspaceId) => {
+    set({ isLoading: true, error: null })
+    try {
+      await apiClient.delete(`/workspaces/${workspaceId}/history`)
+      set({ history: [], isLoading: false })
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { status: number; data: unknown } }
+      console.error('[HistoryStore] Clear history failed:', axiosError.response?.status, axiosError.response?.data)
+      set({
+        isLoading: false,
+        error: error instanceof Error ? error.message : 'Failed to clear history',
       })
       throw error
     }

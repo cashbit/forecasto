@@ -3,13 +3,16 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
+  getPaginationRowModel,
+  type PaginationState,
   flexRender,
   type ColumnDef,
   type SortingState,
   type RowSelectionState,
+  type VisibilityState,
 } from '@tanstack/react-table'
 import { useState } from 'react'
-import { ArrowUpDown, MoreHorizontal, Pencil, Trash, ArrowRight, Split, Merge, Calendar, Download, Check, CheckCircle, X, User } from 'lucide-react'
+import { ArrowUpDown, MoreHorizontal, Pencil, Trash, ArrowRight, Split, Merge, Calendar, Download, Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -91,8 +94,14 @@ export function RecordGrid({
 }: RecordGridProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+  const [viewMode, setViewMode] = useState<'compact' | 'extended'>('compact')
+  const [showProject, setShowProject] = useState(true)
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 100 })
   const { checkPermission } = useWorkspaceStore()
   const { user } = useAuthStore()
+
+  const columnVisibility: VisibilityState = { project_code: showProject }
+  const textCellClass = viewMode === 'compact' ? 'truncate' : 'whitespace-normal break-words'
 
   const canEditRecord = (record: Record): boolean => {
     const sign = getSignFromAmount(record.amount)
@@ -108,7 +117,7 @@ export function RecordGrid({
     () => [
       {
         id: 'select',
-        size: 36,
+        size: 24,
         header: ({ table }) => (
           <Checkbox
             checked={table.getIsAllPageRowsSelected()}
@@ -128,7 +137,7 @@ export function RecordGrid({
       },
       {
         accessorKey: 'date_cashflow',
-        size: 90,
+        size: 65,
         header: ({ column }) => (
           <Button
             variant="ghost"
@@ -156,30 +165,30 @@ export function RecordGrid({
             <ArrowUpDown className="ml-1 h-3 w-3" />
           </Button>
         ),
-        cell: ({ row }) => <span className="font-medium truncate block">{row.original.account}</span>,
+        cell: ({ row }) => <span className={cn("font-medium block", textCellClass)}>{row.original.account}</span>,
       },
       {
         accessorKey: 'reference',
-        size: 150,
+        size: 120,
         header: 'Riferimento',
         cell: ({ row }) => (
-          <span className="truncate block">{row.original.reference}</span>
+          <span className={cn("block", textCellClass)}>{row.original.reference}</span>
         ),
       },
       {
         accessorKey: 'transaction_id',
-        size: 80,
+        size: 130,
         header: 'ID Trans.',
         cell: ({ row }) => (
-          <span className="truncate block font-mono text-xs">{row.original.transaction_id || '-'}</span>
+          <span className={cn("block font-mono text-xs", textCellClass)}>{row.original.transaction_id || '-'}</span>
         ),
       },
       {
         accessorKey: 'owner',
-        size: 80,
+        size: 60,
         header: 'Respons.',
         cell: ({ row }) => (
-          <span className="truncate block">{row.original.owner || '-'}</span>
+          <span className={cn("block", textCellClass)}>{row.original.owner || '-'}</span>
         ),
       },
       {
@@ -187,7 +196,7 @@ export function RecordGrid({
         size: 70,
         header: 'Progetto',
         cell: ({ row }) => (
-          <span className="truncate block font-mono text-xs">{row.original.project_code || '-'}</span>
+          <span className={cn("block font-mono text-xs", textCellClass)}>{row.original.project_code || '-'}</span>
         ),
       },
       {
@@ -222,7 +231,7 @@ export function RecordGrid({
       },
       {
         accessorKey: 'stage',
-        size: 45,
+        size: 12,
         header: 'Stato',
         cell: ({ row }) => {
           const stage = row.original.stage
@@ -259,7 +268,7 @@ export function RecordGrid({
       },
       {
         id: 'actions',
-        size: 44,
+        size: 6,
         cell: ({ row }) => {
           const record = row.original
           const canEdit = canEditRecord(record)
@@ -317,7 +326,7 @@ export function RecordGrid({
         },
       },
     ],
-    [onEditRecord, onDeleteRecord, onTransferRecord, onSplitRecord, canEditRecord, canDeleteRecord, user?.id]
+    [onEditRecord, onDeleteRecord, onTransferRecord, onSplitRecord, canEditRecord, canDeleteRecord, user?.id, textCellClass]
   )
 
   const table = useReactTable({
@@ -325,9 +334,11 @@ export function RecordGrid({
     columns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
     onRowSelectionChange: setRowSelection,
-    state: { sorting, rowSelection },
+    onPaginationChange: setPagination,
+    state: { sorting, rowSelection, columnVisibility, pagination },
     getRowId: (row) => row.id,
   })
 
@@ -385,93 +396,183 @@ export function RecordGrid({
             }
           </span>
           <div className="w-px h-4 bg-border mx-2" />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onBulkDelete?.(selectedRecords)}
-            disabled={!hasSelection}
-            className={cn(hasSelection && "text-destructive hover:text-destructive")}
-          >
-            <Trash className="mr-1 h-3 w-3" />
-            Elimina
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onBulkMerge?.(selectedRecords)}
-            disabled={selectedRecords.length < 2}
-          >
-            <Merge className="mr-1 h-3 w-3" />
-            Unisci
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onBulkMoveDates?.(selectedRecords)}
-            disabled={!hasSelection}
-          >
-            <Calendar className="mr-1 h-3 w-3" />
-            Sposta Date
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onBulkSetDay?.(selectedRecords)}
-            disabled={!hasSelection}
-          >
-            <Calendar className="mr-1 h-3 w-3" />
-            Imposta Giorno
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onBulkExport?.(selectedRecords)}
-            disabled={!hasSelection}
-          >
-            <Download className="mr-1 h-3 w-3" />
-            Esporta CSV
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onBulkDelete?.(selectedRecords)}
+                  disabled={!hasSelection}
+                  className={cn("h-8 w-8 p-0", hasSelection && "text-destructive hover:text-destructive")}
+                >
+                  <Trash className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Elimina</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onBulkMerge?.(selectedRecords)}
+                  disabled={selectedRecords.length < 2}
+                  className="h-8 w-8 p-0"
+                >
+                  <Merge className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Unisci</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onBulkMoveDates?.(selectedRecords)}
+                  disabled={!hasSelection}
+                  className="h-8 w-8 p-0"
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Sposta Date</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onBulkSetDay?.(selectedRecords)}
+                  disabled={!hasSelection}
+                  className="h-8 w-8 p-0"
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Imposta Giorno</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onBulkExport?.(selectedRecords)}
+                  disabled={!hasSelection}
+                  className="h-8 w-8 p-0"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Esporta CSV</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <div className="w-px h-4 bg-border mx-2" />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onBulkTransfer?.(selectedRecords)}
-            disabled={!hasSelection}
-          >
-            <ArrowRight className="mr-1 h-3 w-3" />
-            Trasferisci
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onBulkSetStage?.(selectedRecords)}
-            disabled={!hasSelection}
-          >
-            <CheckCircle className="mr-1 h-3 w-3" />
-            Cambia Stage
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onBulkTransfer?.(selectedRecords)}
+                  disabled={!hasSelection}
+                  className="h-8 w-8 p-0"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Trasferisci</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onBulkSetStage?.(selectedRecords)}
+                  disabled={!hasSelection}
+                  className="h-8 w-8 p-0"
+                >
+                  <CheckCircle className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Cambia Stage</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <div className="flex-1" />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => table.toggleAllRowsSelected(false)}
-            disabled={!hasSelection}
-          >
-            Deseleziona
-          </Button>
+          {/* View controls */}
+          <div className="flex items-center gap-1">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={viewMode === 'compact' ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => setViewMode('compact')}
+                  >
+                    <LayoutList className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Vista compatta</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={viewMode === 'extended' ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => setViewMode('extended')}
+                  >
+                    <WrapText className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Vista estesa</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <div className="w-px h-4 bg-border mx-1" />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={showProject ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1"
+                    onClick={() => setShowProject(!showProject)}
+                  >
+                    {showProject ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                    Progetto
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{showProject ? 'Nascondi colonna Progetto' : 'Mostra colonna Progetto'}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
       </div>
 
       {/* Scrollable Table */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
-        <Table className="table-fixed">
+        <Table className="table-fixed font-narrow">
           <TableHeader className="sticky top-0 bg-background z-10">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    className="whitespace-nowrap"
+                    className="whitespace-nowrap px-2"
                     style={{ width: header.column.getSize() }}
                   >
                     {header.isPlaceholder
@@ -494,7 +595,7 @@ export function RecordGrid({
                 onClick={() => onSelectRecord?.(row.original)}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="py-2">
+                  <TableCell key={cell.id} className={viewMode === 'compact' ? "py-1 px-2" : "py-2 px-2"}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
@@ -504,11 +605,50 @@ export function RecordGrid({
         </Table>
       </div>
 
-      {/* Footer with totals - always visible */}
-      <div className="border-t bg-muted/50 px-4 py-3 flex-shrink-0">
+      {/* Footer with totals and pagination - always visible */}
+      <div className="border-t bg-muted/50 px-4 py-2 flex-shrink-0">
         <div className="flex items-center justify-between text-sm">
-          <div className="text-muted-foreground">
-            {totals.count} {totals.count === 1 ? 'record' : 'record'}
+          <div className="flex items-center gap-3">
+            <select
+              value={pagination.pageSize}
+              onChange={(e) => {
+                setPagination({ pageIndex: 0, pageSize: Number(e.target.value) })
+              }}
+              className="h-7 rounded border bg-background text-xs px-1 cursor-pointer"
+            >
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={500}>500</option>
+              <option value={99999}>Tutti</option>
+            </select>
+            <span className="text-muted-foreground">
+              {totals.count} record
+            </span>
+            {table.getPageCount() > 1 && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                <span className="text-xs text-muted-foreground px-1">
+                  {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-6">

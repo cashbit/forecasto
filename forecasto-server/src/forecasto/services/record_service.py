@@ -282,6 +282,19 @@ class RecordService:
         )
         return list(result.scalars().all())
 
+    async def clear_history(self, workspace_id: str) -> int:
+        """Delete all version history entries for a workspace."""
+        from sqlalchemy import delete as sql_delete
+        result = await self.db.execute(
+            sql_delete(RecordVersion)
+            .where(
+                RecordVersion.record_id.in_(
+                    select(Record.id).where(Record.workspace_id == workspace_id)
+                )
+            )
+        )
+        return result.rowcount
+
     async def restore_version(
         self,
         record: Record,
@@ -364,12 +377,32 @@ class RecordService:
             restore_to = result.scalar_one_or_none()
 
             if restore_to:
+                # Record existed at rollback point — restore its state
                 self._apply_snapshot(record, restore_to.snapshot)
                 record.updated_by = user.id
                 record.updated_at = datetime.utcnow()
                 record.version += 1
                 await self._create_version(record, user.id, "rollback", f"Rollback to {target_version.changed_at}")
                 restored_records.append(record)
+            else:
+                # No version before rollback point — check if record was
+                # actually created after it (vs history simply cleared)
+                earliest_result = await self.db.execute(
+                    select(RecordVersion)
+                    .where(RecordVersion.record_id == ver.record_id)
+                    .order_by(RecordVersion.changed_at.asc())
+                    .limit(1)
+                )
+                earliest_version = earliest_result.scalar_one_or_none()
+
+                if earliest_version and earliest_version.change_type == "create" and earliest_version.changed_at > target_version.changed_at:
+                    # Record was truly created after the rollback point — soft delete
+                    record.deleted_at = datetime.utcnow()
+                    record.deleted_by = user.id
+                    record.version += 1
+                    await self._create_version(record, user.id, "rollback", f"Rollback: record created after {target_version.changed_at}")
+                    restored_records.append(record)
+                # else: history was cleared, no prior state — leave record as-is
 
             processed_record_ids.add(ver.record_id)
 

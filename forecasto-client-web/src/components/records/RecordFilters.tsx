@@ -216,12 +216,12 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
           />
         </div>
 
-        <div className="relative w-32">
+        <div className="relative flex-1 max-w-sm">
           <Input
             placeholder="Progetto"
             value={projectCodeFilter || ''}
             onChange={(e) => setProjectCodeFilter(e.target.value || null)}
-            className="h-8 text-sm"
+            className="pl-3"
           />
           {hasProjectCodeFilter && (
             <button

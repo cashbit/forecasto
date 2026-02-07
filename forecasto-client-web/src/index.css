@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  --font-narrow: "Roboto Condensed", ui-sans-serif, system-ui, sans-serif;
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));

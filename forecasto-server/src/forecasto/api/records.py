@@ -268,6 +268,31 @@ async def get_record_history(
         ],
     }
 
+@router.delete("/{workspace_id}/history", response_model=dict)
+async def clear_history(
+    workspace_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Clear all operation history for the workspace."""
+    workspace, member = workspace_data
+
+    if member.role not in ["owner", "admin"]:
+        from forecasto.exceptions import ForbiddenException
+        raise ForbiddenException("Admin permission required to clear history")
+
+    service = RecordService(db)
+    deleted_count = await service.clear_history(workspace_id)
+    await db.commit()
+
+    return {
+        "success": True,
+        "message": f"Cleared {deleted_count} history entries",
+        "deleted_count": deleted_count,
+    }
+
 @router.post("/{workspace_id}/rollback/{version_id}", response_model=dict)
 async def rollback_to_version(
     workspace_id: str,
