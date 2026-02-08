@@ -1,12 +1,11 @@
-import { Plus, ClipboardList } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { useUiStore } from '@/stores/uiStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 
 export function Footer() {
   const { selectedWorkspaceIds, workspaces } = useWorkspaceStore()
-  const { rightPanelContent, setRightPanelContent, setCreateRecordDialogOpen } = useUiStore()
+  const { setCreateRecordDialogOpen } = useUiStore()
 
   const selectedNames = workspaces
     .filter(w => selectedWorkspaceIds.includes(w.id))
@@ -32,17 +31,6 @@ export function Footer() {
           >
             <Plus className="h-4 w-4 mr-1" />
             Nuovo Record
-          </Button>
-
-          <Separator orientation="vertical" className="h-6" />
-
-          <Button
-            variant={rightPanelContent === 'operations' ? 'secondary' : 'outline'}
-            size="sm"
-            onClick={() => setRightPanelContent(rightPanelContent === 'operations' ? null : 'operations')}
-          >
-            <ClipboardList className="h-4 w-4 mr-1" />
-            Cronologia
           </Button>
         </div>
       </div>

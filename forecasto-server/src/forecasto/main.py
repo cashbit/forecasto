@@ -16,7 +16,6 @@ from forecasto.api import (
     auth,
     bank_accounts,
     cashflow,
-    history,
     projects,
     records,
     sessions,
@@ -102,7 +101,6 @@ app.include_router(
     bank_accounts.router, prefix="/api/v1/workspaces", tags=["Bank Accounts"]
 )
 app.include_router(cashflow.router, prefix="/api/v1", tags=["Cashflow"])
-app.include_router(history.router, prefix="/api/v1/workspaces", tags=["History"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 
 @app.get("/health")

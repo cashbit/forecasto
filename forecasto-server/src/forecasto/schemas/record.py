@@ -129,27 +129,3 @@ class TransferResponse(BaseModel):
     record: RecordResponse
     operation: dict
 
-class RecordVersionResponse(BaseModel):
-    """Record version history entry."""
-
-    version: int
-    change_type: str
-    changed_at: datetime
-    changed_by: dict | None = None
-    snapshot: dict
-    diff: dict | None = None
-    transfer_info: dict | None = None
-
-class RecordHistoryResponse(BaseModel):
-    """Record history response."""
-
-    success: bool = True
-    record_id: str
-    current_version: int
-    history: list[RecordVersionResponse]
-
-class RestoreRequest(BaseModel):
-    """Record restore request."""
-
-    version: int
-    note: str | None = None

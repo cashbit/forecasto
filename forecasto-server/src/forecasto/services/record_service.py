@@ -5,13 +5,11 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
-
-from sqlalchemy import and_, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.exceptions import ForbiddenException, NotFoundException
-from forecasto.models.record import Record, RecordVersion
+from forecasto.models.record import Record
 from forecasto.models.user import User
 from forecasto.models.workspace import WorkspaceMember
 from forecasto.schemas.record import RecordCreate, RecordFilter, RecordUpdate
@@ -113,9 +111,6 @@ class RecordService:
         )
         self.db.add(record)
         await self.db.flush()
-
-        # Create record version for history
-        await self._create_version(record, user.id, "create")
 
         return record
 
@@ -226,9 +221,6 @@ class RecordService:
         record.updated_at = datetime.utcnow()
         record.version += 1
 
-        # Create version for history
-        await self._create_version(record, user.id, "update")
-
         return record
 
     async def delete_record(
@@ -253,232 +245,4 @@ class RecordService:
         record.deleted_by = user.id
         record.version += 1
 
-        # Create version for history
-        await self._create_version(record, user.id, "delete")
-
         return record
-
-    async def get_history(self, record: Record) -> list[RecordVersion]:
-        """Get version history for a record."""
-        result = await self.db.execute(
-            select(RecordVersion)
-            .where(RecordVersion.record_id == record.id)
-            .order_by(RecordVersion.version)
-        )
-        return list(result.scalars().all())
-
-    async def get_global_history(
-        self,
-        workspace_id: str,
-        limit: int = 100,
-    ) -> list[RecordVersion]:
-        """Get global operation history for a workspace."""
-        result = await self.db.execute(
-            select(RecordVersion)
-            .join(Record)
-            .where(Record.workspace_id == workspace_id)
-            .order_by(RecordVersion.changed_at.desc())
-            .limit(limit)
-        )
-        return list(result.scalars().all())
-
-    async def clear_history(self, workspace_id: str) -> int:
-        """Delete all version history entries for a workspace."""
-        from sqlalchemy import delete as sql_delete
-        result = await self.db.execute(
-            sql_delete(RecordVersion)
-            .where(
-                RecordVersion.record_id.in_(
-                    select(Record.id).where(Record.workspace_id == workspace_id)
-                )
-            )
-        )
-        return result.rowcount
-
-    async def restore_version(
-        self,
-        record: Record,
-        version_number: int,
-        user: User,
-        note: str | None = None,
-    ) -> Record:
-        """Restore record to a previous version."""
-        result = await self.db.execute(
-            select(RecordVersion).where(
-                RecordVersion.record_id == record.id,
-                RecordVersion.version == version_number,
-            )
-        )
-        version = result.scalar_one_or_none()
-
-        if not version:
-            raise NotFoundException(f"Version {version_number} not found")
-
-        # Apply snapshot
-        self._apply_snapshot(record, version.snapshot)
-        record.updated_by = user.id
-        record.updated_at = datetime.utcnow()
-        record.version += 1
-
-        # Create version for history
-        await self._create_version(
-            record, user.id, "restore", note or f"Restored to version {version_number}"
-        )
-
-        return record
-
-    async def rollback_to_version(
-        self,
-        workspace_id: str,
-        version_id: str,
-        user: User,
-    ) -> list[Record]:
-        """Rollback all changes after a specific version in a workspace."""
-        # Get the target version
-        result = await self.db.execute(
-            select(RecordVersion).where(RecordVersion.id == version_id)
-        )
-        target_version = result.scalar_one_or_none()
-        if not target_version:
-            raise NotFoundException(f"Version {version_id} not found")
-
-        # Get all versions after this one in the workspace
-        result = await self.db.execute(
-            select(RecordVersion)
-            .join(Record)
-            .where(
-                Record.workspace_id == workspace_id,
-                RecordVersion.changed_at > target_version.changed_at,
-            )
-            .order_by(RecordVersion.changed_at.desc())
-        )
-        versions_to_rollback = list(result.scalars().all())
-
-        restored_records = []
-        processed_record_ids = set()
-
-        # Group versions by record and restore each to the state before the rollback point
-        for ver in versions_to_rollback:
-            if ver.record_id in processed_record_ids:
-                continue
-
-            record = await self.get_record(ver.record_id, workspace_id)
-
-            # Find the version just before or at the target time for this record
-            result = await self.db.execute(
-                select(RecordVersion)
-                .where(
-                    RecordVersion.record_id == ver.record_id,
-                    RecordVersion.changed_at <= target_version.changed_at,
-                )
-                .order_by(RecordVersion.changed_at.desc())
-                .limit(1)
-            )
-            restore_to = result.scalar_one_or_none()
-
-            if restore_to:
-                # Record existed at rollback point — restore its state
-                self._apply_snapshot(record, restore_to.snapshot)
-                record.updated_by = user.id
-                record.updated_at = datetime.utcnow()
-                record.version += 1
-                await self._create_version(record, user.id, "rollback", f"Rollback to {target_version.changed_at}")
-                restored_records.append(record)
-            else:
-                # No version before rollback point — check if record was
-                # actually created after it (vs history simply cleared)
-                earliest_result = await self.db.execute(
-                    select(RecordVersion)
-                    .where(RecordVersion.record_id == ver.record_id)
-                    .order_by(RecordVersion.changed_at.asc())
-                    .limit(1)
-                )
-                earliest_version = earliest_result.scalar_one_or_none()
-
-                if earliest_version and earliest_version.change_type == "create" and earliest_version.changed_at > target_version.changed_at:
-                    # Record was truly created after the rollback point — soft delete
-                    record.deleted_at = datetime.utcnow()
-                    record.deleted_by = user.id
-                    record.version += 1
-                    await self._create_version(record, user.id, "rollback", f"Rollback: record created after {target_version.changed_at}")
-                    restored_records.append(record)
-                # else: history was cleared, no prior state — leave record as-is
-
-            processed_record_ids.add(ver.record_id)
-
-        return restored_records
-
-    async def _create_version(
-        self,
-        record: Record,
-        user_id: str,
-        change_type: str,
-        change_note: str | None = None,
-    ) -> RecordVersion:
-        """Create a version entry for audit trail."""
-        version = RecordVersion(
-            record_id=record.id,
-            version=record.version,
-            snapshot=self._record_to_snapshot(record),
-            changed_by=user_id,
-            change_type=change_type,
-            change_note=change_note,
-        )
-        self.db.add(version)
-        return version
-
-    def _record_to_snapshot(self, record: Record) -> dict[str, Any]:
-        """Convert record to snapshot dict."""
-        return {
-            "area": record.area,
-            "type": record.type,
-            "account": record.account,
-            "reference": record.reference,
-            "note": record.note,
-            "date_cashflow": record.date_cashflow.isoformat() if record.date_cashflow else None,
-            "date_offer": record.date_offer.isoformat() if record.date_offer else None,
-            "owner": record.owner,
-            "nextaction": record.nextaction,
-            "amount": str(record.amount),
-            "vat": str(record.vat),
-            "total": str(record.total),
-            "stage": record.stage,
-            "transaction_id": record.transaction_id,
-            "bank_account_id": record.bank_account_id,
-            "project_code": record.project_code,
-            "deleted_at": record.deleted_at.isoformat() if record.deleted_at else None,
-        }
-
-    def _apply_snapshot(self, record: Record, snapshot: dict[str, Any]) -> None:
-        """Apply a snapshot to a record."""
-        from datetime import date as date_type
-        from decimal import Decimal
-
-        record.area = snapshot.get("area", record.area)
-        record.type = snapshot.get("type", record.type)
-        record.account = snapshot.get("account", record.account)
-        record.reference = snapshot.get("reference", record.reference)
-        record.note = snapshot.get("note")
-        record.owner = snapshot.get("owner")
-        record.nextaction = snapshot.get("nextaction")
-        record.stage = snapshot.get("stage", record.stage)
-        record.transaction_id = snapshot.get("transaction_id")
-        record.bank_account_id = snapshot.get("bank_account_id")
-        record.project_code = snapshot.get("project_code")
-
-        if snapshot.get("date_cashflow"):
-            record.date_cashflow = date_type.fromisoformat(snapshot["date_cashflow"])
-        if snapshot.get("date_offer"):
-            record.date_offer = date_type.fromisoformat(snapshot["date_offer"])
-        if snapshot.get("amount"):
-            record.amount = Decimal(snapshot["amount"])
-        if snapshot.get("vat"):
-            record.vat = Decimal(snapshot["vat"])
-        if snapshot.get("total"):
-            record.total = Decimal(snapshot["total"])
-
-        # Handle deleted_at for restore from delete
-        if snapshot.get("deleted_at"):
-            record.deleted_at = datetime.fromisoformat(snapshot["deleted_at"])
-        else:
-            record.deleted_at = None

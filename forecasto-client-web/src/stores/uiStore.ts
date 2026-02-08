@@ -3,7 +3,7 @@ import { create } from 'zustand'
 interface UiState {
   sidebarOpen: boolean
   rightPanelOpen: boolean
-  rightPanelContent: 'details' | 'operations' | 'chat' | null
+  rightPanelContent: 'details' | 'chat' | null
   selectedRecordId: string | null
   createWorkspaceDialogOpen: boolean
   createRecordDialogOpen: boolean
@@ -12,7 +12,7 @@ interface UiState {
   setSidebarOpen: (open: boolean) => void
   toggleRightPanel: () => void
   setRightPanelOpen: (open: boolean) => void
-  setRightPanelContent: (content: 'details' | 'operations' | 'chat' | null) => void
+  setRightPanelContent: (content: 'details' | 'chat' | null) => void
   setSelectedRecordId: (id: string | null) => void
   setCreateWorkspaceDialogOpen: (open: boolean) => void
   setCreateRecordDialogOpen: (open: boolean) => void

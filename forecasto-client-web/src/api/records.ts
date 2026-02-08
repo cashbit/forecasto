@@ -54,9 +54,4 @@ export const recordsApi = {
   bulkDelete: async (workspaceId: string, recordIds: string[]): Promise<void> => {
     await apiClient.delete(`/workspaces/${workspaceId}/records/bulk`, { data: { ids: recordIds } })
   },
-
-  getHistory: async (workspaceId: string, recordId: string): Promise<{ history: Array<{ id: string; version: number; change_type: string; changed_at: string; changed_by: string; snapshot: Record<string, unknown> }> }> => {
-    const response = await apiClient.get(`/workspaces/${workspaceId}/records/${recordId}/history`)
-    return response.data
-  },
 }

@@ -7,7 +7,6 @@ from forecasto.api import (
     auth,
     bank_accounts,
     cashflow,
-    history,
     projects,
     records,
     sessions,
@@ -26,6 +25,5 @@ __all__ = [
     "projects",
     "bank_accounts",
     "cashflow",
-    "history",
 ]
 

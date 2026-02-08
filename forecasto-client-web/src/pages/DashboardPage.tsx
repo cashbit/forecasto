@@ -23,7 +23,6 @@ import { BulkSetDayDialog } from '@/components/records/BulkSetDayDialog'
 import { BulkTransferDialog } from '@/components/records/BulkTransferDialog'
 import { BulkStageDialog } from '@/components/records/BulkStageDialog'
 import { BulkMergeDialog } from '@/components/records/BulkMergeDialog'
-import { OperationList } from '@/components/operations/OperationList'
 import { useRecords } from '@/hooks/useRecords'
 import { useFilterStore } from '@/stores/filterStore'
 import { useUiStore } from '@/stores/uiStore'
@@ -34,7 +33,7 @@ import type { Record, Area, RecordCreate, RecordUpdate } from '@/types/record'
 
 export function DashboardPage() {
   const { currentArea, setArea } = useFilterStore()
-  const { rightPanelContent, createRecordDialogOpen, setCreateRecordDialogOpen } = useUiStore()
+  const { createRecordDialogOpen, setCreateRecordDialogOpen } = useUiStore()
   const { getPrimaryWorkspace } = useWorkspaceStore()
   const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord } = useRecords()
   const primaryWorkspace = getPrimaryWorkspace()
@@ -374,13 +373,6 @@ export function DashboardPage() {
             onClose={() => setSelectedRecord(null)}
             onEdit={() => setEditingRecord(selectedRecord)}
           />
-        </div>
-      )}
-
-      {/* Operations Panel */}
-      {rightPanelContent === 'operations' && (
-        <div className="w-80 border-l">
-          <OperationList />
         </div>
       )}
 

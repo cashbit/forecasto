@@ -2,7 +2,6 @@ import { useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { recordsApi } from '@/api/records'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useFilterStore } from '@/stores/filterStore'
-import { useHistoryStore } from '@/stores/historyStore'
 import type { Record, RecordCreate, RecordUpdate, Area } from '@/types/record'
 
 export function useRecords() {
@@ -13,7 +12,6 @@ export function useRecords() {
     sign, stageFilter, ownerFilter, nextactionFilter, expiredFilter,
     textFilter, projectCodeFilter, bankAccountFilter
   } = useFilterStore()
-  const { fetchHistory } = useHistoryStore()
   const queryClient = useQueryClient()
 
   const filters = {
@@ -112,10 +110,6 @@ export function useRecords() {
     },
   })
 
-  const refreshHistory = () => {
-    selectedWorkspaceIds.forEach(id => fetchHistory(id))
-  }
-
   const invalidateAllWorkspaces = () => {
     selectedWorkspaceIds.forEach(workspaceId => {
       queryClient.invalidateQueries({ queryKey: ['records', workspaceId] })
@@ -129,7 +123,6 @@ export function useRecords() {
     mutationFn: (data: RecordCreate) => recordsApi.create(primaryWorkspaceId!, data),
     onSuccess: () => {
       invalidateAllWorkspaces()
-      refreshHistory()
     },
   })
 
@@ -138,7 +131,6 @@ export function useRecords() {
       recordsApi.update(workspaceId || primaryWorkspaceId!, recordId, data),
     onSuccess: () => {
       invalidateAllWorkspaces()
-      refreshHistory()
     },
   })
 
@@ -147,7 +139,6 @@ export function useRecords() {
       recordsApi.delete(workspaceId || primaryWorkspaceId!, recordId),
     onSuccess: () => {
       invalidateAllWorkspaces()
-      refreshHistory()
     },
   })
 
@@ -156,7 +147,6 @@ export function useRecords() {
       recordsApi.transfer(workspaceId || primaryWorkspaceId!, recordId, { to_area: toArea, note }),
     onSuccess: () => {
       invalidateAllWorkspaces()
-      refreshHistory()
     },
   })
 
