@@ -30,6 +30,7 @@ export interface Record {
   total: string
   stage: string
   nextaction?: string
+  review_date?: string
   transaction_id?: string
   bank_account_id?: string
   project_code?: string
@@ -57,6 +58,7 @@ export interface RecordCreate {
   total: string
   stage?: string
   nextaction?: string
+  review_date?: string
   transaction_id: string
   bank_account_id?: string
   project_code?: string
@@ -76,6 +78,7 @@ export interface RecordUpdate {
   total?: string
   stage?: string
   nextaction?: string
+  review_date?: string
   transaction_id?: string
   bank_account_id?: string
   project_code?: string

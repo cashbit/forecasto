@@ -2,6 +2,7 @@ import { useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { recordsApi } from '@/api/records'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useFilterStore } from '@/stores/filterStore'
+import { useUiStore } from '@/stores/uiStore'
 import type { Record, RecordCreate, RecordUpdate, Area } from '@/types/record'
 
 export function useRecords() {
@@ -12,6 +13,7 @@ export function useRecords() {
     sign, stageFilter, ownerFilter, nextactionFilter, expiredFilter,
     textFilter, projectCodeFilter, bankAccountFilter
   } = useFilterStore()
+  const reviewMode = useUiStore(state => state.reviewMode)
   const queryClient = useQueryClient()
 
   const filters = {
@@ -95,6 +97,14 @@ export function useRecords() {
           const isExpired = date.getTime() < today.getTime()
           return expiredFilter === 'yes' ? isExpired : !isExpired
         })
+      }
+
+      // Apply review mode filter (review_date <= today)
+      if (reviewMode) {
+        const today = new Date().toISOString().split('T')[0]
+        filteredRecords = filteredRecords.filter(r =>
+          r.review_date && r.review_date <= today
+        )
       }
 
       // Sort by date (most recent first)

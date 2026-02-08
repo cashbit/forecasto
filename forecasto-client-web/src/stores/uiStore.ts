@@ -7,6 +7,7 @@ interface UiState {
   selectedRecordId: string | null
   createWorkspaceDialogOpen: boolean
   createRecordDialogOpen: boolean
+  reviewMode: boolean
 
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
@@ -17,15 +18,18 @@ interface UiState {
   setCreateWorkspaceDialogOpen: (open: boolean) => void
   setCreateRecordDialogOpen: (open: boolean) => void
   closeAllDialogs: () => void
+  toggleReviewMode: () => void
+  setReviewMode: (enabled: boolean) => void
 }
 
 export const useUiStore = create<UiState>()((set) => ({
-  sidebarOpen: true,
+  sidebarOpen: false,
   rightPanelOpen: false,
   rightPanelContent: null,
   selectedRecordId: null,
   createWorkspaceDialogOpen: false,
   createRecordDialogOpen: false,
+  reviewMode: false,
 
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -50,4 +54,7 @@ export const useUiStore = create<UiState>()((set) => ({
       createWorkspaceDialogOpen: false,
       createRecordDialogOpen: false,
     }),
+
+  toggleReviewMode: () => set((state) => ({ reviewMode: !state.reviewMode })),
+  setReviewMode: (enabled) => set({ reviewMode: enabled }),
 }))

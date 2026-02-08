@@ -94,13 +94,35 @@ export function RecordGrid({
 }: RecordGridProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
-  const [viewMode, setViewMode] = useState<'compact' | 'extended'>('compact')
-  const [showProject, setShowProject] = useState(true)
+  const [viewMode, setViewMode] = useState<'compact' | 'extended'>(() => {
+    return (localStorage.getItem('forecasto_viewMode') as 'compact' | 'extended') || 'compact'
+  })
+  const [showProject, setShowProject] = useState(() => {
+    const stored = localStorage.getItem('forecasto_showProject')
+    return stored !== null ? stored === 'true' : true
+  })
+  const [showOwner, setShowOwner] = useState(() => {
+    const stored = localStorage.getItem('forecasto_showOwner')
+    return stored !== null ? stored === 'true' : true
+  })
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 100 })
   const { checkPermission } = useWorkspaceStore()
   const { user } = useAuthStore()
 
-  const columnVisibility: VisibilityState = { project_code: showProject }
+  const handleSetViewMode = (mode: 'compact' | 'extended') => {
+    setViewMode(mode)
+    localStorage.setItem('forecasto_viewMode', mode)
+  }
+  const handleSetShowProject = (show: boolean) => {
+    setShowProject(show)
+    localStorage.setItem('forecasto_showProject', String(show))
+  }
+  const handleSetShowOwner = (show: boolean) => {
+    setShowOwner(show)
+    localStorage.setItem('forecasto_showOwner', String(show))
+  }
+
+  const columnVisibility: VisibilityState = { project_code: showProject, owner: showOwner }
   const textCellClass = viewMode === 'compact' ? 'truncate' : 'whitespace-normal break-words'
 
   const canEditRecord = (record: Record): boolean => {
@@ -170,7 +192,17 @@ export function RecordGrid({
       {
         accessorKey: 'reference',
         size: 120,
-        header: 'Riferimento',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-1 h-8"
+          >
+            Riferimento
+            <ArrowUpDown className="ml-1 h-3 w-3" />
+          </Button>
+        ),
         cell: ({ row }) => (
           <span className={cn("block", textCellClass)}>{row.original.reference}</span>
         ),
@@ -178,7 +210,17 @@ export function RecordGrid({
       {
         accessorKey: 'transaction_id',
         size: 130,
-        header: 'ID Trans.',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-1 h-8"
+          >
+            ID Trans.
+            <ArrowUpDown className="ml-1 h-3 w-3" />
+          </Button>
+        ),
         cell: ({ row }) => (
           <span className={cn("block font-mono text-xs", textCellClass)}>{row.original.transaction_id || '-'}</span>
         ),
@@ -186,7 +228,17 @@ export function RecordGrid({
       {
         accessorKey: 'owner',
         size: 60,
-        header: 'Respons.',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-1 h-8"
+          >
+            Respons.
+            <ArrowUpDown className="ml-1 h-3 w-3" />
+          </Button>
+        ),
         cell: ({ row }) => (
           <span className={cn("block", textCellClass)}>{row.original.owner || '-'}</span>
         ),
@@ -194,7 +246,17 @@ export function RecordGrid({
       {
         accessorKey: 'project_code',
         size: 70,
-        header: 'Progetto',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-1 h-8"
+          >
+            Progetto
+            <ArrowUpDown className="ml-1 h-3 w-3" />
+          </Button>
+        ),
         cell: ({ row }) => (
           <span className={cn("block font-mono text-xs", textCellClass)}>{row.original.project_code || '-'}</span>
         ),
@@ -222,7 +284,17 @@ export function RecordGrid({
       {
         accessorKey: 'total',
         size: 90,
-        header: () => <div className="text-right">Totale</div>,
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="justify-end w-full px-1 h-8"
+          >
+            Totale
+            <ArrowUpDown className="ml-1 h-3 w-3" />
+          </Button>
+        ),
         cell: ({ row }) => (
           <div className="text-right">
             <AmountDisplay amount={row.original.total} />
@@ -232,7 +304,17 @@ export function RecordGrid({
       {
         accessorKey: 'stage',
         size: 12,
-        header: 'Stato',
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-1 h-8"
+          >
+            Stato
+            <ArrowUpDown className="ml-1 h-3 w-3" />
+          </Button>
+        ),
         cell: ({ row }) => {
           const stage = row.original.stage
           if (stage === '1' || stage === 'paid' || stage === 'completed') {
@@ -519,7 +601,7 @@ export function RecordGrid({
                     variant={viewMode === 'compact' ? 'default' : 'outline'}
                     size="sm"
                     className="h-7 px-2"
-                    onClick={() => setViewMode('compact')}
+                    onClick={() => handleSetViewMode('compact')}
                   >
                     <LayoutList className="h-3.5 w-3.5" />
                   </Button>
@@ -534,7 +616,7 @@ export function RecordGrid({
                     variant={viewMode === 'extended' ? 'default' : 'outline'}
                     size="sm"
                     className="h-7 px-2"
-                    onClick={() => setViewMode('extended')}
+                    onClick={() => handleSetViewMode('extended')}
                   >
                     <WrapText className="h-3.5 w-3.5" />
                   </Button>
@@ -547,10 +629,26 @@ export function RecordGrid({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
+                    variant={showOwner ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1"
+                    onClick={() => handleSetShowOwner(!showOwner)}
+                  >
+                    {showOwner ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                    Owner
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{showOwner ? 'Nascondi colonna Responsabile' : 'Mostra colonna Responsabile'}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
                     variant={showProject ? 'default' : 'outline'}
                     size="sm"
                     className="h-7 px-2 text-xs gap-1"
-                    onClick={() => setShowProject(!showProject)}
+                    onClick={() => handleSetShowProject(!showProject)}
                   >
                     {showProject ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                     Progetto

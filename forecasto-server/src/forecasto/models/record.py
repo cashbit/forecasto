@@ -43,6 +43,7 @@ class Record(Base, UUIDMixin, TimestampMixin):
     stage: Mapped[str] = mapped_column(String(50), nullable=False)
     owner: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     nextaction: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    review_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     transaction_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # Relations

@@ -30,7 +30,7 @@ import type { Area } from '@/types/record'
 export function Header() {
   const location = useLocation()
   const { user, logout } = useAuthStore()
-  const { sidebarOpen, toggleSidebar } = useUiStore()
+  const { sidebarOpen, toggleSidebar, reviewMode, toggleReviewMode } = useUiStore()
   const { fetchWorkspaces, getPrimaryWorkspace, selectedWorkspaceIds } = useWorkspaceStore()
   const queryClient = useQueryClient()
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
@@ -109,6 +109,7 @@ export function Header() {
         project_code?: string
         owner?: string
         nextaction?: string
+        review_date?: string
       }> = []
 
       for (const area of areas) {
@@ -135,6 +136,7 @@ export function Header() {
             project_code: record.project_code || undefined,
             owner: record.owner || undefined,
             nextaction: record.nextaction || undefined,
+            review_date: record.review_date || undefined,
           })
         }
       }
@@ -174,6 +176,15 @@ export function Header() {
           <img src={logoIcon} alt="Forecasto" className="h-8" />
           <img src={logoText} alt="Forecasto" className="h-6" />
         </Link>
+
+        <Button
+          variant={reviewMode ? 'default' : 'outline'}
+          size="sm"
+          onClick={toggleReviewMode}
+          className={cn(reviewMode ? 'bg-amber-500 hover:bg-amber-600 text-white' : '')}
+        >
+          Revisione Zero
+        </Button>
 
         <div className="flex-1" />
 

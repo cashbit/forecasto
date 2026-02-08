@@ -49,6 +49,7 @@ def _record_to_response(record, is_draft: bool = False) -> RecordResponse:
         transaction_id=record.transaction_id,
         bank_account_id=record.bank_account_id,
         project_code=record.project_code,
+        review_date=record.review_date,
         classification=record.classification,
         transfer_history=record.transfer_history,
         version=record.version,

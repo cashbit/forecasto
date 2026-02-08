@@ -99,6 +99,15 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
           </div>
         </div>
 
+        <div>
+          <p className="text-sm text-muted-foreground">Prossima Revisione</p>
+          {record.review_date ? (
+            <DateDisplay date={record.review_date} />
+          ) : (
+            <p className="text-sm">-</p>
+          )}
+        </div>
+
         {record.transfer_history && record.transfer_history.length > 0 && (
           <>
             <Separator />

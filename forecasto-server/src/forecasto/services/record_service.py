@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,6 +88,8 @@ class RecordService:
                     f"You don't have permission to create {sign} records in {data.area}"
                 )
 
+        review_date = data.review_date or (data.date_offer + timedelta(days=7))
+
         record = Record(
             workspace_id=workspace_id,
             area=data.area,
@@ -106,6 +108,7 @@ class RecordService:
             transaction_id=data.transaction_id,
             bank_account_id=data.bank_account_id,
             project_code=data.project_code,
+            review_date=review_date,
             created_by=user.id,
             updated_by=user.id,
         )

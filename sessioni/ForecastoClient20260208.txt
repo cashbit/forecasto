@@ -1,0 +1,1431 @@
+
+▗ ▗   ▖ ▖  Claude Code v2.1.34
+           Opus 4.6 · API Usage Billing
+  ▘▘ ▝▝    ~/dev/forecasto
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Plan to implement                                                                                                    │
+│                                                                                                                      │
+│ Piano: Campo review_date + modalità "Revisione Zero"                                                                 │
+│                                                                                                                      │
+│ Context                                                                                                              │
+│                                                                                                                      │
+│ L'utente vuole introdurre un sistema di revisione settimanale dei record. Ogni record ha una review_date che parte a │
+│  +7 giorni dalla creazione. Una modalità "Revisione Zero" (toggle nell'header accanto al logo) filtra i record con   │
+│ review_date <= oggi. In modifica durante revisione, un tasto "Rivedi" avanza la review_date di 7 giorni e salva. I   │
+│ record importati senza review_date la ottengono automaticamente a +7gg. L'export deve includere tutte le colonne     │
+│ correttamente.                                                                                                       │
+│                                                                                                                      │
+│ File da modificare                                                                                                   │
+│ #: 1                                                                                                                 │
+│ File: forecasto-server/src/forecasto/models/record.py                                                                │
+│ Azione: Aggiungere colonna review_date (Date, nullable)                                                              │
+│ ────────────────────────────────────────                                                                             │
+│ #: 2                                                                                                                 │
+│ File: forecasto-server/src/forecasto/schemas/record.py                                                               │
+│ Azione: Aggiungere review_date a RecordCreate, RecordUpdate, RecordResponse                                          │
+│ ────────────────────────────────────────                                                                             │
+│ #: 3                                                                                                                 │
+│ File: forecasto-server/src/forecasto/services/record_service.py                                                      │
+│ Azione: Auto-set review_date = today + 7 in create_record se non fornita                                             │
+│ ────────────────────────────────────────                                                                             │
+│ #: 4                                                                                                                 │
+│ File: forecasto-server/alembic/versions/007_add_review_date.py                                                       │
+│ Azione: Migrazione: aggiungere colonna + default per record esistenti                                                │
+│ ────────────────────────────────────────                                                                             │
+│ #: 5                                                                                                                 │
+│ File: forecasto-client-web/src/types/record.ts                                                                       │
+│ Azione: Aggiungere review_date? a Record, RecordCreate, RecordUpdate                                                 │
+│ ────────────────────────────────────────                                                                             │
+│ #: 6                                                                                                                 │
+│ File: forecasto-client-web/src/stores/uiStore.ts                                                                     │
+│ Azione: Aggiungere reviewMode boolean + toggleReviewMode                                                             │
+│ ────────────────────────────────────────                                                                             │
+│ #: 7                                                                                                                 │
+│ File: forecasto-client-web/src/hooks/useRecords.ts                                                                   │
+│ Azione: Filtrare client-side per review_date <= today quando reviewMode attivo                                       │
+│ ────────────────────────────────────────                                                                             │
+│ #: 8                                                                                                                 │
+│ File: forecasto-client-web/src/components/layout/Header.tsx                                                          │
+│ Azione: Toggle "Revisione Zero" accanto al logo                                                                      │
+│ ────────────────────────────────────────                                                                             │
+│ #: 9                                                                                                                 │
+│ File: forecasto-client-web/src/components/records/RecordForm.tsx                                                     │
+│ Azione: Mostrare review_date (read-only) + tasto "Rivedi" in modalità revisione                                      │
+│ ────────────────────────────────────────                                                                             │
+│ #: 10                                                                                                                │
+│ File: forecasto-client-web/src/components/records/RecordDetail.tsx                                                   │
+│ Azione: Mostrare review_date nella vista dettaglio                                                                   │
+│ ────────────────────────────────────────                                                                             │
+│ #: 11                                                                                                                │
+│ File: forecasto-client-web/src/pages/DashboardPage.tsx                                                               │
+│ Azione: Passare reviewMode a RecordForm + gestire "rivedi"                                                           │
+│ ────────────────────────────────────────                                                                             │
+│ #: 12                                                                                                                │
+│ File: forecasto-client-web/src/components/records/ImportDialog.tsx                                                   │
+│ Azione: Aggiungere review_date (+7gg) ai record importati senza                                                      │
+│ ────────────────────────────────────────                                                                             │
+│ #: 13                                                                                                                │
+│ File: forecasto-client-web/src/components/layout/Header.tsx                                                          │
+│ Azione: Export: aggiungere review_date + colonne mancanti (owner, nextaction, project_code)                          │
+│ ---                                                                                                                  │
+│ 1. Backend — Model (models/record.py)                                                                                │
+│                                                                                                                      │
+│ Aggiungere dopo nextaction:                                                                                          │
+│ review_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)                                             │
+│                                                                                                                      │
+│ 2. Backend — Schemas (schemas/record.py)                                                                             │
+│                                                                                                                      │
+│ RecordCreate: aggiungere review_date: date | None = None                                                             │
+│ RecordUpdate: aggiungere review_date: date | None = None                                                             │
+│ RecordResponse: aggiungere review_date: date | None = None                                                           │
+│                                                                                                                      │
+│ 3. Backend — Service (services/record_service.py)                                                                    │
+│                                                                                                                      │
+│ In create_record, dopo la creazione dell'oggetto Record, se data.review_date è None, impostare:                      │
+│ from datetime import timedelta                                                                                       │
+│ review_date = data.review_date or (date.today() + timedelta(days=7))                                                 │
+│ Passare review_date nel costruttore di Record.                                                                       │
+│                                                                                                                      │
+│ 4. Backend — Migrazione (alembic/versions/007_add_review_date.py)                                                    │
+│                                                                                                                      │
+│ - Revises: 006_registration_codes                                                                                    │
+│ - Per SQLite: ricreare la tabella records con la colonna review_date DATE nullable                                   │
+│ - Per i record esistenti, impostare review_date = date(date_cashflow + 7 giorni) o created_at + 7 giorni             │
+│                                                                                                                      │
+│ 5. Frontend — Types (types/record.ts)                                                                                │
+│                                                                                                                      │
+│ // In Record:                                                                                                        │
+│ review_date?: string                                                                                                 │
+│                                                                                                                      │
+│ // In RecordCreate:                                                                                                  │
+│ review_date?: string                                                                                                 │
+│                                                                                                                      │
+│ // In RecordUpdate:                                                                                                  │
+│ review_date?: string                                                                                                 │
+│                                                                                                                      │
+│ 6. Frontend — UI Store (stores/uiStore.ts)                                                                           │
+│                                                                                                                      │
+│ Aggiungere:                                                                                                          │
+│ reviewMode: boolean  // default: false                                                                               │
+│ toggleReviewMode: () => void                                                                                         │
+│ setReviewMode: (enabled: boolean) => void                                                                            │
+│                                                                                                                      │
+│ 7. Frontend — useRecords hook (hooks/useRecords.ts)                                                                  │
+│                                                                                                                      │
+│ Dopo i filtri esistenti (expired), aggiungere:                                                                       │
+│ // Leggere reviewMode dal uiStore                                                                                    │
+│ // Se reviewMode è attivo, filtrare: review_date <= today                                                            │
+│ if (reviewMode) {                                                                                                    │
+│   const today = new Date().toISOString().split('T')[0]                                                               │
+│   filteredRecords = filteredRecords.filter(r =>                                                                      │
+│     r.review_date && r.review_date <= today                                                                          │
+│   )                                                                                                                  │
+│ }                                                                                                                    │
+│                                                                                                                      │
+│ 8. Frontend — Header (components/layout/Header.tsx)                                                                  │
+│                                                                                                                      │
+│ Dopo il logo (riga 176), prima del <div className="flex-1" />:                                                       │
+│ <Button                                                                                                              │
+│   variant={reviewMode ? 'default' : 'outline'}                                                                       │
+│   size="sm"                                                                                                          │
+│   onClick={toggleReviewMode}                                                                                         │
+│   className={cn(reviewMode && 'bg-amber-500 hover:bg-amber-600 text-white')}                                         │
+│ >                                                                                                                    │
+│   Revisione Zero                                                                                                     │
+│ </Button>                                                                                                            │
+│ Importare useUiStore (già importato), leggere reviewMode e toggleReviewMode.                                         │
+│                                                                                                                      │
+│ 9. Frontend — RecordForm (components/records/RecordForm.tsx)                                                         │
+│                                                                                                                      │
+│ - Aggiungere prop reviewMode?: boolean                                                                               │
+│ - Mostrare review_date come campo read-only (dopo le date, in formato testo)                                         │
+│ - In footer, quando reviewMode è attivo e si sta modificando un record, aggiungere 2 tasti accanto ad "Aggiorna":    │
+│   - "Rivedi 7gg" = onReview(7) — avanza review_date di 7 giorni                                                      │
+│   - "Rivedi 15gg" = onReview(15) — avanza review_date di 15 giorni                                                   │
+│   - Callback: onReview?: (days: number) => void                                                                      │
+│                                                                                                                      │
+│ 10. Frontend — RecordDetail (components/records/RecordDetail.tsx)                                                    │
+│                                                                                                                      │
+│ Aggiungere sezione dopo le date:                                                                                     │
+│ {record.review_date && (                                                                                             │
+│   <div>                                                                                                              │
+│     <p className="text-sm text-muted-foreground">Prossima Revisione</p>                                              │
+│     <DateDisplay date={record.review_date} />                                                                        │
+│   </div>                                                                                                             │
+│ )}                                                                                                                   │
+│                                                                                                                      │
+│ 11. Frontend — DashboardPage (pages/DashboardPage.tsx)                                                               │
+│                                                                                                                      │
+│ - Leggere reviewMode da useUiStore                                                                                   │
+│ - Passare reviewMode a RecordForm                                                                                    │
+│ - Aggiungere handler handleReviewRecord(days: number):                                                               │
+│ const handleReviewRecord = async (days: number) => {                                                                 │
+│   if (!editingRecord) return                                                                                         │
+│   const currentDate = editingRecord.review_date || new Date().toISOString().split('T')[0]                            │
+│   const nextDate = new Date(currentDate)                                                                             │
+│   nextDate.setDate(nextDate.getDate() + days)                                                                        │
+│   await updateRecord({                                                                                               │
+│     recordId: editingRecord.id,                                                                                      │
+│     data: { review_date: nextDate.toISOString().split('T')[0] }                                                      │
+│   })                                                                                                                 │
+│   setEditingRecord(null)                                                                                             │
+│   setSelectedRecord(null)                                                                                            │
+│   toast({ title: `Revisione posticipata di ${days} giorni`, variant: 'success' })                                    │
+│ }                                                                                                                    │
+│ - Passare onReview={handleReviewRecord} al RecordForm in edit mode                                                   │
+│                                                                                                                      │
+│ 12. Frontend — ImportDialog (components/records/ImportDialog.tsx)                                                    │
+│                                                                                                                      │
+│ In convertToRecordCreate, aggiungere:                                                                                │
+│ review_date: item.review_date || (() => {                                                                            │
+│   const d = new Date()                                                                                               │
+│   d.setDate(d.getDate() + 7)                                                                                         │
+│   return d.toISOString().split('T')[0]                                                                               │
+│ })()                                                                                                                 │
+│                                                                                                                      │
+│ 13. Frontend — Header Export (components/layout/Header.tsx)                                                          │
+│                                                                                                                      │
+│ Aggiornare handleExport per includere tutte le colonne nel JSON:                                                     │
+│ - Aggiungere review_date all'oggetto export                                                                          │
+│ - Le colonne owner, nextaction, project_code sono già presenti nel JSON export                                       │
+│                                                                                                                      │
+│ Aggiornare anche handleBulkExport in DashboardPage.tsx (export CSV) per aggiungere review_date:                      │
+│ - Aggiungere 'Revisione' all'array headers                                                                           │
+│ - Aggiungere r.review_date || '' all'array rows                                                                      │
+│                                                                                                                      │
+│ ---                                                                                                                  │
+│ Verifica                                                                                                             │
+│                                                                                                                      │
+│ 1. cd forecasto-server && alembic upgrade head — migrazione OK                                                       │
+│ 2. Creare record → review_date = oggi + 7 giorni (automatica)                                                        │
+│ 3. Toggle "Revisione Zero" nell'header → griglia mostra solo record con review_date <= oggi                          │
+│ 4. Modifica record in modalità revisione → appare tasto "Rivedi"                                                     │
+│ 5. Click "Rivedi" → review_date avanza di 7 giorni, record scompare dalla vista revisione                            │
+│ 6. Import JSON → record importati ottengono review_date a +7 giorni                                                  │
+│ 7. Export JSON → contiene review_date                                                                                │
+│ 8. Export CSV (bulk) → contiene colonna Revisione                                                                    │
+│ 9. npx tsc --noEmit e npx vite build passano senza errori                                                            │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+⏺ I'll start by reading the key files to understand the current codebase structure, then implement all changes.
+
+⏺ Read 11 files (ctrl+o to expand)
+  ⎿  Loaded CLAUDE.md
+
+⏺ Now let me also check the existing alembic migrations to understand the naming pattern.
+
+⏺ Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ Now I have a complete picture of the codebase. Let me also check the existing records table structure for the
+  migration.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Now I have all the context. Let me create task tracking and start implementing all changes. I'll work through them
+  systematically.
+
+⏺ Now let me implement all changes. Starting with the backend files in parallel, then the frontend.
+
+  Step 1-3: Backend — Model, Schema, Service
+
+⏺ Update(forecasto-server/src/forecasto/models/record.py)
+  ⎿  Added 1 line
+      43      stage: Mapped[str] = mapped_column(String(50), nullable=False)
+      44      owner: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+      45      nextaction: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+      46 +    review_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)                           
+      47      transaction_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+      48
+      49      # Relations
+
+⏺ Update(forecasto-server/src/forecasto/schemas/record.py)
+  ⎿  Added 2 lines
+      27      transaction_id: str | None = None
+      28      bank_account_id: str | None = None
+      29      project_code: str | None = None
+      30 +    review_date: date | None = None                                                                    
+      31
+      32      @field_validator("area")
+      33      @classmethod
+     ...
+      54      transaction_id: str | None = None
+      55      bank_account_id: str | None = None
+      56      project_code: str | None = None
+      57 +    review_date: date | None = None                                                                    
+      58
+      59  class TransferHistoryEntry(BaseModel):
+      60      """Entry in transfer history."""
+
+⏺ Update(forecasto-server/src/forecasto/schemas/record.py)
+  ⎿  Added 1 line
+      87      transaction_id: str | None = None
+      88      bank_account_id: str | None = None
+      89      project_code: str | None = None
+      90 +    review_date: date | None = None                                                                    
+      91      classification: dict
+      92      transfer_history: list[TransferHistoryEntry]
+      93      version: int
+
+⏺ Update(forecasto-server/src/forecasto/services/record_service.py)
+  ⎿  Added 1 line, removed 1 line
+      3  from __future__ import annotations
+      4
+      5
+      6 -from datetime import datetime                                                                           
+      6 +from datetime import date, datetime, timedelta                                                          
+      7  from decimal import Decimal
+      8  from sqlalchemy import or_, select
+      9  from sqlalchemy.ext.asyncio import AsyncSession
+
+⏺ Update(forecasto-server/src/forecasto/services/record_service.py)
+  ⎿  Added 3 lines
+      88                      f"You don't have permission to create {sign} records in {data.area}"
+      89                  )
+      90
+      91 +        review_date = data.review_date or (date.today() + timedelta(days=7))                           
+      92 +                                                                                                       
+      93          record = Record(
+      94              workspace_id=workspace_id,
+      95              area=data.area,
+     ...
+      106              transaction_id=data.transaction_id,
+      107              bank_account_id=data.bank_account_id,
+      108              project_code=data.project_code,
+      109 +            review_date=review_date,                                                                  
+      110              created_by=user.id,
+      111              updated_by=user.id,
+      112          )
+
+⏺ Step 4: Alembic migration
+
+⏺ Write(forecasto-server/alembic/versions/007_add_review_date.py)
+  ⎿  Wrote 37 lines to forecasto-server/alembic/versions/007_add_review_date.py
+     """Add review_date column to records
+
+     Revision ID: 007_review_date
+     Revises: 006_registration_codes
+     Create Date: 2026-02-08
+
+     """
+     from typing import Sequence, Union
+
+     from alembic import op
+     … +27 lines (ctrl+o to expand)
+
+⏺ Step 5-13: Frontend changes — all in parallel
+
+⏺ Update(forecasto-client-web/src/types/record.ts)
+  ⎿  Added 1 line
+      30    total: string
+      31    stage: string
+      32    nextaction?: string
+      33 +  review_date?: string                                                                                 
+      34    transaction_id?: string
+      35    bank_account_id?: string
+      36    project_code?: string
+
+⏺ Update(forecasto-client-web/src/types/record.ts)
+  ⎿  Added 1 line
+      58    total: string
+      59    stage?: string
+      60    nextaction?: string
+      61 +  review_date?: string                                                                                 
+      62    transaction_id: string
+      63    bank_account_id?: string
+      64    project_code?: string
+
+⏺ Update(forecasto-client-web/src/types/record.ts)
+  ⎿  Added 1 line
+      78    total?: string
+      79    stage?: string
+      80    nextaction?: string
+      81 +  review_date?: string                                                                                 
+      82    transaction_id?: string
+      83    bank_account_id?: string
+      84    project_code?: string
+
+⏺ Now the UI Store, useRecords hook, Header, RecordForm, RecordDetail, DashboardPage, and ImportDialog:
+
+⏺ Update(forecasto-client-web/src/stores/uiStore.ts)
+  ⎿  Added 3 lines
+       7    selectedRecordId: string | null
+       8    createWorkspaceDialogOpen: boolean
+       9    createRecordDialogOpen: boolean
+      10 +  reviewMode: boolean                                                                                  
+      11
+      12    toggleSidebar: () => void
+      13    setSidebarOpen: (open: boolean) => void
+     ...
+      17    setCreateWorkspaceDialogOpen: (open: boolean) => void
+      18    setCreateRecordDialogOpen: (open: boolean) => void
+      19    closeAllDialogs: () => void
+      20 +  toggleReviewMode: () => void                                                                         
+      21 +  setReviewMode: (enabled: boolean) => void                                                            
+      22  }
+      23
+      24  export const useUiStore = create<UiState>()((set) => ({
+
+⏺ Update(forecasto-client-web/src/stores/uiStore.ts)
+  ⎿  Added 1 line
+      29    selectedRecordId: null,
+      30    createWorkspaceDialogOpen: false,
+      31    createRecordDialogOpen: false,
+      32 +  reviewMode: false,                                                                                   
+      33
+      34    toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      35    setSidebarOpen: (open) => set({ sidebarOpen: open }),
+
+⏺ Update(forecasto-client-web/src/stores/uiStore.ts)
+  ⎿  Added 3 lines
+      54        createWorkspaceDialogOpen: false,
+      55        createRecordDialogOpen: false,
+      56      }),
+      57 +                                                                                                       
+      58 +  toggleReviewMode: () => set((state) => ({ reviewMode: !state.reviewMode })),                         
+      59 +  setReviewMode: (enabled) => set({ reviewMode: enabled }),                                            
+      60  }))
+
+⏺ Now update the useRecords hook to filter by reviewMode:
+
+⏺ Update(forecasto-client-web/src/hooks/useRecords.ts)
+  ⎿  Added 1 line
+      2  import { recordsApi } from '@/api/records'
+      3  import { useWorkspaceStore } from '@/stores/workspaceStore'
+      4  import { useFilterStore } from '@/stores/filterStore'
+      5 +import { useUiStore } from '@/stores/uiStore'                                                           
+      6  import type { Record, RecordCreate, RecordUpdate, Area } from '@/types/record'
+      7
+      8  export function useRecords() {
+
+⏺ Update(forecasto-client-web/src/hooks/useRecords.ts)
+  ⎿  Added 1 line
+      13      sign, stageFilter, ownerFilter, nextactionFilter, expiredFilter,
+      14      textFilter, projectCodeFilter, bankAccountFilter
+      15    } = useFilterStore()
+      16 +  const reviewMode = useUiStore(state => state.reviewMode)                                             
+      17    const queryClient = useQueryClient()
+      18
+      19    const filters = {
+
+⏺ Update(forecasto-client-web/src/hooks/useRecords.ts)
+  ⎿  Added 8 lines
+       99          })
+      100        }
+      101
+      102 +      // Apply review mode filter (review_date <= today)                                              
+      103 +      if (reviewMode) {                                                                               
+      104 +        const today = new Date().toISOString().split('T')[0]                                          
+      105 +        filteredRecords = filteredRecords.filter(r =>                                                 
+      106 +          r.review_date && r.review_date <= today                                                     
+      107 +        )                                                                                             
+      108 +      }                                                                                               
+      109 +                                                                                                      
+      110        // Sort by date (most recent first)
+      111        filteredRecords.sort((a, b) => new Date(b.date_cashflow).getTime() - new
+           Date(a.date_cashflow).getTime())
+      112
+
+⏺ Now update the Header — add the "Revisione Zero" toggle and review_date to export:
+
+⏺ Update(forecasto-client-web/src/components/layout/Header.tsx)
+  ⎿  Added 1 line, removed 1 line
+      30  export function Header() {
+      31    const location = useLocation()
+      32    const { user, logout } = useAuthStore()
+      33 -  const { sidebarOpen, toggleSidebar } = useUiStore()                                                  
+      33 +  const { sidebarOpen, toggleSidebar, reviewMode, toggleReviewMode } = useUiStore()                    
+      34    const { fetchWorkspaces, getPrimaryWorkspace, selectedWorkspaceIds } = useWorkspaceStore()
+      35    const queryClient = useQueryClient()
+      36    const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
+
+⏺ Update(forecasto-client-web/src/components/layout/Header.tsx)
+  ⎿  Added 9 lines
+      175            <img src={logoText} alt="Forecasto" className="h-6" />
+      176          </Link>
+      177
+      178 +        <Button                                                                                       
+      179 +          variant={reviewMode ? 'default' : 'outline'}                                                
+      180 +          size="sm"                                                                                   
+      181 +          onClick={toggleReviewMode}                                                                  
+      182 +          className={cn(reviewMode ? 'bg-amber-500 hover:bg-amber-600 text-white' : '')}              
+      183 +        >                                                                                             
+      184 +          Revisione Zero                                                                              
+      185 +        </Button>                                                                                     
+      186 +                                                                                                      
+      187          <div className="flex-1" />
+      188
+      189          <nav className="flex items-center gap-1">
+
+⏺ Update(forecasto-client-web/src/components/layout/Header.tsx)
+  ⎿  Added 2 lines
+      109          project_code?: string
+      110          owner?: string
+      111          nextaction?: string
+      112 +        review_date?: string                                                                          
+      113        }> = []
+      114
+      115        for (const area of areas) {
+     ...
+      135              project_code: record.project_code || undefined,
+      136              owner: record.owner || undefined,
+      137              nextaction: record.nextaction || undefined,
+      138 +            review_date: record.review_date || undefined,                                             
+      139            })
+      140          }
+      141        }
+
+⏺ Now the RecordForm — add reviewMode, onReview props, show review_date read-only, and review buttons:
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 2 lines
+      48    onCancel: () => void
+      49    onClose: () => void
+      50    isLoading?: boolean
+      51 +  reviewMode?: boolean                                                                                 
+      52 +  onReview?: (days: number) => void                                                                    
+      53  }
+      54
+      55  // Map legacy stage values to 0/1
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 1 line, removed 1 line
+      63    return stage ? (legacyMap[stage] || stage) : '0'
+      64  }
+      65
+      66 -export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoading }: RecordFormProps) {
+      66 +export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoading,                     
+         +reviewMode, onReview }: RecordFormProps) {                                                             
+      67    const stages = STAGES[area] || []
+      68    const { checkPermission } = useWorkspaceStore()
+      69    const { user } = useAuthStore()
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 8 lines
+      260              </div>
+      261            </div>
+      262
+      263 +          {/* Revisione (read-only) */}                                                               
+      264 +          {record?.review_date && (                                                                   
+      265 +            <div className="space-y-1">                                                               
+      266 +              <Label>Prossima Revisione</Label>                                                       
+      267 +              <Input value={record.review_date.split('T')[0]} disabled className="bg-muted" />        
+      268 +            </div>                                                                                    
+      269 +          )}                                                                                          
+      270 +                                                                                                      
+      271            {/* Imponibile + IVA% + Totale (una riga) */}
+      272            <div className="grid grid-cols-[1fr_4rem_1fr] gap-2">
+      273              <div className="space-y-1">
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 10 lines
+      341              <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>
+      342                Annulla
+      343              </Button>
+      344 +            {reviewMode && record && onReview && (                                                    
+      345 +              <>                                                                                      
+      346 +                <Button type="button" variant="outline" className="bg-amber-50 border-amber-300       
+          +hover:bg-amber-100 text-amber-700" onClick={() => onReview(7)}>                                       
+      347 +                  Rivedi 7gg                                                                          
+      348 +                </Button>                                                                             
+      349 +                <Button type="button" variant="outline" className="bg-amber-50 border-amber-300       
+          +hover:bg-amber-100 text-amber-700" onClick={() => onReview(15)}>                                      
+      350 +                  Rivedi 15gg                                                                         
+      351 +                </Button>                                                                             
+      352 +              </>                                                                                     
+      353 +            )}                                                                                        
+      354              <Button type="submit" className="flex-1" disabled={isLoading || !canPerformAction}>
+      355                {isLoading ? 'Salvataggio...' : record ? 'Aggiorna' : 'Crea'}
+      356              </Button>
+
+⏺ Now update RecordDetail to show review_date:
+
+⏺ Update(forecasto-client-web/src/components/records/RecordDetail.tsx)
+  ⎿  Added 7 lines
+       99            </div>
+      100          </div>
+      101
+      102 +        {record.review_date && (                                                                      
+      103 +          <div>                                                                                       
+      104 +            <p className="text-sm text-muted-foreground">Prossima Revisione</p>                       
+      105 +            <DateDisplay date={record.review_date} />                                                 
+      106 +          </div>                                                                                      
+      107 +        )}                                                                                            
+      108 +                                                                                                      
+      109          {record.transfer_history && record.transfer_history.length > 0 && (
+      110            <>
+      111              <Separator />
+
+⏺ Now update DashboardPage — add reviewMode, handleReviewRecord, and pass props to RecordForm:
+
+⏺ Update(forecasto-client-web/src/pages/DashboardPage.tsx)
+  ⎿  Added 1 line, removed 1 line
+      31
+      32  export function DashboardPage() {
+      33    const { currentArea, setArea } = useFilterStore()
+      34 -  const { createRecordDialogOpen, setCreateRecordDialogOpen } = useUiStore()                           
+      34 +  const { createRecordDialogOpen, setCreateRecordDialogOpen, reviewMode } = useUiStore()               
+      35    const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord } =
+          useRecords()
+      36
+      37    const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
+
+⏺ Update(forecasto-client-web/src/pages/DashboardPage.tsx)
+  ⎿  Added 18 lines
+      51    const [recordToDelete, setRecordToDelete] = useState<Record | null>(null)
+      52    const [recordsToDelete, setRecordsToDelete] = useState<Record[] | null>(null)
+      53
+      54 +  const handleReviewRecord = async (days: number) => {                                                 
+      55 +    if (!editingRecord) return                                                                         
+      56 +    const currentDate = editingRecord.review_date || new Date().toISOString().split('T')[0]            
+      57 +    const nextDate = new Date(currentDate)                                                             
+      58 +    nextDate.setDate(nextDate.getDate() + days)                                                        
+      59 +    try {                                                                                              
+      60 +      await updateRecord({                                                                             
+      61 +        recordId: editingRecord.id,                                                                    
+      62 +        data: { review_date: nextDate.toISOString().split('T')[0] }                                    
+      63 +      })                                                                                               
+      64 +      setEditingRecord(null)                                                                           
+      65 +      setSelectedRecord(null)                                                                          
+      66 +      toast({ title: `Revisione posticipata di ${days} giorni`, variant: 'success' })                  
+      67 +    } catch {                                                                                          
+      68 +      toast({ title: 'Errore durante la revisione', variant: 'destructive' })                          
+      69 +    }                                                                                                  
+      70 +  }                                                                                                    
+      71 +                                                                                                       
+      72    const handleCreateRecord = async (data: RecordCreate) => {
+      73      try {
+      74        await createRecord(data)
+
+⏺ Update(forecasto-client-web/src/pages/DashboardPage.tsx)
+  ⎿  Added 2 lines
+      389                onSubmit={(data) => handleUpdateRecord(data as RecordUpdate)}
+      390                onCancel={() => setEditingRecord(null)}
+      391                onClose={() => setEditingRecord(null)}
+      392 +              reviewMode={reviewMode}                                                                 
+      393 +              onReview={handleReviewRecord}                                                           
+      394              />
+      395            ) : createRecordDialogOpen ? (
+      396              <RecordForm
+
+⏺ Now update DashboardPage bulk export CSV to include review_date:
+
+⏺ Update(forecasto-client-web/src/pages/DashboardPage.tsx)
+  ⎿  Added 2 lines, removed 1 line
+      312    }
+      313
+      314    const handleBulkExport = (selectedRecords: Record[]) => {
+      315 -    const headers = ['Data', 'Conto', 'Riferimento', 'ID Transazione', 'Responsabile', 'Imponibile',  
+          -'Totale', 'Stage', 'Area']                                                                            
+      315 +    const headers = ['Data', 'Conto', 'Riferimento', 'ID Transazione', 'Responsabile', 'Imponibile',  
+          +'Totale', 'Stage', 'Area', 'Revisione']                                                               
+      316      const rows = selectedRecords.map(r => [
+      317        r.date_cashflow,
+      318        r.account,
+     ...
+      323        r.total,
+      324        r.stage,
+      325        r.area,
+      326 +      r.review_date || '',                                                                            
+      327      ])
+      328
+      329      const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n')
+
+⏺ Now update ImportDialog — add review_date to imported records:
+
+⏺ Update(forecasto-client-web/src/components/records/ImportDialog.tsx)
+  ⎿  Added 5 lines
+      144        nextaction: item.nextaction || undefined,
+      145        transaction_id: item.transaction_id ||
+           `import-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      146        project_code: item.project_code || undefined,
+      147 +      review_date: item.review_date || (() => {                                                       
+      148 +        const d = new Date()                                                                          
+      149 +        d.setDate(d.getDate() + 7)                                                                    
+      150 +        return d.toISOString().split('T')[0]                                                          
+      151 +      })(),                                                                                           
+      152      }
+      153    }
+      154
+
+⏺ Now let me check if the ImportRecord type needs review_date too:
+
+⏺ Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ Update(forecasto-client-web/src/types/import.ts)
+  ⎿  Added 1 line
+      18    project_code?: string
+      19    owner?: string
+      20    nextaction?: string
+      21 +  review_date?: string                                                                                 
+      22  }
+      23
+      24  // Mapping from legacy type to area
+
+⏺ All changes are made. Now let me verify TypeScript compilation and build:
+
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-client-web && npx tsc --noEmit 2>&1)
+  ⎿  (No content)
+
+⏺ TypeScript check passes clean. Let me also run the Vite build:
+
+⏺ Bash(npx vite build 2>&1)
+  ⎿  vite v7.3.1 building client environment for production...
+     transforming...
+     ✓ 3541 modules transformed.
+     … +14 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+⏺ Both tsc --noEmit and vite build pass without errors. Let me also run the alembic migration:
+
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-server && python -m alembic upgrade head 2>&1)
+  ⎿  Error: Exit code 127
+     (eval):1: command not found: python
+
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-server && python3 -m alembic upgrade head 2>&1)
+  ⎿  Error: Exit code 1
+     Traceback (most recent call last):
+       File
+     "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", lin
+      197, in _run_module_as_main
+         return _run_code(code, main_globals, None,
+       File
+     "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/runpy.py", lin
+      87, in _run_code
+         exec(code, run_globals)
+       File "/Users/cashbit/Library/Python/3.9/lib/python/site-packages/alembic/__main__.py", line 4, in <module>
+         main(prog="alembic")
+       File "/Users/cashbit/Library/Python/3.9/lib/python/site-packages/alembic/config.py", line 1022, in main
+         CommandLine(prog=prog).main(argv=argv)
+     … +17 lines (ctrl+o to see all)
+
+⏺ There's an import issue with the alembic env.py — it tries to import RecordVersion which doesn't exist. This is a
+  pre-existing issue not related to my changes. The migration file itself is correct. Let me verify the migration script
+   syntax is valid:
+
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-server && python3 -c "import ast;
+      ast.parse(open('alembic/versions/007_add_review_date.py').read()); print('Migration…)
+  ⎿  Migration syntax OK
+
+⏺ The migration file syntax is valid. The alembic upgrade head failure is a pre-existing issue (missing RecordVersion
+  import in alembic/env.py), not related to this change.
+
+⏺ All changes are implemented. Here's a summary of what was done:
+
+  Backend (3 files + 1 migration)
+
+  1. models/record.py — Added review_date: Mapped[Optional[date]] column after nextaction
+  2. schemas/record.py — Added review_date: date | None = None to RecordCreate, RecordUpdate, and RecordResponse
+  3. services/record_service.py — Auto-sets review_date = today + 7 days in create_record when not provided
+  4. alembic/versions/007_add_review_date.py — New migration: adds review_date column, backfills existing records with
+  date_cashflow + 7 days
+
+  Frontend (8 files)
+
+  5. types/record.ts — Added review_date?: string to Record, RecordCreate, RecordUpdate
+  6. types/import.ts — Added review_date?: string to ImportRecord
+  7. stores/uiStore.ts — Added reviewMode boolean, toggleReviewMode(), setReviewMode()
+  8. hooks/useRecords.ts — Filters records by review_date <= today when reviewMode is active
+  9. components/layout/Header.tsx — "Revisione Zero" toggle button (amber when active), review_date added to JSON export
+  10. components/records/RecordForm.tsx — Shows review_date read-only field, adds "Rivedi 7gg" / "Rivedi 15gg" buttons
+  in review mode
+  11. components/records/RecordDetail.tsx — Shows "Prossima Revisione" date
+  12. pages/DashboardPage.tsx — handleReviewRecord(days) handler, passes reviewMode/onReview to RecordForm, review_date
+  in CSV export
+  13. components/records/ImportDialog.tsx — Imported records without review_date get today + 7 days
+
+  Build verification
+
+  - npx tsc --noEmit — passes
+  - npx vite build — passes
+  - Migration syntax — valid (note: alembic upgrade head has a pre-existing RecordVersion import error in env.py)
+
+✻ Brewed for 3m 15s
+
+❯ mostriamo la data prossima review sia in anteprima che in modifica del record 
+
+⏺ Let me check the current state of both files to understand what's already there.
+
+⏺ Read 2 files (ctrl+o to expand)
+
+⏺ Attualmente la review_date viene mostrata solo se presente. La rendo visibile sempre, con un fallback "-" quando
+  manca.
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordDetail.tsx)
+  ⎿  Added 7 lines, removed 5 lines
+       99            </div>
+      100          </div>
+      101
+      102 -        {record.review_date && (                                                                      
+      103 -          <div>                                                                                       
+      104 -            <p className="text-sm text-muted-foreground">Prossima Revisione</p>                       
+      102 +        <div>                                                                                         
+      103 +          <p className="text-sm text-muted-foreground">Prossima Revisione</p>                         
+      104 +          {record.review_date ? (                                                                     
+      105              <DateDisplay date={record.review_date} />
+      106 -          </div>                                                                                      
+      107 -        )}                                                                                            
+      106 +          ) : (                                                                                       
+      107 +            <p className="text-sm">-</p>                                                              
+      108 +          )}                                                                                          
+      109 +        </div>                                                                                        
+      110
+      111          {record.transfer_history && record.transfer_history.length > 0 && (
+      112            <>
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 2 lines, removed 2 lines
+      261            </div>
+      262
+      263            {/* Revisione (read-only) */}
+      264 -          {record?.review_date && (                                                                   
+      264 +          {record && (                                                                                
+      265              <div className="space-y-1">
+      266                <Label>Prossima Revisione</Label>
+      267 -              <Input value={record.review_date.split('T')[0]} disabled className="bg-muted" />        
+      267 +              <Input value={record.review_date ? record.review_date.split('T')[0] : '-'               
+          +} disabled className="bg-muted" />                                                                    
+      268              </div>
+      269            )}
+      270
+
+⏺ Fatto. Ora:
+
+  - RecordDetail (anteprima): mostra sempre "Prossima Revisione" — la data se presente, "-" altrimenti
+  - RecordForm (modifica): mostra sempre il campo read-only "Prossima Revisione" quando si modifica un record — la data
+  se presente, "-" altrimenti
+
+❯ nel form di modifica il campo prossima revisione deve essere un campo editabile sotto al campo prossima azione 
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Devo fare 3 cose: aggiungere review_date allo schema zod, al defaultValues, al submit, spostare il campo dopo
+  "Prossima Azione" come input date editabile, e rimuovere il vecchio campo read-only.
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 1 line
+      34    total: z.string().min(1, 'Totale obbligatorio'),
+      35    stage: z.string().min(1, 'Stato obbligatorio'),
+      36    nextaction: z.string().optional(),
+      37 +  review_date: z.string().optional(),                                                                  
+      38    project_code: z.string().optional(),
+      39    vat: z.string().optional(),
+      40    sign: z.enum(['in', 'out'], { message: 'Seleziona entrata o uscita' }),
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 1 line
+      104        })(),
+      105        stage: normalizeLegacyStage(record?.stage) || stages[0] || '0',
+      106        nextaction: record?.nextaction || '',
+      107 +      review_date: record?.review_date?.split('T')[0] || '',                                          
+      108        project_code: record?.project_code || '',
+      109        sign: record?.amount ? (parseFloat(record.amount) >= 0 ? 'in' : 'out') : undefined,
+      110      },
+
+⏺ Ora rimuovo il vecchio campo read-only e aggiungo il campo editabile dopo "Prossima Azione":
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Removed 8 lines
+      262              </div>
+      263            </div>
+      264
+      265 -          {/* Revisione (read-only) */}                                                               
+      266 -          {record && (                                                                                
+      267 -            <div className="space-y-1">                                                               
+      268 -              <Label>Prossima Revisione</Label>                                                       
+      269 -              <Input value={record.review_date ? record.review_date.split('T')[0] : '-'} disabled     
+          -className="bg-muted" />                                                                               
+      270 -            </div>                                                                                    
+      271 -          )}                                                                                          
+      272 -                                                                                                      
+      265            {/* Imponibile + IVA% + Totale (una riga) */}
+      266            <div className="grid grid-cols-[1fr_4rem_1fr] gap-2">
+      267              <div className="space-y-1">
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 6 lines
+      316              <Input id="nextaction" {...register('nextaction')} placeholder="Azione" />
+      317            </div>
+      318
+      319 +          {/* Prossima Revisione */}                                                                  
+      320 +          <div className="space-y-1">                                                                 
+      321 +            <Label htmlFor="review_date">Prossima Revisione</Label>                                   
+      322 +            <Input id="review_date" type="date" {...register('review_date')} />                       
+      323 +          </div>                                                                                      
+      324 +                                                                                                      
+      325            {/* Note */}
+      326            <div className="space-y-1">
+      327              <Label htmlFor="note">Note</Label>
+
+⏺ Ora devo includere review_date nel submit, escludendolo dai campi UI-only e passandolo nel payload:
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 3 lines, removed 3 lines
+      177      const signedTotal = (totalNum * signMultiplier).toString()
+      178
+      179      // Remove sign and vat from data (UI-only fields)
+      180 -    const { sign, vat: _vat, ...submitData } = data                                                   
+      180 +    const { sign, vat: _vat, review_date, ...submitData } = data                                      
+      181
+      182      if (record) {
+      183 -      onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat } as RecordUpdate)      
+      183 +      onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat,                        
+          +review_date: review_date || undefined } as RecordUpdate)                                              
+      184      } else {
+      185        // Add default type for new records
+      186 -      onSubmit({ ...submitData, area, amount: signedAmount, total: signedTotal, vat,                  
+          -type: 'standard' } as RecordCreate)                                                                   
+      186 +      onSubmit({ ...submitData, area, amount: signedAmount, total: signedTotal, vat,                  
+          +review_date: review_date || undefined, type: 'standard' } as RecordCreate)                            
+      187      }
+      188    }
+      189
+
+⏺ Verifico che compili:
+
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-client-web && npx tsc --noEmit 2>&1)
+  ⎿  (No content)
+
+⏺ Compila senza errori. Fatto:
+
+  - Rimosso il vecchio campo read-only tra le date e gli importi
+  - Aggiunto review_date allo schema zod, ai defaultValues e al submit
+  - Il campo "Prossima Revisione" ora è un <input type="date"> editabile, posizionato subito dopo "Prossima Azione"
+  - Il valore viene inviato al server sia in creazione che in aggiornamento
+
+✻ Crunched for 44s
+
+❯ ho provato ad aggiornare il campo e mi ha dato errore durante l'aggiornamento 
+
+⏺ Verifico il flusso di update lato server per capire dove fallisce.
+
+⏺ Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ Trovato il problema. _record_to_response non include review_date. Il server la salva nel DB ma non la restituisce
+  nella response, e questo causa un errore di validazione Pydantic dato che RecordResponse ora ha quel campo.
+
+⏺ Update(~/dev/forecasto/forecasto-server/src/forecasto/api/records.py)
+  ⎿  Added 1 line
+      49          transaction_id=record.transaction_id,
+      50          bank_account_id=record.bank_account_id,
+      51          project_code=record.project_code,
+      52 +        review_date=record.review_date,                                                                
+      53          classification=record.classification,
+      54          transfer_history=record.transfer_history,
+      55          version=record.version,
+
+⏺ Ora verifico se c'è anche un endpoint bulk create che potrebbe avere lo stesso problema.
+
+⏺ Searched for 3 patterns (ctrl+o to expand)
+
+⏺ Nessun altro endpoint da aggiornare. Il fix era solo in _record_to_response che non passava review_date al
+  RecordResponse. Ora il server restituisce correttamente il campo nella risposta e l'aggiornamento dovrebbe funzionare.
+   Riavvia il server e riprova.
+
+✻ Worked for 31s
+
+❯ Download the React DevTools for a better development experience: https://react.dev/link/react-devtools            
+  Access to fetch at                                                                                                
+  'http://localhost:8000/api/v1/workspaces/94400cda-46fa-48e4-b00c-bade3142abf9/records?area=actual' from origin    
+  'http://localhost:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on    
+  the requested resource.Understand this error                                                                      
+  sw.js:144 [SW] Network request failed, trying cache:                                                              
+  http://localhost:8000/api/v1/workspaces/94400cda-46fa-48e4-b00c-bade3142abf9/records?area=actual                  
+  Access to fetch at                                                                                                
+  'http://localhost:8000/api/v1/workspaces/94400cda-46fa-48e4-b00c-bade3142abf9/records?area=budget' from origin    
+  'http://localhost:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on    
+  the requested resource.Understand this error                                                                      
+  sw.js:144 [SW] Network request failed, trying cache:                                                              
+  http://localhost:8000/api/v1/workspaces/94400cda-46fa-48e4-b00c-bade3142abf9/records?area=budget                  
+  Access to fetch at                                                                                                
+  'http://localhost:8000/api/v1/workspaces/94400cda-46fa-48e4-b00c-bade3142abf9/records?area=prospect' from origin  
+  'http://localhost:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on    
+  the requested resource.Understand this error                                                                      
+  sw.js:144 [SW] Network request failed, trying cache:                                                              
+  http://localhost:8000/api/v1/workspaces/94400cda-46fa-48e4-b00c-bade3142abf9/records?area=prospect                
+  Access to fetch at                                                                                                
+  'http://localhost:8000/api/v1/workspaces/94400cda-46fa-48e4-b00c-bade3142abf9/records?area=orders' from origin    
+  'http://localhost:3000' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on    
+  the requested resource.Understand this error                                                                      
+  sw.js:144 [SW] Network request failed, trying cache:                                                              
+  http://localhost:8000/api/v1/workspaces/94400cda-46fa-48e4-b00c-bade3142abf9/records?area=orders                  
+  dashboard:1 Access to XMLHttpRequest at 'http://localhost:8000/api/v1/workspaces/94400cda-46fa-48e4-b00c-bade3142 
+  abf9/records/764e86e5-943c-40c7-8873-4e9aaf8b832e' from origin 'http://localhost:3000' has been blocked by CORS   
+  policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.Understand this error        
+  records.ts:31  PATCH http://localhost:8000/api/v1/workspaces/94400cda-46fa-48e4-b00c-bade3142abf9/records/764e86e 
+  5-943c-40c7-8873-4e9aaf8b832e net::ERR_FAILED 500 (Internal Server Error)                                         
+
+⏺ Il server risponde 500 (e il CORS salta di conseguenza). Probabilmente la colonna review_date non esiste ancora nel DB
+   perché la migrazione non è stata eseguita. Verifico i log del server.
+
+⏺ Read 2 files (ctrl+o to expand)
+
+⏺ Confermato: no such column: records.review_date. La migrazione non è stata eseguita. Il problema è che alembic env.py
+  importa RecordVersion che non esiste. Sistemo l'env.py per poter eseguire la migrazione.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Verifico cosa esporta models/__init__.py.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ RecordVersion e Session* non sono esportati da __init__.py. L'env.py è disallineato. Sistemo gli import di
+  alembic/env.py per allinearli a ciò che esiste realmente.
+
+⏺ Update(~/dev/forecasto/forecasto-server/alembic/env.py)
+  ⎿  Added 2 lines, removed 1 line
+      19      Project,
+      20      ProjectPhase,
+      21      Record,
+      22 -    RecordVersion,                                                                                     
+      22      RefreshToken,
+      23 +    RegistrationCode,                                                                                  
+      24 +    RegistrationCodeBatch,                                                                             
+      25      Session,
+      26      SessionMessage,
+      27      SessionOperation,
+
+⏺ Ora eseguo la migrazione.
+
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-server && .venv/bin/python -m alembic upgrade head 2>&1)
+  ⎿ INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+    INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+    INFO  [alembic.runtime.migration] Running upgrade 006_registration_codes -> 007_review_date, Add review_date co
+    lumn to records
+
+
+⏺ Migrazione eseguita con successo. La colonna review_date ora esiste nel DB. Il server dovrebbe fare auto-reload.
+  Riprova l'aggiornamento — dovrebbe funzionare ora.
+
+✻ Sautéed for 39s
+
+❯ le date di prossima revisione non vanno una settimana dopo la data di cashflow ma una settimana dopo la data      
+  ordine                                                                                                            
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Due posti da correggere: la migrazione (per i record esistenti) e il service (per i nuovi record). Correggo anche la
+  migrazione e la ri-eseguo per aggiornare i dati già presenti.
+
+⏺ Update(src/forecasto/services/record_service.py)
+  ⎿  Added 1 line, removed 1 line
+      88                      f"You don't have permission to create {sign} records in {data.area}"
+      89                  )
+      90
+      91 -        review_date = data.review_date or (date.today() + timedelta(days=7))                           
+      91 +        review_date = data.review_date or (data.date_offer + timedelta(days=7))                        
+      92
+      93          record = Record(
+      94              workspace_id=workspace_id,
+
+⏺ Ora aggiorno la migrazione e ri-applico il backfill sui record esistenti.
+
+⏺ Update(alembic/versions/007_add_review_date.py)
+  ⎿  Added 2 lines, removed 2 lines
+      22      # Add review_date column (nullable)
+      23      op.add_column("records", sa.Column("review_date", sa.Date, nullable=True))
+      24
+      25 -    # Set default review_date for existing records: date_cashflow + 7 days                             
+      25 +    # Set default review_date for existing records: date_offer + 7 days                                
+      26      conn = op.get_bind()
+      27      conn.execute(
+      28          sa.text(
+      29 -            "UPDATE records SET review_date = date(date_cashflow, '+7 days') WHERE review_date IS NULL"
+      29 +            "UPDATE records SET review_date = date(date_offer, '+7 days') WHERE review_date IS NULL"   
+      30          )
+      31      )
+      32
+
+⏺ Aggiorno i dati già nel DB con la formula corretta:
+
+⏺ Bash(.venv/bin/python -c "
+      import sqlite3…)
+  ⎿  Updated 1822 records
+
+⏺ Fatto. 1822 record aggiornati. Ora:
+
+  - Service (create_record): review_date = data.date_offer + 7 giorni
+  - Migrazione (backfill): date(date_offer, '+7 days')
+  - DB esistente: tutti i record già corretti
+
+  Il server dovrebbe fare auto-reload. Riprova.
+
+❯ quando clicco su rivedi 7 o 15 bisogna impostare la data di revisione a 7 o 15 giorni dalla data corrente 
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Attualmente calcola review_date corrente + days. Va cambiato in oggi + days.
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/pages/DashboardPage.tsx)
+  ⎿  Added 1 line, removed 2 lines
+      53
+      54    const handleReviewRecord = async (days: number) => {
+      55      if (!editingRecord) return
+      56 -    const currentDate = editingRecord.review_date || new Date().toISOString().split('T')[0]            
+      57 -    const nextDate = new Date(currentDate)                                                             
+      56 +    const nextDate = new Date()                                                                        
+      57      nextDate.setDate(nextDate.getDate() + days)
+      58      try {
+      59        await updateRecord({
+
+⏺ Fatto. Ora "Rivedi 7gg" imposta review_date = oggi + 7 giorni e "Rivedi 15gg" imposta review_date = oggi + 15 giorni.
+
+❯ di default quando carichiamo la pagina i la lista warkspace deve essere collassata 
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/stores/uiStore.ts)
+  ⎿  Added 1 line, removed 1 line
+      23  }
+      24
+      25  export const useUiStore = create<UiState>()((set) => ({
+      26 -  sidebarOpen: true,                                                                                   
+      26 +  sidebarOpen: false,                                                                                  
+      27    rightPanelOpen: false,
+      28    rightPanelContent: null,
+      29    selectedRecordId: null,
+
+⏺ Fatto. La sidebar workspace ora parte collassata di default al caricamento della pagina.
+
+❯ memorizziamo in localstorage le preferenze di visualizzazione vista compatta/estesa e progetto 
+
+⏺ Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ Cerco dove si gestisce "compatta/estesa".
+
+⏺ Searched for 1 pattern (ctrl+o to expand)
+
+❯ e mettiamo la possibilità di ordinamento su tutte le colonne 
+
+⏺ Trovato. viewMode (compact/extended) è in RecordGrid.tsx come useState locale, e projectCodeFilter è nel filterStore.
+  Devo persistere entrambi in localStorage. Leggo RecordGrid per capire come intervenire.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Ho il quadro completo. Devo:
+  1. Persistere viewMode e showProject in localStorage in RecordGrid.tsx
+  2. Aggiungere sorting su tutte le colonne che ne sono prive (riferimento, ID trans., responsabile, progetto, totale,
+  stato)
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 7 lines, removed 2 lines
+       94  }: RecordGridProps) {
+       95    const [sorting, setSorting] = useState<SortingState>([])
+       96    const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+       97 -  const [viewMode, setViewMode] = useState<'compact' | 'extended'>('compact')                         
+       98 -  const [showProject, setShowProject] = useState(true)                                                
+       97 +  const [viewMode, setViewMode] = useState<'compact' | 'extended'>(() => {                            
+       98 +    return (localStorage.getItem('forecasto_viewMode') as 'compact' | 'extended') || 'compact'        
+       99 +  })                                                                                                  
+      100 +  const [showProject, setShowProject] = useState(() => {                                              
+      101 +    const stored = localStorage.getItem('forecasto_showProject')                                      
+      102 +    return stored !== null ? stored === 'true' : true                                                 
+      103 +  })                                                                                                  
+      104    const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 100 })
+      105    const { checkPermission } = useWorkspaceStore()
+      106    const { user } = useAuthStore()
+
+⏺ Ora creo wrapper per salvare in localStorage quando cambiano:
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 9 lines
+      105    const { checkPermission } = useWorkspaceStore()
+      106    const { user } = useAuthStore()
+      107
+      108 +  const handleSetViewMode = (mode: 'compact' | 'extended') => {                                       
+      109 +    setViewMode(mode)                                                                                 
+      110 +    localStorage.setItem('forecasto_viewMode', mode)                                                  
+      111 +  }                                                                                                   
+      112 +  const handleSetShowProject = (show: boolean) => {                                                   
+      113 +    setShowProject(show)                                                                              
+      114 +    localStorage.setItem('forecasto_showProject', String(show))                                       
+      115 +  }                                                                                                   
+      116 +                                                                                                      
+      117    const columnVisibility: VisibilityState = { project_code: showProject }
+      118    const textCellClass = viewMode === 'compact' ? 'truncate' : 'whitespace-normal break-words'
+      119
+
+⏺ Aggiorno i riferimenti ai setter nei pulsanti UI:
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 1 line, removed 1 line
+      533                      variant={viewMode === 'compact' ? 'default' : 'outline'}
+      534                      size="sm"
+      535                      className="h-7 px-2"
+      536 -                    onClick={() => setViewMode('compact')}                                            
+      536 +                    onClick={() => handleSetViewMode('compact')}                                      
+      537                    >
+      538                      <LayoutList className="h-3.5 w-3.5" />
+      539                    </Button>
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 1 line, removed 1 line
+      548                      variant={viewMode === 'extended' ? 'default' : 'outline'}
+      549                      size="sm"
+      550                      className="h-7 px-2"
+      551 -                    onClick={() => setViewMode('extended')}                                           
+      551 +                    onClick={() => handleSetViewMode('extended')}                                     
+      552                    >
+      553                      <WrapText className="h-3.5 w-3.5" />
+      554                    </Button>
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 1 line, removed 1 line
+      564                      variant={showProject ? 'default' : 'outline'}
+      565                      size="sm"
+      566                      className="h-7 px-2 text-xs gap-1"
+      567 -                    onClick={() => setShowProject(!showProject)}                                      
+      567 +                    onClick={() => handleSetShowProject(!showProject)}                                
+      568                    >
+      569                      {showProject ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5"
+           />}
+      570                      Progetto
+
+⏺ Ora aggiungo l'ordinamento a tutte le colonne che ne sono prive (riferimento, ID transazione, responsabile, progetto,
+  totale, stato):
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 11 lines, removed 1 line
+      184        {
+      185          accessorKey: 'reference',
+      186          size: 120,
+      187 -        header: 'Riferimento',                                                                        
+      187 +        header: ({ column }) => (                                                                     
+      188 +          <Button                                                                                     
+      189 +            variant="ghost"                                                                           
+      190 +            size="sm"                                                                                 
+      191 +            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}                      
+      192 +            className="px-1 h-8"                                                                      
+      193 +          >                                                                                           
+      194 +            Riferimento                                                                               
+      195 +            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      196 +          </Button>                                                                                   
+      197 +        ),                                                                                            
+      198          cell: ({ row }) => (
+      199            <span className={cn("block", textCellClass)}>{row.original.reference}</span>
+      200          ),
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 11 lines, removed 1 line
+      202        {
+      203          accessorKey: 'transaction_id',
+      204          size: 130,
+      205 -        header: 'ID Trans.',                                                                          
+      205 +        header: ({ column }) => (                                                                     
+      206 +          <Button                                                                                     
+      207 +            variant="ghost"                                                                           
+      208 +            size="sm"                                                                                 
+      209 +            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}                      
+      210 +            className="px-1 h-8"                                                                      
+      211 +          >                                                                                           
+      212 +            ID Trans.                                                                                 
+      213 +            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      214 +          </Button>                                                                                   
+      215 +        ),                                                                                            
+      216          cell: ({ row }) => (
+      217            <span className={cn("block font-mono text-xs", textCellClass)}>{row.original.transaction_id
+            || '-'}</span>
+      218          ),
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 11 lines, removed 1 line
+      220        {
+      221          accessorKey: 'owner',
+      222          size: 60,
+      223 -        header: 'Respons.',                                                                           
+      223 +        header: ({ column }) => (                                                                     
+      224 +          <Button                                                                                     
+      225 +            variant="ghost"                                                                           
+      226 +            size="sm"                                                                                 
+      227 +            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}                      
+      228 +            className="px-1 h-8"                                                                      
+      229 +          >                                                                                           
+      230 +            Respons.                                                                                  
+      231 +            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      232 +          </Button>                                                                                   
+      233 +        ),                                                                                            
+      234          cell: ({ row }) => (
+      235            <span className={cn("block", textCellClass)}>{row.original.owner || '-'}</span>
+      236          ),
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 11 lines, removed 1 line
+      238        {
+      239          accessorKey: 'project_code',
+      240          size: 70,
+      241 -        header: 'Progetto',                                                                           
+      241 +        header: ({ column }) => (                                                                     
+      242 +          <Button                                                                                     
+      243 +            variant="ghost"                                                                           
+      244 +            size="sm"                                                                                 
+      245 +            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}                      
+      246 +            className="px-1 h-8"                                                                      
+      247 +          >                                                                                           
+      248 +            Progetto                                                                                  
+      249 +            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      250 +          </Button>                                                                                   
+      251 +        ),                                                                                            
+      252          cell: ({ row }) => (
+      253            <span className={cn("block font-mono text-xs", textCellClass)}>{row.original.project_code
+           || '-'}</span>
+      254          ),
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 11 lines, removed 1 line
+      276        {
+      277          accessorKey: 'total',
+      278          size: 90,
+      279 -        header: () => <div className="text-right">Totale</div>,                                       
+      279 +        header: ({ column }) => (                                                                     
+      280 +          <Button                                                                                     
+      281 +            variant="ghost"                                                                           
+      282 +            size="sm"                                                                                 
+      283 +            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}                      
+      284 +            className="justify-end w-full px-1 h-8"                                                   
+      285 +          >                                                                                           
+      286 +            Totale                                                                                    
+      287 +            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      288 +          </Button>                                                                                   
+      289 +        ),                                                                                            
+      290          cell: ({ row }) => (
+      291            <div className="text-right">
+      292              <AmountDisplay amount={row.original.total} />
+
+⏺ Update(~/dev/forecasto/forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 11 lines, removed 1 line
+      296        {
+      297          accessorKey: 'stage',
+      298          size: 12,
+      299 -        header: 'Stato',                                                                              
+      299 +        header: ({ column }) => (                                                                     
+      300 +          <Button                                                                                     
+      301 +            variant="ghost"                                                                           
+      302 +            size="sm"                                                                                 
+      303 +            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}                      
+      304 +            className="px-1 h-8"                                                                      
+      305 +          >                                                                                           
+      306 +            Stato                                                                                     
+      307 +            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      308 +          </Button>                                                                                   
+      309 +        ),                                                                                            
+      310          cell: ({ row }) => {
+      311            const stage = row.original.stage
+      312            if (stage === '1' || stage === 'paid' || stage === 'completed') {
+
+⏺ Verifico la compilazione:
+
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-client-web && npx tsc --noEmit 2>&1)
+  ⎿  (No content)
+
+⏺ Compila senza errori. Riepilogo:
+
+  Preferenze in localStorage:
+  - forecasto_viewMode — persiste la scelta compatta/estesa
+  - forecasto_showProject — persiste la visibilità della colonna Progetto
+
+  Ordinamento su tutte le colonne:
+  - Aggiunto il sorting cliccabile (con icona freccia) su: Riferimento, ID Trans., Responsabile, Progetto, Totale, Stato
+  - Erano già presenti su: Data, Conto, Imponibile
+
+✻ Cooked for 1m 45s
+
+❯ come pre progetto, mettiamo la possibilità di vedere o meno owner 
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Ora leggo la parte del toggle Progetto per replicare il pattern per Owner.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Ho tutto. Tre modifiche: stato con localStorage, columnVisibility, e bottone toggle UI.
+
+⏺ Update(src/components/records/RecordGrid.tsx)
+  ⎿  Added 4 lines
+      101      const stored = localStorage.getItem('forecasto_showProject')
+      102      return stored !== null ? stored === 'true' : true
+      103    })
+      104 +  const [showOwner, setShowOwner] = useState(() => {                                                  
+      105 +    const stored = localStorage.getItem('forecasto_showOwner')                                        
+      106 +    return stored !== null ? stored === 'true' : true                                                 
+      107 +  })                                                                                                  
+      108    const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 100 })
+      109    const { checkPermission } = useWorkspaceStore()
+      110    const { user } = useAuthStore()
+
+⏺ Update(src/components/records/RecordGrid.tsx)
+  ⎿  Added 5 lines, removed 1 line
+      117      setShowProject(show)
+      118      localStorage.setItem('forecasto_showProject', String(show))
+      119    }
+      120 +  const handleSetShowOwner = (show: boolean) => {                                                     
+      121 +    setShowOwner(show)                                                                                
+      122 +    localStorage.setItem('forecasto_showOwner', String(show))                                         
+      123 +  }                                                                                                   
+      124
+      125 -  const columnVisibility: VisibilityState = { project_code: showProject }                             
+      125 +  const columnVisibility: VisibilityState = { project_code: showProject, owner: showOwner }           
+      126    const textCellClass = viewMode === 'compact' ? 'truncate' : 'whitespace-normal break-words'
+      127
+      128    const canEditRecord = (record: Record): boolean => {
+
+⏺ Ora aggiungo il bottone toggle Owner accanto a quello Progetto:
+
+⏺ Update(src/components/records/RecordGrid.tsx)
+  ⎿  Added 16 lines
+      629                <Tooltip>
+      630                  <TooltipTrigger asChild>
+      631                    <Button
+      632 +                    variant={showOwner ? 'default' : 'outline'}                                       
+      633 +                    size="sm"                                                                         
+      634 +                    className="h-7 px-2 text-xs gap-1"                                                
+      635 +                    onClick={() => handleSetShowOwner(!showOwner)}                                    
+      636 +                  >                                                                                   
+      637 +                    {showOwner ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5"    
+          +/>}                                                                                                   
+      638 +                    Owner                                                                             
+      639 +                  </Button>                                                                           
+      640 +                </TooltipTrigger>                                                                     
+      641 +                <TooltipContent>{showOwner ? 'Nascondi colonna Responsabile' : 'Mostra colonna        
+          +Responsabile'}</TooltipContent>                                                                       
+      642 +              </Tooltip>                                                                              
+      643 +            </TooltipProvider>                                                                        
+      644 +            <TooltipProvider>                                                                         
+      645 +              <Tooltip>                                                                               
+      646 +                <TooltipTrigger asChild>                                                              
+      647 +                  <Button                                                                             
+      648                      variant={showProject ? 'default' : 'outline'}
+      649                      size="sm"
+      650                      className="h-7 px-2 text-xs gap-1"
+
+⏺ Bash(npx tsc --noEmit 2>&1)
+  ⎿  (No content)
+
+⏺ Compila. Fatto: aggiunto toggle "Owner" accanto a "Progetto" nella toolbar della griglia, con persistenza in
+  localStorage (forecasto_showOwner).
+
+✻ Churned for 48s
+
+❯ /exit        
+  ⎿  Bye!
+                                                                                                                        
+⏺ Background command "Start Forecasto server" was stopped
+                                                                                                                        
+✢ Evaporating…                                                                                          
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯  
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ accept edits on (shift+tab to cycle) · 16 files +382 -192 · esc to interrupt · ctrl+t to hide tasks
+
+Resume this session with:
+claude --resume 468e0e63-1481-4ee7-937c-cb3ebf9ddb36
+
+Total cost:            $20.82
+Total duration (API):  39m 44s
+Total duration (wall): 1d 5h 57m
+Total code changes:    953 lines added, 903 lines removed
+Usage by model:
+    claude-haiku-4-5:  64.0k input, 20.7k output, 1.6m cache read, 175.1k cache write ($0.55)
+     claude-opus-4-6:  359 input, 96.9k output, 19.1m cache read, 1.2m cache write ($19.27)
+   claude-sonnet-4-5:  92 input, 9.5k output, 545.1k cache read, 77.7k cache write ($1.00)
+cashbit@MacBook-Air-di-Carlo forecasto % 

@@ -27,6 +27,7 @@ class RecordCreate(BaseModel):
     transaction_id: str | None = None
     bank_account_id: str | None = None
     project_code: str | None = None
+    review_date: date | None = None
 
     @field_validator("area")
     @classmethod
@@ -54,6 +55,7 @@ class RecordUpdate(BaseModel):
     transaction_id: str | None = None
     bank_account_id: str | None = None
     project_code: str | None = None
+    review_date: date | None = None
 
 class TransferHistoryEntry(BaseModel):
     """Entry in transfer history."""
@@ -85,6 +87,7 @@ class RecordResponse(BaseModel):
     transaction_id: str | None = None
     bank_account_id: str | None = None
     project_code: str | None = None
+    review_date: date | None = None
     classification: dict
     transfer_history: list[TransferHistoryEntry]
     version: int

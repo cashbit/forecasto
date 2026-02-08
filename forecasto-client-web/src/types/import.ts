@@ -18,6 +18,7 @@ export interface ImportRecord {
   project_code?: string
   owner?: string
   nextaction?: string
+  review_date?: string
 }
 
 // Mapping from legacy type to area

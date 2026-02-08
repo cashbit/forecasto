@@ -144,6 +144,11 @@ export function ImportDialog({
       nextaction: item.nextaction || undefined,
       transaction_id: item.transaction_id || `import-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       project_code: item.project_code || undefined,
+      review_date: item.review_date || (() => {
+        const d = new Date()
+        d.setDate(d.getDate() + 7)
+        return d.toISOString().split('T')[0]
+      })(),
     }
   }
 

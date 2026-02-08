@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { AxiosError } from 'axios'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,17 +25,14 @@ import { BulkMergeDialog } from '@/components/records/BulkMergeDialog'
 import { useRecords } from '@/hooks/useRecords'
 import { useFilterStore } from '@/stores/filterStore'
 import { useUiStore } from '@/stores/uiStore'
-import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { toast } from '@/hooks/useToast'
 import { AREA_LABELS, AREAS } from '@/lib/constants'
 import type { Record, Area, RecordCreate, RecordUpdate } from '@/types/record'
 
 export function DashboardPage() {
   const { currentArea, setArea } = useFilterStore()
-  const { createRecordDialogOpen, setCreateRecordDialogOpen } = useUiStore()
-  const { getPrimaryWorkspace } = useWorkspaceStore()
+  const { createRecordDialogOpen, setCreateRecordDialogOpen, reviewMode } = useUiStore()
   const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord } = useRecords()
-  const primaryWorkspace = getPrimaryWorkspace()
 
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
@@ -54,6 +50,23 @@ export function DashboardPage() {
   // Delete confirmation state
   const [recordToDelete, setRecordToDelete] = useState<Record | null>(null)
   const [recordsToDelete, setRecordsToDelete] = useState<Record[] | null>(null)
+
+  const handleReviewRecord = async (days: number) => {
+    if (!editingRecord) return
+    const nextDate = new Date()
+    nextDate.setDate(nextDate.getDate() + days)
+    try {
+      await updateRecord({
+        recordId: editingRecord.id,
+        data: { review_date: nextDate.toISOString().split('T')[0] }
+      })
+      setEditingRecord(null)
+      setSelectedRecord(null)
+      toast({ title: `Revisione posticipata di ${days} giorni`, variant: 'success' })
+    } catch {
+      toast({ title: 'Errore durante la revisione', variant: 'destructive' })
+    }
+  }
 
   const handleCreateRecord = async (data: RecordCreate) => {
     try {
@@ -298,7 +311,7 @@ export function DashboardPage() {
   }
 
   const handleBulkExport = (selectedRecords: Record[]) => {
-    const headers = ['Data', 'Conto', 'Riferimento', 'ID Transazione', 'Responsabile', 'Imponibile', 'Totale', 'Stage', 'Area']
+    const headers = ['Data', 'Conto', 'Riferimento', 'ID Transazione', 'Responsabile', 'Imponibile', 'Totale', 'Stage', 'Area', 'Revisione']
     const rows = selectedRecords.map(r => [
       r.date_cashflow,
       r.account,
@@ -309,6 +322,7 @@ export function DashboardPage() {
       r.total,
       r.stage,
       r.area,
+      r.review_date || '',
     ])
 
     const csv = [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n')
@@ -365,52 +379,35 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Right Panel */}
-      {selectedRecord && !editingRecord && (
-        <div className="w-80 border-l">
-          <RecordDetail
-            record={selectedRecord}
-            onClose={() => setSelectedRecord(null)}
-            onEdit={() => setEditingRecord(selectedRecord)}
-          />
+      {/* Right Panel — 3 states: editing, creating, detail */}
+      {(selectedRecord || editingRecord || createRecordDialogOpen) && (
+        <div className="w-120 border-l">
+          {editingRecord ? (
+            <RecordForm
+              record={editingRecord}
+              area={currentArea}
+              onSubmit={(data) => handleUpdateRecord(data as RecordUpdate)}
+              onCancel={() => setEditingRecord(null)}
+              onClose={() => setEditingRecord(null)}
+              reviewMode={reviewMode}
+              onReview={handleReviewRecord}
+            />
+          ) : createRecordDialogOpen ? (
+            <RecordForm
+              area={currentArea}
+              onSubmit={(data) => handleCreateRecord(data as RecordCreate)}
+              onCancel={() => setCreateRecordDialogOpen(false)}
+              onClose={() => setCreateRecordDialogOpen(false)}
+            />
+          ) : selectedRecord ? (
+            <RecordDetail
+              record={selectedRecord}
+              onClose={() => setSelectedRecord(null)}
+              onEdit={() => setEditingRecord(selectedRecord)}
+            />
+          ) : null}
         </div>
       )}
-
-      {/* Create/Edit Dialog */}
-      <Dialog open={createRecordDialogOpen || !!editingRecord} onOpenChange={(open) => {
-        if (!open) {
-          setCreateRecordDialogOpen(false)
-          setEditingRecord(null)
-        }
-      }}>
-        <DialogContent className="max-w-5xl">
-          <DialogHeader className="flex flex-row items-start justify-between">
-            <DialogTitle>
-              {editingRecord ? 'Modifica Record' : 'Nuovo Record'}
-            </DialogTitle>
-            {!editingRecord && primaryWorkspace && (
-              <div className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">
-                {primaryWorkspace.name}
-              </div>
-            )}
-          </DialogHeader>
-          <RecordForm
-            record={editingRecord || undefined}
-            area={currentArea}
-            onSubmit={(data) => {
-              if (editingRecord) {
-                handleUpdateRecord(data as RecordUpdate)
-              } else {
-                handleCreateRecord(data as RecordCreate)
-              }
-            }}
-            onCancel={() => {
-              setCreateRecordDialogOpen(false)
-              setEditingRecord(null)
-            }}
-          />
-        </DialogContent>
-      </Dialog>
 
       {/* Transfer Dialog */}
       <TransferDialog
