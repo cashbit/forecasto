@@ -30,7 +30,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { adminApi } from '@/api/admin'
 import type { AdminUser, UserFilter } from '@/types/admin'
-import { Search, Ban, CheckCircle, Shield } from 'lucide-react'
+import { Search, Ban, CheckCircle, Shield, Handshake, Settings } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 function formatDate(date: string | null): string {
@@ -44,10 +44,22 @@ function formatDate(date: string | null): string {
   })
 }
 
-function getUserStatus(user: AdminUser): { label: string; variant: 'default' | 'secondary' | 'destructive' } {
-  if (user.is_admin) return { label: 'Admin', variant: 'default' }
-  if (user.is_blocked) return { label: 'Bloccato', variant: 'destructive' }
-  return { label: 'Attivo', variant: 'secondary' }
+function partnerTypeLabel(type: string | null): string {
+  if (type === 'billing_to_client') return 'Fatt. Cliente'
+  if (type === 'billing_to_partner') return 'Fatt. Partner'
+  return ''
+}
+
+function getUserStatus(user: AdminUser): { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }[] {
+  const badges: { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }[] = []
+  if (user.is_admin) badges.push({ label: 'Admin', variant: 'default' })
+  if (user.is_partner) {
+    const ptLabel = partnerTypeLabel(user.partner_type)
+    badges.push({ label: ptLabel ? `Partner - ${ptLabel}` : 'Partner', variant: 'outline' })
+  }
+  if (user.is_blocked) badges.push({ label: 'Bloccato', variant: 'destructive' })
+  if (badges.length === 0) badges.push({ label: 'Attivo', variant: 'secondary' })
+  return badges
 }
 
 export function UsersPage() {
@@ -61,8 +73,11 @@ export function UsersPage() {
     page_size: 50,
   })
   const [blockDialogOpen, setBlockDialogOpen] = useState(false)
+  const [partnerDialogOpen, setPartnerDialogOpen] = useState(false)
+  const [partnerTypeDialogOpen, setPartnerTypeDialogOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null)
   const [blockReason, setBlockReason] = useState('')
+  const [selectedPartnerType, setSelectedPartnerType] = useState<string>('billing_to_partner')
   const [processing, setProcessing] = useState(false)
 
   const fetchUsers = async () => {
@@ -136,6 +151,76 @@ export function UsersPage() {
     }
   }
 
+  const handleTogglePartner = async (user: AdminUser) => {
+    if (user.is_partner) {
+      // Remove partner
+      setProcessing(true)
+      try {
+        await adminApi.setPartner(user.id, false)
+        toast({ title: 'Ruolo Partner rimosso' })
+        fetchUsers()
+      } catch (error) {
+        toast({
+          title: 'Errore',
+          description: 'Impossibile aggiornare il ruolo partner',
+          variant: 'destructive',
+        })
+      } finally {
+        setProcessing(false)
+      }
+    } else {
+      // Promote to partner: open dialog to choose type
+      setSelectedUser(user)
+      setSelectedPartnerType('billing_to_partner')
+      setPartnerDialogOpen(true)
+    }
+  }
+
+  const handlePromoteToPartner = async () => {
+    if (!selectedUser) return
+    setProcessing(true)
+    try {
+      await adminApi.setPartner(selectedUser.id, true)
+      await adminApi.setPartnerType(selectedUser.id, selectedPartnerType)
+      toast({ title: 'Utente promosso a Partner' })
+      setPartnerDialogOpen(false)
+      fetchUsers()
+    } catch (error) {
+      toast({
+        title: 'Errore',
+        description: 'Impossibile promuovere a partner',
+        variant: 'destructive',
+      })
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const openPartnerTypeDialog = (user: AdminUser) => {
+    setSelectedUser(user)
+    setSelectedPartnerType(user.partner_type || 'billing_to_partner')
+    setPartnerTypeDialogOpen(true)
+  }
+
+  const handleChangePartnerType = async () => {
+    if (!selectedUser) return
+    setProcessing(true)
+    try {
+      await adminApi.setPartnerType(selectedUser.id, selectedPartnerType)
+      toast({ title: 'Tipo partner aggiornato' })
+      setPartnerTypeDialogOpen(false)
+      fetchUsers()
+    } catch (error) {
+      toast({
+        title: 'Errore',
+        description: 'Impossibile aggiornare il tipo partner',
+        variant: 'destructive',
+      })
+    } finally {
+      setProcessing(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -172,6 +257,7 @@ export function UsersPage() {
                 <SelectItem value="active">Attivi</SelectItem>
                 <SelectItem value="blocked">Bloccati</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="partner">Partner</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -196,18 +282,23 @@ export function UsersPage() {
               </TableHeader>
               <TableBody>
                 {users.map((user) => {
-                  const status = getUserStatus(user)
+                  const statuses = getUserStatus(user)
                   return (
                     <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           {user.is_admin && <Shield className="h-4 w-4 text-primary" />}
+                          {user.is_partner && <Handshake className="h-4 w-4 text-primary" />}
                           {user.name}
                         </div>
                       </TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
-                        <Badge variant={status.variant}>{status.label}</Badge>
+                        <div className="flex items-center gap-1">
+                          {statuses.map((s, i) => (
+                            <Badge key={i} variant={s.variant}>{s.label}</Badge>
+                          ))}
+                        </div>
                         {user.blocked_reason && (
                           <p className="text-xs text-muted-foreground mt-1">
                             {user.blocked_reason}
@@ -218,7 +309,7 @@ export function UsersPage() {
                       <TableCell>{formatDate(user.last_login_at)}</TableCell>
                       <TableCell>
                         {!user.is_admin && (
-                          <>
+                          <div className="flex items-center gap-1">
                             {user.is_blocked ? (
                               <Button
                                 variant="ghost"
@@ -230,17 +321,41 @@ export function UsersPage() {
                                 Sblocca
                               </Button>
                             ) : (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openBlockDialog(user)}
-                                disabled={processing}
-                              >
-                                <Ban className="h-4 w-4 mr-1" />
-                                Blocca
-                              </Button>
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleTogglePartner(user)}
+                                  disabled={processing}
+                                  title={user.is_partner ? 'Rimuovi Partner' : 'Promuovi a Partner'}
+                                >
+                                  <Handshake className="h-4 w-4 mr-1" />
+                                  {user.is_partner ? 'Rimuovi Partner' : 'Partner'}
+                                </Button>
+                                {user.is_partner && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => openPartnerTypeDialog(user)}
+                                    disabled={processing}
+                                    title="Modifica tipo partner"
+                                  >
+                                    <Settings className="h-4 w-4 mr-1" />
+                                    Tipo
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openBlockDialog(user)}
+                                  disabled={processing}
+                                >
+                                  <Ban className="h-4 w-4 mr-1" />
+                                  Blocca
+                                </Button>
+                              </>
                             )}
-                          </>
+                          </div>
                         )}
                       </TableCell>
                     </TableRow>
@@ -277,6 +392,68 @@ export function UsersPage() {
             </Button>
             <Button variant="destructive" onClick={handleBlock} disabled={processing}>
               {processing ? 'Blocco...' : 'Blocca utente'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={partnerDialogOpen} onOpenChange={setPartnerDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Promuovi a Partner</DialogTitle>
+            <DialogDescription>
+              Scegli il tipo di fatturazione per il partner <strong>{selectedUser?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <Label>Tipo fatturazione</Label>
+            <Select value={selectedPartnerType} onValueChange={setSelectedPartnerType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="billing_to_client">Fatturazione a cliente</SelectItem>
+                <SelectItem value="billing_to_partner">Fatturazione a partner</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPartnerDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button onClick={handlePromoteToPartner} disabled={processing}>
+              {processing ? 'Promozione...' : 'Promuovi'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={partnerTypeDialogOpen} onOpenChange={setPartnerTypeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifica tipo partner</DialogTitle>
+            <DialogDescription>
+              Modifica il tipo di fatturazione per <strong>{selectedUser?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <Label>Tipo fatturazione</Label>
+            <Select value={selectedPartnerType} onValueChange={setSelectedPartnerType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="billing_to_client">Fatturazione a cliente</SelectItem>
+                <SelectItem value="billing_to_partner">Fatturazione a partner</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPartnerTypeDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button onClick={handleChangePartnerType} disabled={processing}>
+              {processing ? 'Aggiornamento...' : 'Aggiorna'}
             </Button>
           </DialogFooter>
         </DialogContent>

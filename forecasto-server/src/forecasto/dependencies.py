@@ -148,3 +148,12 @@ async def require_admin(
     if not current_user.is_admin:
         raise ForbiddenException("Accesso riservato agli amministratori")
     return current_user
+
+
+async def require_partner(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """Require the current user to be a partner."""
+    if not current_user.is_partner:
+        raise ForbiddenException("Accesso riservato ai partner")
+    return current_user

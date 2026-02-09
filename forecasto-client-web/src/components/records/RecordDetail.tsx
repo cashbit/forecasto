@@ -64,7 +64,7 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
         {record.note && (
           <div>
             <p className="text-sm text-muted-foreground">Note</p>
-            <p className="text-sm">{record.note}</p>
+            <p className="text-sm whitespace-pre-line">{record.note}</p>
           </div>
         )}
 

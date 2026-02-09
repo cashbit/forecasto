@@ -5,21 +5,28 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.database import get_db
 from forecasto.dependencies import require_admin
 from forecasto.models.user import User
 from forecasto.schemas.admin import (
+    ActivatedCodesReportFilter,
     AdminUserListResponse,
     AdminUserResponse,
+    AssignPartnerRequest,
     BatchListResponse,
     BatchWithCodesResponse,
     BlockUserRequest,
     CodeFilter,
     CodeListResponse,
     CreateBatchRequest,
+    InvoiceCodesRequest,
+    RecognizeFeeRequest,
     RegistrationCodeResponse,
+    SetPartnerRequest,
+    SetPartnerTypeRequest,
     UserFilter,
     ValidateCodeRequest,
     ValidateCodeResponse,
@@ -201,3 +208,135 @@ async def unblock_user(
     service = AdminService(db)
     user = await service.unblock_user(user_id)
     return {"success": True, "user": user}
+
+
+@router.patch("/users/{user_id}/partner", response_model=dict)
+async def set_partner(
+    user_id: str,
+    data: SetPartnerRequest,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Set or unset partner role for a user."""
+    service = AdminService(db)
+    user = await service.set_partner(user_id, data.is_partner, admin_user)
+    return {"success": True, "user": user}
+
+
+@router.patch("/registration-codes/batches/{batch_id}/assign-partner", response_model=dict)
+async def assign_batch_to_partner(
+    batch_id: str,
+    data: AssignPartnerRequest,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Assign a batch to a partner."""
+    service = AdminService(db)
+    batch = await service.assign_batch_to_partner(batch_id, data.partner_id)
+    return {"success": True, "batch": batch}
+
+
+# Partner Type Endpoint
+
+
+@router.patch("/users/{user_id}/partner-type", response_model=dict)
+async def set_partner_type(
+    user_id: str,
+    data: SetPartnerTypeRequest,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Set the billing type for a partner."""
+    service = AdminService(db)
+    user = await service.set_partner_type(user_id, data.partner_type)
+    return {"success": True, "user": user}
+
+
+# Report and Billing Endpoints
+
+
+@router.get("/reports/activated-codes", response_model=dict)
+async def get_activated_codes_report(
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    partner_id: str | None = Query(None),
+    month: int | None = Query(None, ge=1, le=12),
+    year: int | None = Query(None),
+    invoiced: bool | None = Query(None),
+):
+    """Get report of activated codes."""
+    filters = ActivatedCodesReportFilter(
+        partner_id=partner_id,
+        month=month,
+        year=year,
+        invoiced=invoiced,
+    )
+    service = AdminService(db)
+    rows = await service.get_activated_codes_report(filters)
+    return {"success": True, "rows": rows}
+
+
+@router.post("/reports/activated-codes/invoice", response_model=dict)
+async def invoice_codes(
+    data: InvoiceCodesRequest,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Mark codes as invoiced."""
+    service = AdminService(db)
+    count = await service.invoice_codes(data.code_ids, data.invoiced_to, data.invoice_note)
+    return {"success": True, "updated": count}
+
+
+@router.post("/reports/activated-codes/recognize-fee", response_model=dict)
+async def recognize_partner_fee(
+    data: RecognizeFeeRequest,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Recognize partner fee for codes invoiced to client."""
+    service = AdminService(db)
+    count = await service.recognize_partner_fee(data.code_ids)
+    return {"success": True, "updated": count}
+
+
+@router.get("/reports/billing-summary", response_model=dict)
+async def get_billing_summary(
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    partner_id: str | None = Query(None),
+    month: int | None = Query(None, ge=1, le=12),
+    year: int | None = Query(None),
+):
+    """Get billing summary per partner."""
+    service = AdminService(db)
+    summaries = await service.get_billing_summary(partner_id, month, year)
+    return {"success": True, "summaries": summaries}
+
+
+@router.get("/reports/activated-codes/export")
+async def export_activated_codes_csv(
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    partner_id: str | None = Query(None),
+    month: int | None = Query(None, ge=1, le=12),
+    year: int | None = Query(None),
+    invoiced: bool | None = Query(None),
+):
+    """Export activated codes as CSV."""
+    filters = ActivatedCodesReportFilter(
+        partner_id=partner_id,
+        month=month,
+        year=year,
+        invoiced=invoiced,
+    )
+    service = AdminService(db)
+    csv_content = await service.export_activated_codes_csv(filters)
+
+    import io
+
+    return StreamingResponse(
+        io.StringIO(csv_content),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=report_attivazioni.csv"},
+    )

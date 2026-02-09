@@ -63,6 +63,7 @@ class AuthService:
                 name=user.name,
                 invite_code=user.invite_code,
                 is_admin=user.is_admin,
+                is_partner=user.is_partner,
             ),
         )
 

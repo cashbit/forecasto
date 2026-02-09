@@ -38,8 +38,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { adminApi } from '@/api/admin'
-import type { RegistrationCode, RegistrationCodeBatch, RegistrationCodeBatchWithCodes } from '@/types/admin'
-import { Plus, ChevronDown, ChevronRight, Copy, X, Download } from 'lucide-react'
+import { PartnerCombobox } from '@/components/admin/PartnerCombobox'
+import type { AdminUser, RegistrationCode, RegistrationCodeBatch, RegistrationCodeBatchWithCodes } from '@/types/admin'
+import { Plus, ChevronDown, ChevronRight, Copy, X, Download, Handshake } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 const createBatchSchema = z.object({
@@ -67,7 +68,10 @@ function formatDate(date: string | null): string {
   })
 }
 
-function BatchRow({ batch, onRefresh }: { batch: RegistrationCodeBatch; onRefresh: () => void }) {
+function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch; onRefresh: () => void; partners: AdminUser[] }) {
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false)
+  const [selectedPartnerId, setSelectedPartnerId] = useState('')
+  const [assigning, setAssigning] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const [batchDetails, setBatchDetails] = useState<RegistrationCodeBatchWithCodes | null>(null)
   const [loading, setLoading] = useState(false)
@@ -115,6 +119,25 @@ function BatchRow({ batch, onRefresh }: { batch: RegistrationCodeBatch; onRefres
     }
   }
 
+  const handleAssignPartner = async () => {
+    if (!selectedPartnerId) return
+    setAssigning(true)
+    try {
+      await adminApi.assignBatchToPartner(batch.id, selectedPartnerId)
+      toast({ title: 'Batch assegnato al partner' })
+      setAssignDialogOpen(false)
+      onRefresh()
+    } catch (error) {
+      toast({
+        title: 'Errore',
+        description: 'Impossibile assegnare il batch al partner',
+        variant: 'destructive',
+      })
+    } finally {
+      setAssigning(false)
+    }
+  }
+
   const exportCSV = () => {
     if (!batchDetails) return
     const header = 'Codice,Stato,Usato da,Data uso\n'
@@ -156,6 +179,12 @@ function BatchRow({ batch, onRefresh }: { batch: RegistrationCodeBatch; onRefres
             </div>
           </div>
           <div className="flex items-center gap-6 text-sm">
+            {batch.partner_name && (
+              <div className="flex items-center gap-1">
+                <Handshake className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="font-medium">{batch.partner_name}</span>
+              </div>
+            )}
             <div>
               <span className="text-muted-foreground">Codici:</span>{' '}
               <span className="font-medium">{batch.used_codes}/{batch.total_codes} usati</span>
@@ -179,10 +208,18 @@ function BatchRow({ batch, onRefresh }: { batch: RegistrationCodeBatch; onRefres
                     <p className="text-muted-foreground">Nota: {batch.note}</p>
                   )}
                 </div>
-                <Button variant="outline" size="sm" onClick={exportCSV}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Esporta CSV
-                </Button>
+                <div className="flex items-center gap-2">
+                  {!batch.partner_id && partners.length > 0 && (
+                    <Button variant="outline" size="sm" onClick={() => setAssignDialogOpen(true)}>
+                      <Handshake className="h-4 w-4 mr-2" />
+                      Assegna a Partner
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={exportCSV}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Esporta CSV
+                  </Button>
+                </div>
               </div>
               <Table>
                 <TableHeader>
@@ -191,6 +228,9 @@ function BatchRow({ batch, onRefresh }: { batch: RegistrationCodeBatch; onRefres
                     <TableHead>Stato</TableHead>
                     <TableHead>Usato da</TableHead>
                     <TableHead>Data uso</TableHead>
+                    <TableHead>Fatturato</TableHead>
+                    <TableHead>Fatt. a</TableHead>
+                    <TableHead>Fee</TableHead>
                     <TableHead className="w-[100px]">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -205,6 +245,25 @@ function BatchRow({ batch, onRefresh }: { batch: RegistrationCodeBatch; onRefres
                         </TableCell>
                         <TableCell>{code.used_by_email || '-'}</TableCell>
                         <TableCell>{formatDate(code.used_at)}</TableCell>
+                        <TableCell>
+                          {code.invoiced ? (
+                            <Badge variant="default">Si</Badge>
+                          ) : (
+                            <Badge variant="outline">No</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{code.invoiced_to || '-'}</TableCell>
+                        <TableCell>
+                          {code.invoiced && code.invoiced_to === 'client' ? (
+                            code.partner_fee_recognized ? (
+                              <Badge variant="default">Si</Badge>
+                            ) : (
+                              <Badge variant="outline">Pendente</Badge>
+                            )
+                          ) : (
+                            '-'
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             <Button
@@ -236,6 +295,34 @@ function BatchRow({ batch, onRefresh }: { batch: RegistrationCodeBatch; onRefres
           ) : null}
         </div>
       </CollapsibleContent>
+
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assegna a Partner</DialogTitle>
+            <DialogDescription>
+              Seleziona il partner a cui assegnare il batch "{batch.name}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-2">
+            <Label>Partner</Label>
+            <PartnerCombobox
+              partners={partners}
+              value={selectedPartnerId}
+              onValueChange={setSelectedPartnerId}
+              allowClear={false}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button onClick={handleAssignPartner} disabled={assigning || !selectedPartnerId}>
+              {assigning ? 'Assegnazione...' : 'Assegna'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Collapsible>
   )
 }
@@ -245,6 +332,8 @@ export function RegistrationCodesPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [partners, setPartners] = useState<AdminUser[]>([])
+  const [selectedPartnerForCreate, setSelectedPartnerForCreate] = useState<string>('')
 
   const {
     register,
@@ -278,8 +367,18 @@ export function RegistrationCodesPage() {
     }
   }
 
+  const fetchPartners = async () => {
+    try {
+      const data = await adminApi.listUsers({ status: 'partner' })
+      setPartners(data.users)
+    } catch {
+      // Silently fail - partners list is optional
+    }
+  }
+
   useEffect(() => {
     fetchBatches()
+    fetchPartners()
   }, [])
 
   const onSubmit = async (data: CreateBatchFormData) => {
@@ -290,10 +389,12 @@ export function RegistrationCodesPage() {
         count: data.count,
         expires_in_days: data.expiresInDays === 'never' ? null : parseInt(data.expiresInDays),
         note: data.note || null,
+        partner_id: selectedPartnerForCreate || undefined,
       })
       toast({ title: 'Codici generati con successo' })
       setDialogOpen(false)
       reset()
+      setSelectedPartnerForCreate('')
       fetchBatches()
     } catch (error) {
       toast({
@@ -380,6 +481,17 @@ export function RegistrationCodesPage() {
                     {...register('note')}
                   />
                 </div>
+                {partners.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Assegna a Partner (opzionale)</Label>
+                    <PartnerCombobox
+                      partners={partners}
+                      value={selectedPartnerForCreate}
+                      onValueChange={setSelectedPartnerForCreate}
+                      placeholder="Nessun partner"
+                    />
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
@@ -411,7 +523,7 @@ export function RegistrationCodesPage() {
           ) : (
             <div className="divide-y">
               {batches.map((batch) => (
-                <BatchRow key={batch.id} batch={batch} onRefresh={fetchBatches} />
+                <BatchRow key={batch.id} batch={batch} onRefresh={() => { fetchBatches(); fetchPartners() }} partners={partners} />
               ))}
             </div>
           )}

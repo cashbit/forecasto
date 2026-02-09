@@ -1,9 +1,14 @@
 import apiClient from './client'
 import type {
+  ActivatedCodeReportRow,
+  ActivatedCodesReportFilter,
   AdminUser,
+  BillingSummaryFilter,
   BlockUserRequest,
   CodeFilter,
   CreateBatchRequest,
+  InvoiceCodesRequest,
+  PartnerBillingSummary,
   RegistrationCode,
   RegistrationCodeBatch,
   RegistrationCodeBatchWithCodes,
@@ -46,6 +51,26 @@ interface UserResponse {
 interface ValidateResponse {
   success: boolean
   validation: ValidateCodeResponse
+}
+
+interface ActivatedCodesReportResponse {
+  success: boolean
+  rows: ActivatedCodeReportRow[]
+}
+
+interface BillingSummaryResponse {
+  success: boolean
+  summaries: PartnerBillingSummary[]
+}
+
+interface InvoiceResponse {
+  success: boolean
+  updated: number
+}
+
+interface FeeResponse {
+  success: boolean
+  updated: number
 }
 
 export const adminApi = {
@@ -120,5 +145,66 @@ export const adminApi = {
   unblockUser: async (userId: string): Promise<AdminUser> => {
     const response = await apiClient.patch<UserResponse>(`/admin/users/${userId}/unblock`, {})
     return response.data.user
+  },
+
+  setPartner: async (userId: string, isPartner: boolean): Promise<AdminUser> => {
+    const response = await apiClient.patch<UserResponse>(`/admin/users/${userId}/partner`, { is_partner: isPartner })
+    return response.data.user
+  },
+
+  assignBatchToPartner: async (batchId: string, partnerId: string): Promise<RegistrationCodeBatchWithCodes> => {
+    const response = await apiClient.patch<BatchResponse>(`/admin/registration-codes/batches/${batchId}/assign-partner`, { partner_id: partnerId })
+    return response.data.batch
+  },
+
+  setPartnerType: async (userId: string, partnerType: string): Promise<AdminUser> => {
+    const response = await apiClient.patch<UserResponse>(`/admin/users/${userId}/partner-type`, { partner_type: partnerType })
+    return response.data.user
+  },
+
+  // Report and Billing Endpoints
+
+  getActivatedCodesReport: async (filters?: ActivatedCodesReportFilter): Promise<ActivatedCodeReportRow[]> => {
+    const params = new URLSearchParams()
+    if (filters?.partner_id) params.append('partner_id', filters.partner_id)
+    if (filters?.month) params.append('month', filters.month.toString())
+    if (filters?.year) params.append('year', filters.year.toString())
+    if (filters?.invoiced !== undefined) params.append('invoiced', filters.invoiced.toString())
+
+    const response = await apiClient.get<ActivatedCodesReportResponse>(`/admin/reports/activated-codes?${params}`)
+    return response.data.rows
+  },
+
+  invoiceCodes: async (data: InvoiceCodesRequest): Promise<number> => {
+    const response = await apiClient.post<InvoiceResponse>('/admin/reports/activated-codes/invoice', data)
+    return response.data.updated
+  },
+
+  recognizePartnerFee: async (codeIds: string[]): Promise<number> => {
+    const response = await apiClient.post<FeeResponse>('/admin/reports/activated-codes/recognize-fee', { code_ids: codeIds })
+    return response.data.updated
+  },
+
+  getBillingSummary: async (filters?: BillingSummaryFilter): Promise<PartnerBillingSummary[]> => {
+    const params = new URLSearchParams()
+    if (filters?.partner_id) params.append('partner_id', filters.partner_id)
+    if (filters?.month) params.append('month', filters.month.toString())
+    if (filters?.year) params.append('year', filters.year.toString())
+
+    const response = await apiClient.get<BillingSummaryResponse>(`/admin/reports/billing-summary?${params}`)
+    return response.data.summaries
+  },
+
+  exportActivatedCodesCSV: async (filters?: ActivatedCodesReportFilter): Promise<Blob> => {
+    const params = new URLSearchParams()
+    if (filters?.partner_id) params.append('partner_id', filters.partner_id)
+    if (filters?.month) params.append('month', filters.month.toString())
+    if (filters?.year) params.append('year', filters.year.toString())
+    if (filters?.invoiced !== undefined) params.append('invoiced', filters.invoiced.toString())
+
+    const response = await apiClient.get(`/admin/reports/activated-codes/export?${params}`, {
+      responseType: 'blob',
+    })
+    return response.data
   },
 }

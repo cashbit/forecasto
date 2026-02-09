@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { User, Building, Bell, Shield, Users, Landmark } from 'lucide-react'
+import { User, Building, Bell, Shield, Users, Landmark, Handshake } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,6 +11,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { MembersDialog } from '@/components/workspace/MembersDialog'
 import { BankAccountsTab } from '@/components/settings/BankAccountsTab'
+import { PartnershipTab } from '@/components/settings/PartnershipTab'
 import { WorkspaceBankAccountsSection } from '@/components/settings/WorkspaceBankAccountsSection'
 import { toast } from '@/hooks/useToast'
 
@@ -89,6 +90,12 @@ export function SettingsPage() {
             <Landmark className="mr-2 h-4 w-4" />
             Conti Bancari
           </TabsTrigger>
+          {user?.is_partner && (
+            <TabsTrigger value="partnership">
+              <Handshake className="mr-2 h-4 w-4" />
+              Partnership
+            </TabsTrigger>
+          )}
           <TabsTrigger value="notifications">
             <Bell className="mr-2 h-4 w-4" />
             Notifiche
@@ -219,6 +226,12 @@ export function SettingsPage() {
         <TabsContent value="bank-accounts">
           <BankAccountsTab />
         </TabsContent>
+
+        {user?.is_partner && (
+          <TabsContent value="partnership">
+            <PartnershipTab />
+          </TabsContent>
+        )}
 
         <TabsContent value="notifications">
           <Card>

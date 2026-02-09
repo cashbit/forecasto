@@ -20,10 +20,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AmountDisplay } from '@/components/common/AmountDisplay'
 import { DateDisplay } from '@/components/common/DateDisplay'
 import { StatusBadge } from '@/components/common/StatusBadge'
-import { EmptyState } from '@/components/common/EmptyState'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import type { Record } from '@/types/record'
-import { FileSpreadsheet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -379,16 +377,6 @@ export function RecordGrid({
     )
   }
 
-  if (records.length === 0) {
-    return (
-      <EmptyState
-        icon={FileSpreadsheet}
-        title="Nessun record"
-        description="Non ci sono record in questa area. Crea un nuovo record per iniziare."
-      />
-    )
-  }
-
   const selectedRows = table.getFilteredSelectedRowModel().rows
   const selectedRecords = selectedRows.map(row => row.original)
 
@@ -669,6 +657,13 @@ export function RecordGrid({
             ))}
           </TableHeader>
           <TableBody>
+            {table.getRowModel().rows.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                  Nessun record in questa area. Clicca su "Nuovo" per iniziare.
+                </TableCell>
+              </TableRow>
+            )}
             {table.getRowModel().rows.map((row) => {
               const isActive = activeRecordId === row.original.id
               const isVisited = visitedRecordIds?.has(row.original.id) ?? false

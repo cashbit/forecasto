@@ -6,7 +6,7 @@ import secrets
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from forecasto.models.base import Base, TimestampMixin, UUIDMixin
@@ -35,11 +35,15 @@ class RegistrationCodeBatch(Base, UUIDMixin, TimestampMixin):
     created_by_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    partner_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Relationships
     created_by: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by_id])
+    partner: Mapped[Optional["User"]] = relationship("User", foreign_keys=[partner_id])
     codes: Mapped[list["RegistrationCode"]] = relationship(
         "RegistrationCode", back_populates="batch", cascade="all, delete-orphan"
     )
@@ -63,6 +67,14 @@ class RegistrationCode(Base, UUIDMixin):
         String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Billing fields
+    invoiced: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    invoiced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    invoiced_to: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    invoice_note: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    partner_fee_recognized: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    partner_fee_recognized_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Relationships
     batch: Mapped["RegistrationCodeBatch"] = relationship(

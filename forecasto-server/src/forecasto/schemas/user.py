@@ -41,6 +41,7 @@ class UserResponse(BaseModel):
     invite_code: str
     email_verified: bool
     is_admin: bool = False
+    is_partner: bool = False
     created_at: datetime
     last_login_at: datetime | None = None
     notification_preferences: dict

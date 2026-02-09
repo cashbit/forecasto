@@ -4,6 +4,7 @@ export interface User {
   name: string
   invite_code: string
   is_admin: boolean
+  is_partner: boolean
   is_active: boolean
   created_at: string
   updated_at: string

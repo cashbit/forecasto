@@ -52,6 +52,8 @@ class User(Base, UUIDMixin, TimestampMixin):
 
     # Admin and registration fields
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_partner: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    partner_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     blocked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     blocked_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

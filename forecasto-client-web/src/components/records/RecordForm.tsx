@@ -215,7 +215,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
     <>
     {/* Note expanded overlay */}
     {noteExpanded && (
-      <div className="w-80 border-r flex flex-col bg-background absolute right-full top-0 h-full z-20 shadow-lg">
+      <div className="w-120 border-r flex flex-col bg-background absolute right-full top-0 h-full z-20 shadow-lg">
         <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
           <Label className="text-lg font-semibold">Note</Label>
           <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setNoteExpanded(false)}>

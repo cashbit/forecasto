@@ -6,7 +6,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { CashflowPage } from '@/pages/CashflowPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
-import { AdminLayout, AdminDashboard, RegistrationCodesPage, UsersPage } from '@/pages/admin'
+import { AdminLayout, AdminDashboard, RegistrationCodesPage, UsersPage, ActivatedCodesReportPage, BillingSummaryPage } from '@/pages/admin'
 import { useAuthStore } from '@/stores/authStore'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -71,6 +71,8 @@ export const router = createBrowserRouter([
       { index: true, element: <AdminDashboard /> },
       { path: 'codes', element: <RegistrationCodesPage /> },
       { path: 'users', element: <UsersPage /> },
+      { path: 'reports/activations', element: <ActivatedCodesReportPage /> },
+      { path: 'reports/billing', element: <BillingSummaryPage /> },
     ],
   },
   { path: '*', element: <NotFoundPage /> },
