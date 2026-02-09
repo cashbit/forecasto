@@ -6,21 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { STAGES, STAGE_LABELS_BY_AREA, SIGN_OPTIONS } from '@/lib/constants'
+import { STAGES, STAGE_LABELS_BY_AREA, SIGN_OPTIONS, AREA_LABELS } from '@/lib/constants'
 import type { Record as RecordType, RecordCreate, RecordUpdate, Area } from '@/types/record'
 import type { Sign } from '@/types/workspace'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useAuthStore } from '@/stores/authStore'
-import { AlertCircle, X } from 'lucide-react'
+import { AlertCircle, X, ArrowRight } from 'lucide-react'
 
 const schema = z.object({
   account: z.string().min(1, 'Conto obbligatorio'),
@@ -50,7 +43,8 @@ interface RecordFormProps {
   onClose: () => void
   isLoading?: boolean
   reviewMode?: boolean
-  onReview?: (days: number) => void
+  onReview?: (days: number, data: RecordUpdate) => void
+  onPromote?: (recordId: string, toArea: Area, data: RecordUpdate) => void
 }
 
 // Map legacy stage values to 0/1
@@ -64,7 +58,14 @@ const normalizeLegacyStage = (stage?: string): string => {
   return stage ? (legacyMap[stage] || stage) : '0'
 }
 
-export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoading, reviewMode, onReview }: RecordFormProps) {
+const NEXT_AREA: Partial<Record<string, Area>> = {
+  budget: 'prospect',
+  prospect: 'orders',
+  orders: 'actual',
+}
+
+export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoading, reviewMode, onReview, onPromote }: RecordFormProps) {
+  const nextArea = NEXT_AREA[area]
   const stages = STAGES[area] || []
   const { checkPermission } = useWorkspaceStore()
   const { user } = useAuthStore()
@@ -166,7 +167,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
     calcVatFromTotal(watch('amount'), val)
   }
 
-  const handleFormSubmit = (data: FormData) => {
+  const processFormData = (data: FormData) => {
     const amountNum = parseFloat(data.amount) || 0
     const totalNum = parseFloat(data.total) || 0
     const vat = data.vat || (amountNum > 0 ? (((totalNum - amountNum) / amountNum) * 100).toFixed(1) : '0')
@@ -179,12 +180,33 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
     // Remove sign and vat from data (UI-only fields)
     const { sign, vat: _vat, review_date, ...submitData } = data
 
+    return { submitData, signedAmount, signedTotal, vat, review_date }
+  }
+
+  const handleFormSubmit = (data: FormData) => {
+    const { submitData, signedAmount, signedTotal, vat, review_date } = processFormData(data)
+
     if (record) {
       onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat, review_date: review_date || undefined } as RecordUpdate)
     } else {
       // Add default type for new records
       onSubmit({ ...submitData, area, amount: signedAmount, total: signedTotal, vat, review_date: review_date || undefined, type: 'standard' } as RecordCreate)
     }
+  }
+
+  const handleReviewClick = (days: number) => {
+    handleSubmit((data: FormData) => {
+      const { submitData, signedAmount, signedTotal, vat } = processFormData(data)
+      onReview?.(days, { ...submitData, amount: signedAmount, total: signedTotal, vat } as RecordUpdate)
+    })()
+  }
+
+  const handlePromoteClick = (toArea: Area) => {
+    if (!record) return
+    handleSubmit((data: FormData) => {
+      const { submitData, signedAmount, signedTotal, vat } = processFormData(data)
+      onPromote?.(record.id, toArea, { ...submitData, amount: signedAmount, total: signedTotal, vat } as RecordUpdate)
+    })()
   }
 
   return (
@@ -282,19 +304,21 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
 
           {/* Stato */}
           <div className="space-y-1">
-            <Label htmlFor="stage">Stato</Label>
-            <Select value={selectedStage} onValueChange={(v) => setValue('stage', v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Seleziona" />
-              </SelectTrigger>
-              <SelectContent>
-                {stages.map((stage) => (
-                  <SelectItem key={stage} value={stage}>
-                    {STAGE_LABELS_BY_AREA[area]?.[stage] || stage}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Stato</Label>
+            <div className="flex gap-1">
+              {stages.map((stage) => (
+                <Button
+                  key={stage}
+                  type="button"
+                  size="sm"
+                  variant={selectedStage === stage ? (stage === '1' ? 'default' : 'destructive') : 'outline'}
+                  onClick={() => setValue('stage', stage)}
+                  className="flex-1"
+                >
+                  {STAGE_LABELS_BY_AREA[area]?.[stage] || stage}
+                </Button>
+              ))}
+            </div>
             {errors.stage && <p className="text-sm text-destructive">{errors.stage.message}</p>}
           </div>
 
@@ -343,13 +367,24 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
             </Button>
             {reviewMode && record && onReview && (
               <>
-                <Button type="button" variant="outline" className="bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-700" onClick={() => onReview(7)}>
+                <Button type="button" variant="outline" className="bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-700" onClick={() => handleReviewClick(7)}>
                   Rivedi 7gg
                 </Button>
-                <Button type="button" variant="outline" className="bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-700" onClick={() => onReview(15)}>
+                <Button type="button" variant="outline" className="bg-amber-50 border-amber-300 hover:bg-amber-100 text-amber-700" onClick={() => handleReviewClick(15)}>
                   Rivedi 15gg
                 </Button>
               </>
+            )}
+            {record && nextArea && onPromote && (
+              <Button
+                type="button"
+                variant="outline"
+                className="bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-700"
+                onClick={() => handlePromoteClick(nextArea)}
+              >
+                <ArrowRight className="h-3.5 w-3.5 mr-1" />
+                {AREA_LABELS[nextArea]}
+              </Button>
             )}
             <Button type="submit" className="flex-1" disabled={isLoading || !canPerformAction}>
               {isLoading ? 'Salvataggio...' : record ? 'Aggiorna' : 'Crea'}

@@ -31,7 +31,7 @@ export function Header() {
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { sidebarOpen, toggleSidebar, reviewMode, toggleReviewMode } = useUiStore()
-  const { fetchWorkspaces, getPrimaryWorkspace, selectedWorkspaceIds } = useWorkspaceStore()
+  const { fetchWorkspaces, getPrimaryWorkspace, selectedWorkspaceIds, workspaces } = useWorkspaceStore()
   const queryClient = useQueryClient()
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
   const [isAccepting, setIsAccepting] = useState<string | null>(null)
@@ -185,6 +185,15 @@ export function Header() {
         >
           Revisione Zero
         </Button>
+
+        {selectedWorkspaceIds.length > 0 && (
+          <span className="text-sm text-muted-foreground truncate max-w-xs" title={workspaces.filter(w => selectedWorkspaceIds.includes(w.id)).map(w => w.name).join(', ')}>
+            {selectedWorkspaceIds.length === 1
+              ? workspaces.find(w => w.id === selectedWorkspaceIds[0])?.name
+              : `${selectedWorkspaceIds.length} workspace`
+            }
+          </span>
+        )}
 
         <div className="flex-1" />
 

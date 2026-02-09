@@ -51,14 +51,14 @@ export function DashboardPage() {
   const [recordToDelete, setRecordToDelete] = useState<Record | null>(null)
   const [recordsToDelete, setRecordsToDelete] = useState<Record[] | null>(null)
 
-  const handleReviewRecord = async (days: number) => {
+  const handleReviewRecord = async (days: number, formData: RecordUpdate) => {
     if (!editingRecord) return
     const nextDate = new Date()
     nextDate.setDate(nextDate.getDate() + days)
     try {
       await updateRecord({
         recordId: editingRecord.id,
-        data: { review_date: nextDate.toISOString().split('T')[0] }
+        data: { ...formData, review_date: nextDate.toISOString().split('T')[0] }
       })
       setEditingRecord(null)
       setSelectedRecord(null)
@@ -122,6 +122,21 @@ export function DashboardPage() {
       toast({ title: 'Errore', description: message, variant: 'destructive' })
     } finally {
       setRecordToDelete(null)
+    }
+  }
+
+  const handlePromoteRecord = async (recordId: string, toArea: Area, formData: RecordUpdate) => {
+    try {
+      // Save form changes with stage reset to 0, then transfer
+      await updateRecord({ recordId, data: { ...formData, stage: '0' } })
+      await transferRecord({ recordId, toArea })
+      setEditingRecord(null)
+      setSelectedRecord(null)
+      toast({ title: `Record spostato in ${AREA_LABELS[toArea]}`, variant: 'success' })
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error?: string; message?: string }>
+      const message = axiosError.response?.data?.error || 'Errore durante lo spostamento.'
+      toast({ title: 'Errore', description: message, variant: 'destructive' })
     }
   }
 
@@ -338,7 +353,7 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-7rem)]">
+    <div className="flex h-[calc(100vh-3.5rem)]">
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Area Tabs */}
         <div>
@@ -391,6 +406,7 @@ export function DashboardPage() {
               onClose={() => setEditingRecord(null)}
               reviewMode={reviewMode}
               onReview={handleReviewRecord}
+              onPromote={handlePromoteRecord}
             />
           ) : createRecordDialogOpen ? (
             <RecordForm

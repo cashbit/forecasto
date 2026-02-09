@@ -12,7 +12,7 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table'
 import { useState } from 'react'
-import { ArrowUpDown, MoreHorizontal, Pencil, Trash, ArrowRight, Split, Merge, Calendar, Download, Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, Pencil, Trash, ArrowRight, Split, Merge, Calendar, Download, Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -36,6 +36,7 @@ import { FileSpreadsheet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useUiStore } from '@/stores/uiStore'
 
 function parseAmount(amount: string | number): number {
   if (typeof amount === 'number') return amount
@@ -106,8 +107,9 @@ export function RecordGrid({
     return stored !== null ? stored === 'true' : true
   })
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 100 })
-  const { checkPermission } = useWorkspaceStore()
+  const { checkPermission, selectedWorkspaceIds } = useWorkspaceStore()
   const { user } = useAuthStore()
+  const { setCreateRecordDialogOpen } = useUiStore()
 
   const handleSetViewMode = (mode: 'compact' | 'extended') => {
     setViewMode(mode)
@@ -133,6 +135,13 @@ export function RecordGrid({
   const canDeleteRecord = (record: Record): boolean => {
     const sign = getSignFromAmount(record.amount)
     return checkPermission(record.area as Area, sign, 'can_delete_others', record.created_by, user?.id)
+  }
+
+  const SortIcon = ({ column }: { column: { getIsSorted: () => false | 'asc' | 'desc' } }) => {
+    const sorted = column.getIsSorted()
+    if (sorted === 'asc') return <ArrowUp className="ml-1 h-3 w-3" />
+    if (sorted === 'desc') return <ArrowDown className="ml-1 h-3 w-3" />
+    return <ArrowUpDown className="ml-1 h-3 w-3 opacity-30" />
   }
 
   const columns: ColumnDef<Record>[] = useMemo(
@@ -168,7 +177,7 @@ export function RecordGrid({
             className="px-1 h-8"
           >
             Data
-            <ArrowUpDown className="ml-1 h-3 w-3" />
+            <SortIcon column={column} />
           </Button>
         ),
         cell: ({ row }) => <DateDisplay date={row.original.date_cashflow} />,
@@ -184,7 +193,7 @@ export function RecordGrid({
             className="px-1 h-8"
           >
             Conto
-            <ArrowUpDown className="ml-1 h-3 w-3" />
+            <SortIcon column={column} />
           </Button>
         ),
         cell: ({ row }) => <span className={cn("font-medium block", textCellClass)}>{row.original.account}</span>,
@@ -200,7 +209,7 @@ export function RecordGrid({
             className="px-1 h-8"
           >
             Riferimento
-            <ArrowUpDown className="ml-1 h-3 w-3" />
+            <SortIcon column={column} />
           </Button>
         ),
         cell: ({ row }) => (
@@ -218,7 +227,7 @@ export function RecordGrid({
             className="px-1 h-8"
           >
             ID Trans.
-            <ArrowUpDown className="ml-1 h-3 w-3" />
+            <SortIcon column={column} />
           </Button>
         ),
         cell: ({ row }) => (
@@ -236,7 +245,7 @@ export function RecordGrid({
             className="px-1 h-8"
           >
             Respons.
-            <ArrowUpDown className="ml-1 h-3 w-3" />
+            <SortIcon column={column} />
           </Button>
         ),
         cell: ({ row }) => (
@@ -254,7 +263,7 @@ export function RecordGrid({
             className="px-1 h-8"
           >
             Progetto
-            <ArrowUpDown className="ml-1 h-3 w-3" />
+            <SortIcon column={column} />
           </Button>
         ),
         cell: ({ row }) => (
@@ -272,7 +281,7 @@ export function RecordGrid({
             className="justify-end w-full px-1 h-8"
           >
             Imponibile
-            <ArrowUpDown className="ml-1 h-3 w-3" />
+            <SortIcon column={column} />
           </Button>
         ),
         cell: ({ row }) => (
@@ -292,7 +301,7 @@ export function RecordGrid({
             className="justify-end w-full px-1 h-8"
           >
             Totale
-            <ArrowUpDown className="ml-1 h-3 w-3" />
+            <SortIcon column={column} />
           </Button>
         ),
         cell: ({ row }) => (
@@ -312,7 +321,7 @@ export function RecordGrid({
             className="px-1 h-8"
           >
             Stato
-            <ArrowUpDown className="ml-1 h-3 w-3" />
+            <SortIcon column={column} />
           </Button>
         ),
         cell: ({ row }) => {
@@ -471,6 +480,16 @@ export function RecordGrid({
       {/* Bulk Actions Bar - always visible */}
       <div className="border-b bg-muted/30 px-4 py-2 flex-shrink-0">
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            className="h-8"
+            onClick={() => setCreateRecordDialogOpen(true)}
+            disabled={selectedWorkspaceIds.length === 0}
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Nuovo
+          </Button>
+          <div className="w-px h-4 bg-border mx-2" />
           <span className={cn("text-sm font-medium min-w-[100px]", !hasSelection && "text-muted-foreground")}>
             {hasSelection
               ? `${selectedRecords.length} ${selectedRecords.length === 1 ? 'selezionato' : 'selezionati'}`

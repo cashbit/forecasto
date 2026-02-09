@@ -2,7 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { useEffect } from 'react'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
-import { Footer } from './Footer'
+
 import { CreateWorkspaceDialog } from '@/components/workspaces/CreateWorkspaceDialog'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
@@ -25,8 +25,6 @@ export function MainLayout() {
           <Outlet />
         </main>
       </div>
-      <Footer />
-
       {/* Dialogs */}
       <CreateWorkspaceDialog />
     </div>
