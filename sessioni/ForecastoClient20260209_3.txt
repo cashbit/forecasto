@@ -1,0 +1,394 @@
+
+▗ ▗   ▖ ▖  Claude Code v2.1.37
+           Opus 4.6 · API Usage Billing
+  ▘▘ ▝▝    ~/dev/forecasto
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Plan to implement                                                                                                    │
+│                                                                                                                      │
+│ Piano: Modifica massiva record selezionati (Bulk Edit)                                                               │
+│                                                                                                                      │
+│ Contesto                                                                                                             │
+│                                                                                                                      │
+│ L'utente vuole poter selezionare record nella griglia e modificarli tutti in una volta. Un nuovo pulsante nella      │
+│ toolbar apre un form con gli stessi campi del form di editing esistente (RecordForm), ma con tutti i campi           │
+│ vuoti/opzionali. Solo i campi compilati dall'utente vengono applicati ai record selezionati. Prima                   │
+│ dell'applicazione, un dialog di conferma elenca i campi modificati e il numero di record coinvolti.                  │
+│                                                                                                                      │
+│ Approccio                                                                                                            │
+│                                                                                                                      │
+│ Creare un nuovo componente BulkEditDialog che replica i campi di RecordForm ma con logica "solo campi compilati      │
+│ vengono applicati". Il dialog ha due fasi: fase 1 (form di editing) → fase 2 (conferma con riepilogo campi           │
+│ modificati).                                                                                                         │
+│                                                                                                                      │
+│ Flusso utente                                                                                                        │
+│                                                                                                                      │
+│ 1. Seleziona record nella griglia                                                                                    │
+│ 2. Clicca bottone "Modifica Massiva" (icona Pencil da lucide)                                                        │
+│ 3. Si apre un Dialog con tutti i campi del form, vuoti                                                               │
+│ 4. L'utente compila solo i campi che vuole modificare                                                                │
+│ 5. Clicca "Applica"                                                                                                  │
+│ 6. Compare il riepilogo: "Stai per modificare N record. Campi: Conto → VALORE, Stage → 1, ..."                       │
+│ 7. Conferma → updateRecord() per ogni record con solo i campi compilati                                              │
+│                                                                                                                      │
+│ File da modificare                                                                                                   │
+│                                                                                                                      │
+│ 1. Nuovo: forecasto-client-web/src/components/records/BulkEditDialog.tsx                                             │
+│                                                                                                                      │
+│ - Dialog modale con i campi del form (stessa struttura visiva di RecordForm, righe 246-388)                          │
+│ - Tutti i campi inizialmente vuoti, nessun campo obbligatorio                                                        │
+│ - Stato interno a due fasi: editing → confirming                                                                     │
+│ - Fase editing: form con i campi (account, reference, transaction_id, project_code, date_cashflow, date_offer,       │
+│ amount/vat/total, stage, owner, nextaction, review_date, note)                                                       │
+│ - Fase confirming: riepilogo dei campi compilati + pulsanti Indietro/Conferma                                        │
+│ - La funzione getChangedFields() confronta i valori del form con i default vuoti e restituisce solo quelli compilati │
+│ - Per amount/total: applicare il segno (sign) come fa RecordForm.processFormData()                                   │
+│ - Riutilizzare costanti da @/lib/constants: STAGES, STAGE_LABELS_BY_AREA, SIGN_OPTIONS                               │
+│ - Props: records: Record[] | null, currentArea: Area, open, onOpenChange, onConfirm(data: RecordUpdate)              │
+│                                                                                                                      │
+│ 2. Modifica: forecasto-client-web/src/components/records/RecordGrid.tsx                                              │
+│                                                                                                                      │
+│ - Aggiungere prop onBulkEdit?: (records: Record[]) => void                                                           │
+│ - Aggiungere import di Pencil da lucide                                                                              │
+│ - Aggiungere bottone nella toolbar (dopo "Cambia Stage" / "Sposta Workspace", prima del separatore view controls)    │
+│ - Tooltip: "Modifica Massiva"                                                                                        │
+│ - Abilitato solo con hasSelection                                                                                    │
+│                                                                                                                      │
+│ 3. Modifica: forecasto-client-web/src/pages/DashboardPage.tsx                                                        │
+│                                                                                                                      │
+│ - Aggiungere stato showBulkEdit                                                                                      │
+│ - Aggiungere handler handleBulkEdit:                                                                                 │
+│ per ogni record in bulkRecords:                                                                                      │
+│   await updateRecord({ recordId: record.id, data, workspaceId: record.workspace_id })                                │
+│ - Aggiungere BulkEditDialog nel JSX                                                                                  │
+│ - Collegare onBulkEdit nel RecordGrid                                                                                │
+│                                                                                                                      │
+│ Dettagli BulkEditDialog                                                                                              │
+│                                                                                                                      │
+│ Campi del form (tutti opzionali, default vuoto)                                                                      │
+│ ┌──────────────────────┬──────────────────────────────┬─────────────────────────────────────────────────┐            │
+│ │        Campo         │          Tipo input          │                      Note                       │            │
+│ ├──────────────────────┼──────────────────────────────┼─────────────────────────────────────────────────┤            │
+│ │ sign                 │ Bottoni in/out               │ Solo se compilato, applica segno a amount/total │            │
+│ ├──────────────────────┼──────────────────────────────┼─────────────────────────────────────────────────┤            │
+│ │ account              │ Input text                   │                                                 │            │
+│ ├──────────────────────┼──────────────────────────────┼─────────────────────────────────────────────────┤            │
+│ │ reference            │ Input text                   │                                                 │            │
+│ ├──────────────────────┼──────────────────────────────┼─────────────────────────────────────────────────┤            │
+│ │ transaction_id       │ Input text                   │                                                 │            │
+│ ├──────────────────────┼──────────────────────────────┼─────────────────────────────────────────────────┤            │
+│ │ project_code         │ Input text                   │                                                 │            │
+│ ├──────────────────────┼──────────────────────────────┼─────────────────────────────────────────────────┤            │
+│ │ date_cashflow        │ Input date                   │                                                 │            │
+│ ├──────────────────────┼──────────────────────────────┼─────────────────────────────────────────────────┤            │
+│ │ date_offer           │ Input date                   │                                                 │            │
+│ ├──────────────────────┼──────────────────────────────┼─────────────────────────────────────────────────┤            │
+│ │ amount + vat + total │ Input number (griglia 3 col) │ Stessa logica calcolo auto di RecordForm        │            │
+│ ├──────────────────────┼──────────────────────────────┼─────────────────────────────────────────────────┤            │
+│ │ stage                │ Bottoni (usa STAGES[area])   │                                                 │            │
+│ ├──────────────────────┼──────────────────────────────┼─────────────────────────────────────────────────┤            │
+│ │ owner                │ Input text                   │                                                 │            │
+│ ├──────────────────────┼──────────────────────────────┼─────────────────────────────────────────────────┤            │
+│ │ nextaction           │ Input text                   │                                                 │            │
+│ ├──────────────────────┼──────────────────────────────┼─────────────────────────────────────────────────┤            │
+│ │ review_date          │ Input date                   │                                                 │            │
+│ ├──────────────────────┼──────────────────────────────┼─────────────────────────────────────────────────┤            │
+│ │ note                 │ Textarea                     │                                                 │            │
+│ └──────────────────────┴──────────────────────────────┴─────────────────────────────────────────────────┘            │
+│ Logica getChangedFields()                                                                                            │
+│                                                                                                                      │
+│ // Confronta con default vuoti. Un campo è "modificato" se:                                                          │
+│ // - stringhe: valore.trim() !== ''                                                                                  │
+│ // - sign: è stato selezionato (non undefined)                                                                       │
+│ // Per amount/total: se compilati, applica segno (sign) come RecordForm                                              │
+│ // Restituisce RecordUpdate con solo i campi compilati                                                               │
+│                                                                                                                      │
+│ Fase conferma - UI riepilogo                                                                                         │
+│                                                                                                                      │
+│ Modifica massiva di {N} record                                                                                       │
+│                                                                                                                      │
+│ Campi che verranno modificati:                                                                                       │
+│ • Conto → "ABBONAMENTI"                                                                                              │
+│ • Stage → "Pagato"                                                                                                   │
+│ • Responsabile → "CARLO"                                                                                             │
+│                                                                                                                      │
+│ [Indietro]  [Conferma modifica]                                                                                      │
+│                                                                                                                      │
+│ Etichette campi per il riepilogo                                                                                     │
+│                                                                                                                      │
+│ Mappa campo→label italiana per la conferma:                                                                          │
+│ const FIELD_LABELS: Record<string, string> = {                                                                       │
+│   account: 'Conto', reference: 'Riferimento', transaction_id: 'ID Transazione',                                      │
+│   project_code: 'Codice Progetto', date_cashflow: 'Data Cashflow',                                                   │
+│   date_offer: 'Data Offerta', amount: 'Imponibile', total: 'Totale',                                                 │
+│   stage: 'Stato', owner: 'Responsabile', nextaction: 'Prossima Azione',                                              │
+│   review_date: 'Prossima Revisione', note: 'Note',                                                                   │
+│ }                                                                                                                    │
+│                                                                                                                      │
+│ Verifica                                                                                                             │
+│                                                                                                                      │
+│ 1. Selezionare 2+ record nella griglia                                                                               │
+│ 2. Cliccare "Modifica Massiva"                                                                                       │
+│ 3. Compilare solo alcuni campi (es: owner e stage)                                                                   │
+│ 4. Cliccare "Applica" → verificare che il riepilogo mostri solo i campi compilati                                    │
+│ 5. Confermare → verificare che i record siano aggiornati solo nei campi scelti                                       │
+│ 6. Verificare che i campi non compilati restino invariati nei record                                                 │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+⏺ I'll start by reading the key files I need to understand before implementing.
+
+⏺ Read 3 files (ctrl+o to expand)
+  ⎿  Loaded CLAUDE.md
+
+⏺ Now let me read the RecordForm to understand the form structure, and the constants file.
+
+⏺ Read 2 files (ctrl+o to expand)
+
+⏺ Let me also read the key parts of RecordForm for the form layout and processFormData logic.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Now let me also check the existing BulkStageDialog to understand the dialog pattern used.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Now I have everything I need. Let me also check if a Sign type exists.
+
+⏺ Searched for 1 pattern (ctrl+o to expand)
+
+⏺ Now I have all context. Let me create the three files in parallel — the new BulkEditDialog.tsx, and the modifications
+  to RecordGrid.tsx and DashboardPage.tsx.
+
+  Let me create the tasks and start implementing.
+
+⏺ Write(forecasto-client-web/src/components/records/BulkEditDialog.tsx)
+  ⎿  Wrote 365 lines to forecasto-client-web/src/components/records/BulkEditDialog.tsx
+     import { useState } from 'react'
+     import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+     import { Button } from '@/components/ui/button'
+     import { Input } from '@/components/ui/input'
+     import { Label } from '@/components/ui/label'
+     import { Textarea } from '@/components/ui/textarea'
+     import { STAGES, STAGE_LABELS_BY_AREA, SIGN_OPTIONS } from '@/lib/constants'
+     import type { Record, Area, RecordUpdate } from '@/types/record'
+
+     const FIELD_LABELS: Record<string, string> = {
+     … +355 lines (ctrl+o to expand)
+
+⏺ Now modify RecordGrid to add the onBulkEdit prop and Pencil button.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 1 line, removed 1 line
+      12    type VisibilityState,
+      13  } from '@tanstack/react-table'
+      14  import { useState } from 'react'
+      15 -import { ArrowUpDown, ArrowUp, ArrowDown, Trash, ArrowRight, Split, Merge, Calendar, Download, Check,  
+         -CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus, FolderOutput 
+         -} from 'lucide-react'                                                                                  
+      15 +import { ArrowUpDown, ArrowUp, ArrowDown, Trash, ArrowRight, Split, Merge, Calendar, Download, Check,  
+         +CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus, FolderOutput,
+         + Pencil } from 'lucide-react'                                                                          
+      16  import { Checkbox } from '@/components/ui/checkbox'
+      17  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+      18  import { Button } from '@/components/ui/button'
+
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 1 line
+      59    onBulkTransfer?: (records: Record[]) => void
+      60    onBulkSetStage?: (records: Record[]) => void
+      61    onBulkMoveWorkspace?: (records: Record[]) => void
+      62 +  onBulkEdit?: (records: Record[]) => void                                                             
+      63    visitedRecordIds?: Set<string>
+      64    activeRecordId?: string | null
+      65  }
+
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 1 line
+      77    onBulkTransfer,
+      78    onBulkSetStage,
+      79    onBulkMoveWorkspace,
+      80 +  onBulkEdit,                                                                                          
+      81    visitedRecordIds,
+      82    activeRecordId,
+      83  }: RecordGridProps) {
+
+⏺ Now add the Pencil button after the "Sposta in altro Workspace" button and before the <div className="flex-1" />
+  separator.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 17 lines
+      561                <TooltipContent>Sposta in altro Workspace</TooltipContent>
+      562              </Tooltip>
+      563            </TooltipProvider>
+      564 +          <div className="w-px h-4 bg-border mx-2" />                                                 
+      565 +          <TooltipProvider>                                                                           
+      566 +            <Tooltip>                                                                                 
+      567 +              <TooltipTrigger asChild>                                                                
+      568 +                <Button                                                                               
+      569 +                  variant="outline"                                                                   
+      570 +                  size="sm"                                                                           
+      571 +                  onClick={() => onBulkEdit?.(selectedRecords)}                                       
+      572 +                  disabled={!hasSelection}                                                            
+      573 +                  className="h-8 w-8 p-0"                                                             
+      574 +                >                                                                                     
+      575 +                  <Pencil className="h-3.5 w-3.5" />                                                  
+      576 +                </Button>                                                                             
+      577 +              </TooltipTrigger>                                                                       
+      578 +              <TooltipContent>Modifica Massiva</TooltipContent>                                       
+      579 +            </Tooltip>                                                                                
+      580 +          </TooltipProvider>                                                                          
+      581            <div className="flex-1" />
+      582            {/* View controls */}
+      583            <div className="flex items-center gap-1">
+
+⏺ Now wire up in DashboardPage. First, add the import.
+
+⏺ Update(forecasto-client-web/src/pages/DashboardPage.tsx)
+  ⎿  Added 1 line
+      23  import { BulkStageDialog } from '@/components/records/BulkStageDialog'
+      24  import { BulkMergeDialog } from '@/components/records/BulkMergeDialog'
+      25  import { BulkMoveWorkspaceDialog } from '@/components/records/BulkMoveWorkspaceDialog'
+      26 +import { BulkEditDialog } from '@/components/records/BulkEditDialog'                                   
+      27  import { useRecords } from '@/hooks/useRecords'
+      28  import { useFilterStore } from '@/stores/filterStore'
+      29  import { useUiStore } from '@/stores/uiStore'
+
+⏺ Add the showBulkEdit state alongside the other bulk states.
+
+⏺ Update(forecasto-client-web/src/pages/DashboardPage.tsx)
+  ⎿  Added 1 line
+      71    const [showBulkStage, setShowBulkStage] = useState(false)
+      72    const [showBulkMerge, setShowBulkMerge] = useState(false)
+      73    const [showBulkMoveWorkspace, setShowBulkMoveWorkspace] = useState(false)
+      74 +  const [showBulkEdit, setShowBulkEdit] = useState(false)                                              
+      75
+      76    // Delete confirmation state
+      77    const [recordToDelete, setRecordToDelete] = useState<Record | null>(null)
+
+⏺ Add the handleBulkEdit handler after handleBulkMoveWorkspace.
+
+⏺ Update(forecasto-client-web/src/pages/DashboardPage.tsx)
+  ⎿  Added 21 lines
+      394      }
+      395    }
+      396
+      397 +  const handleBulkEdit = async (data: RecordUpdate) => {                                              
+      398 +    if (!bulkRecords) return                                                                          
+      399 +                                                                                                      
+      400 +    try {                                                                                             
+      401 +      for (const record of bulkRecords) {                                                             
+      402 +        await updateRecord({                                                                          
+      403 +          recordId: record.id,                                                                        
+      404 +          data,                                                                                       
+      405 +        })                                                                                            
+      406 +      }                                                                                               
+      407 +                                                                                                      
+      408 +      setShowBulkEdit(false)                                                                          
+      409 +      setBulkRecords(null)                                                                            
+      410 +      toast({ title: 'Record aggiornati', description: `${bulkRecords.length} record modificati`,     
+          +variant: 'success' })                                                                                 
+      411 +    } catch (error) {                                                                                 
+      412 +      const axiosError = error as AxiosError<{ error?: string; message?: string }>                    
+      413 +      const message = axiosError.response?.data?.error || 'Errore durante la modifica massiva.'       
+      414 +      toast({ title: 'Errore', description: message, variant: 'destructive' })                        
+      415 +    }                                                                                                 
+      416 +  }                                                                                                   
+      417 +                                                                                                      
+      418    const handleBulkExport = (selectedRecords: Record[]) => {
+      419      const headers = ['Data', 'Conto', 'Riferimento', 'ID Transazione', 'Responsabile', 'Imponibile',
+           'Totale', 'Stage', 'Area', 'Revisione']
+      420      const rows = selectedRecords.map(r => [
+
+⏺ Add the onBulkEdit prop to RecordGrid.
+
+⏺ Update(forecasto-client-web/src/pages/DashboardPage.tsx)
+  ⎿  Added 1 line
+      478              onBulkTransfer={(recs) => { setBulkRecords(recs); setShowBulkTransfer(true) }}
+      479              onBulkSetStage={(recs) => { setBulkRecords(recs); setShowBulkStage(true) }}
+      480              onBulkMoveWorkspace={(recs) => { setBulkRecords(recs); setShowBulkMoveWorkspace(true) }}
+      481 +            onBulkEdit={(recs) => { setBulkRecords(recs); setShowBulkEdit(true) }}                    
+      482              visitedRecordIds={visitedRecordIds}
+      483              activeRecordId={editingRecord?.id || selectedRecord?.id}
+      484            />
+
+⏺ Add the BulkEditDialog component in the JSX, after BulkMoveWorkspaceDialog.
+
+⏺ Update(forecasto-client-web/src/pages/DashboardPage.tsx)
+  ⎿  Added 8 lines
+      577          onConfirm={handleBulkMoveWorkspace}
+      578        />
+      579
+      580 +      <BulkEditDialog                                                                                 
+      581 +        records={bulkRecords}                                                                         
+      582 +        currentArea={currentArea}                                                                     
+      583 +        open={showBulkEdit}                                                                           
+      584 +        onOpenChange={(open) => { if (!open) { setShowBulkEdit(false); setBulkRecords(null) } }}      
+      585 +        onConfirm={handleBulkEdit}                                                                    
+      586 +      />                                                                                              
+      587 +                                                                                                      
+      588        {/* Delete Confirmation Dialog - Single Record */}
+      589        <AlertDialog open={!!recordToDelete} onOpenChange={(open) => !open && setRecordToDelete(null)}>
+      590          <AlertDialogContent>
+
+⏺ Now let me verify the build compiles correctly.
+
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-client-web && npx tsc --noEmit 2>&1 | head -40)
+  ⎿  (No content)
+
+⏺ No TypeScript errors. Let me also verify the build works.
+
+⏺ Bash(npx vite build 2>&1 | tail -10)
+  ⎿  dist/assets/logo-icon-Casm9UMr.png     16.39 kB
+     dist/assets/logo-text-BamckOGi.png     28.54 kB
+     dist/assets/index-CbufRkHp.css         50.41 kB │ gzip:   9.19 kB
+     … +8 lines (ctrl+o to expand)                                
+  ⎿  (timeout 1m)                             
+                                                 
+⏺ Build succeeds cleanly.                                         
+                                                                                                                        
+⏺ All done. Here's a summary of what was implemented:                                                                   
+                                                                                                                        
+  New file: BulkEditDialog.tsx                                                                                          
+                                                                                                                        
+  - Two-phase dialog: editing (form with all fields empty) → confirming (summary of changes)                            
+  - All fields optional — only filled fields get applied                                                                
+  - Same auto-calc logic as RecordForm for amount/vat/total                                                             
+  - Sign toggle applies negative multiplier to amount/total (same as RecordForm.processFormData)                        
+  - Stage/sign buttons are toggleable (click again to deselect)                                                         
+  - Confirmation phase shows human-readable Italian labels
+
+  Modified: RecordGrid.tsx
+
+  - Added onBulkEdit prop
+  - Added Pencil icon import from lucide
+  - Added "Modifica Massiva" button in toolbar (after "Sposta in altro Workspace", before view controls), enabled only
+  when records are selected
+
+  Modified: DashboardPage.tsx
+
+  - Imported BulkEditDialog
+  - Added showBulkEdit state
+  - Added handleBulkEdit handler that loops through selected records calling updateRecord with only the changed fields
+  - Wired onBulkEdit to RecordGrid and added BulkEditDialog to the JSX
+
+✻ Worked for 2m 39s                                                                                                     
+  
+❯ /exit                                                                                                                 
+  ⎿  Goodbye!                                                                        
+                                                                                                                        
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯                                                                                                                       
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ accept edits on (shift+tab to cycle) · ctrl+t to hide tasks
+
+Resume this session with:
+claude --resume 03ffc5db-8052-4809-ae24-997b2b14f810
+
+Total cost:            $9.62
+Total duration (API):  16m 37s
+Total duration (wall): 56m 4s
+Total code changes:    911 lines added, 101 lines removed
+Usage by model:
+     claude-opus-4-6:  161 input, 38.7k output, 9.7m cache read, 547.1k cache write ($9.22)
+    claude-haiku-4-5:  27.9k input, 16.8k output, 946.3k cache read, 155.3k cache write ($0.4006)
+cashbit@Mac forecasto % 
