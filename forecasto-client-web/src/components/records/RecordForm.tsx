@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { STAGES, STAGE_LABELS_BY_AREA, SIGN_OPTIONS, AREA_LABELS } from '@/lib/constants'
@@ -14,6 +14,7 @@ import type { Sign } from '@/types/workspace'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useAuthStore } from '@/stores/authStore'
 import { AlertCircle, X, ArrowRight, Maximize2, Minimize2 } from 'lucide-react'
+import { MarkdownTextarea } from '@/components/common/MarkdownTextarea'
 
 const schema = z.object({
   account: z.string().min(1, 'Conto obbligatorio'),
@@ -222,10 +223,9 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
           </Button>
         </div>
         <div className="flex-1 p-4 min-h-0">
-          <Textarea
+          <MarkdownTextarea
             value={watch('note') || ''}
-            onChange={(e) => setValue('note', e.target.value)}
-            className="h-full resize-none"
+            onValueChange={(v) => setValue('note', v)}
           />
         </div>
       </div>
@@ -380,7 +380,11 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
                 {noteExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
               </Button>
             </div>
-            <Textarea id="note" {...register('note')} rows={2} />
+            <MarkdownTextarea
+              value={watch('note') || ''}
+              onValueChange={(v) => setValue('note', v)}
+              heightClass="h-20"
+            />
           </div>
         </CardContent>
 

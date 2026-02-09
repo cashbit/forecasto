@@ -89,3 +89,41 @@ body {
 #root {
   min-height: 100vh;
 }
+
+/* Markdown syntax highlighting */
+.markdown-highlight {
+  color: hsl(var(--foreground));
+}
+.markdown-highlight .md-heading {
+  color: #2563eb;
+  font-weight: 700;
+}
+.markdown-highlight .md-bold {
+  color: #c026d3;
+  font-weight: 700;
+}
+.markdown-highlight .md-italic {
+  color: #c026d3;
+  font-style: italic;
+}
+.markdown-highlight .md-code {
+  color: #d97706;
+  background: hsl(var(--muted));
+  border-radius: 3px;
+  padding: 0 2px;
+}
+.markdown-highlight .md-blockquote {
+  color: #6b7280;
+  font-style: italic;
+}
+.markdown-highlight .md-list {
+  color: #059669;
+  font-weight: 600;
+}
+.markdown-highlight .md-link {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.markdown-highlight .md-hr {
+  color: #9ca3af;
+}
