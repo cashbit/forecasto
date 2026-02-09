@@ -396,7 +396,7 @@ export function DashboardPage() {
 
       {/* Right Panel — 3 states: editing, creating, detail */}
       {(selectedRecord || editingRecord || createRecordDialogOpen) && (
-        <div className="w-120 border-l">
+        <div className="w-120 border-l relative">
           {editingRecord ? (
             <RecordForm
               record={editingRecord}

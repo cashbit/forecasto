@@ -47,13 +47,13 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
         </div>
 
         <div>
-          <p className="text-sm text-muted-foreground">Responsabile</p>
-          <p className="font-medium">{record.owner || '-'}</p>
+          <p className="text-sm text-muted-foreground">Progetto</p>
+          <p className="font-mono text-sm">{record.project_code || '-'}</p>
         </div>
 
         <div>
-          <p className="text-sm text-muted-foreground">Progetto</p>
-          <p className="font-mono text-sm">{record.project_code || '-'}</p>
+          <p className="text-sm text-muted-foreground">Responsabile</p>
+          <p className="font-medium">{record.owner || '-'}</p>
         </div>
 
         <div>

@@ -13,7 +13,7 @@ import type { Record as RecordType, RecordCreate, RecordUpdate, Area } from '@/t
 import type { Sign } from '@/types/workspace'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useAuthStore } from '@/stores/authStore'
-import { AlertCircle, X, ArrowRight } from 'lucide-react'
+import { AlertCircle, X, ArrowRight, Maximize2, Minimize2 } from 'lucide-react'
 
 const schema = z.object({
   account: z.string().min(1, 'Conto obbligatorio'),
@@ -116,6 +116,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
 
   // Track which field (vat or total) was last manually edited
   const [lastEdited, setLastEdited] = useState<'vat' | 'total'>('total')
+  const [noteExpanded, setNoteExpanded] = useState(false)
 
   // Check permission based on selected sign
   const canPerformAction = selectedSign
@@ -210,6 +211,25 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
   }
 
   return (
+    <>
+    {/* Note expanded overlay */}
+    {noteExpanded && (
+      <div className="w-80 border-r flex flex-col bg-background absolute right-full top-0 h-full z-20 shadow-lg">
+        <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+          <Label className="text-lg font-semibold">Note</Label>
+          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setNoteExpanded(false)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex-1 p-4 min-h-0">
+          <Textarea
+            value={watch('note') || ''}
+            onChange={(e) => setValue('note', e.target.value)}
+            className="h-full resize-none"
+          />
+        </div>
+      </div>
+    )}
     <Card className="h-full border-0 rounded-none flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 flex-shrink-0">
         <CardTitle className="text-lg">
@@ -270,6 +290,12 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
             {errors.transaction_id && <p className="text-sm text-destructive">{errors.transaction_id.message}</p>}
           </div>
 
+          {/* Codice Progetto */}
+          <div className="space-y-1">
+            <Label htmlFor="project_code">Codice Progetto</Label>
+            <Input id="project_code" {...register('project_code')} placeholder="es. PROJ-001" />
+          </div>
+
           {/* Data Cashflow + Data Offerta (grid 2 col) */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
@@ -328,12 +354,6 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
             <Input id="owner" {...register('owner')} placeholder="Nome" />
           </div>
 
-          {/* Codice Progetto */}
-          <div className="space-y-1">
-            <Label htmlFor="project_code">Codice Progetto</Label>
-            <Input id="project_code" {...register('project_code')} placeholder="es. PROJ-001" />
-          </div>
-
           {/* Prossima Azione */}
           <div className="space-y-1">
             <Label htmlFor="nextaction">Prossima Azione</Label>
@@ -348,7 +368,18 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
 
           {/* Note */}
           <div className="space-y-1">
-            <Label htmlFor="note">Note</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="note">Note</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={() => setNoteExpanded(!noteExpanded)}
+              >
+                {noteExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
             <Textarea id="note" {...register('note')} rows={2} />
           </div>
         </CardContent>
@@ -393,5 +424,6 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
         </div>
       </form>
     </Card>
+    </>
   )
 }
