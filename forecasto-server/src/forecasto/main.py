@@ -98,6 +98,9 @@ app.include_router(records.router, prefix="/api/v1/workspaces", tags=["Records"]
 app.include_router(transfers.router, prefix="/api/v1/workspaces", tags=["Transfers"])
 app.include_router(projects.router, prefix="/api/v1/workspaces", tags=["Projects"])
 app.include_router(
+    bank_accounts.user_router, prefix="/api/v1/bank-accounts", tags=["Bank Accounts"]
+)
+app.include_router(
     bank_accounts.router, prefix="/api/v1/workspaces", tags=["Bank Accounts"]
 )
 app.include_router(cashflow.router, prefix="/api/v1", tags=["Cashflow"])

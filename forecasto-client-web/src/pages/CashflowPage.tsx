@@ -86,7 +86,11 @@ export function CashflowPage() {
               <LoadingSpinner size="lg" />
             </div>
           ) : cashflow.length > 0 ? (
-            <CashflowChart data={cashflow} height={280} />
+            <CashflowChart
+              data={cashflow}
+              height={280}
+              bankAccounts={initialBalance?.by_account}
+            />
           ) : (
             <div className="flex items-center justify-center h-[280px] text-muted-foreground">
               Nessun dato disponibile per il periodo selezionato

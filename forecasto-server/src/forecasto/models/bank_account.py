@@ -18,32 +18,31 @@ if TYPE_CHECKING:
     from forecasto.models.workspace import Workspace
 
 class BankAccount(Base, UUIDMixin, TimestampMixin):
-    """Bank account for a workspace."""
+    """Bank account owned by a user, associable to multiple workspaces."""
 
     __tablename__ = "bank_accounts"
-    __table_args__ = (UniqueConstraint("workspace_id", "iban", name="uq_bank_workspace_iban"),)
 
-    workspace_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False, index=True
+    owner_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    iban: Mapped[Optional[str]] = mapped_column(String(34), nullable=True)
-    bic_swift: Mapped[Optional[str]] = mapped_column(String(11), nullable=True)
     bank_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     currency: Mapped[str] = mapped_column(String(3), default="EUR")
     credit_limit: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
-    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     settings: Mapped[dict] = mapped_column(
         JSON,
         default=lambda: {"color": "#1E88E5", "icon": "bank", "show_in_cashflow": True},
     )
 
     # Relationships
-    workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="bank_accounts")
+    owner: Mapped[Optional["User"]] = relationship("User", foreign_keys=[owner_id])
+    workspaces: Mapped[list["Workspace"]] = relationship("Workspace", back_populates="bank_account")
     balances: Mapped[list["BankAccountBalance"]] = relationship(
         "BankAccountBalance", back_populates="bank_account", cascade="all, delete-orphan"
     )
+
 
 class BankAccountBalance(Base):
     """Historical balance for a bank account."""

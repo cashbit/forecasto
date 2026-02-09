@@ -9,6 +9,12 @@ export interface CashflowParams {
   project_code?: string
 }
 
+export interface AccountCashflowEntry {
+  inflows: number
+  outflows: number
+  running_balance: number
+}
+
 export interface CashflowEntry {
   date: string
   inflows: number
@@ -21,53 +27,74 @@ export interface CashflowEntry {
     orders?: { inflows: number; outflows: number }
     actual?: { inflows: number; outflows: number }
   }
+  by_account?: Record<string, AccountCashflowEntry>
+}
+
+export interface AccountBalance {
+  name: string
+  balance: number
+  credit_limit: number
+}
+
+export interface InitialBalance {
+  date: string
+  total: number
+  by_account: Record<string, AccountBalance>
+}
+
+export interface BalancePoint {
+  date: string
+  amount: number
 }
 
 export interface CashflowSummary {
   total_inflows: number
   total_outflows: number
   net_cashflow: number
-  initial_balance: number
   final_balance: number
-  min_balance: number
-  min_balance_date: string
+  min_balance: BalancePoint
+  max_balance: BalancePoint
+  credit_limit_breaches: BalancePoint[]
 }
 
 export interface CashflowResponse {
+  success: boolean
+  parameters: CashflowParams
   cashflow: CashflowEntry[]
   summary: CashflowSummary
-  initial_balance: {
-    total: number
-    by_account: Record<string, number>
-  }
+  initial_balance: InitialBalance
 }
 
 export interface BankAccount {
   id: string
-  workspace_id: string
+  owner_id: string | null
   name: string
-  bank_name: string
-  iban?: string
+  bank_name: string | null
+  description: string | null
   currency: string
-  initial_balance: string
-  current_balance: string
+  credit_limit: number
   is_active: boolean
+  settings: Record<string, unknown>
   created_at: string
   updated_at: string
 }
 
 export interface BankAccountCreate {
   name: string
-  bank_name: string
-  iban?: string
+  bank_name?: string
+  description?: string
   currency?: string
-  initial_balance?: string
+  credit_limit?: number
+  settings?: Record<string, unknown>
 }
 
 export interface BankAccountUpdate {
   name?: string
   bank_name?: string
-  iban?: string
+  description?: string
   currency?: string
+  credit_limit?: number
   is_active?: boolean
+  settings?: Record<string, unknown>
 }
+

@@ -93,7 +93,12 @@ async def update_workspace(
     updated = await service.update_workspace(workspace, data, member)
     await db.commit()
     await db.refresh(updated)
-    return {"success": True, "workspace": WorkspaceResponse.model_validate(updated)}
+    return {
+        "success": True,
+        "workspace": WorkspaceResponse.model_validate(updated),
+        "role": member.role,
+        "area_permissions": member.area_permissions,
+    }
 
 @router.delete("/{workspace_id}", response_model=dict)
 async def delete_workspace(

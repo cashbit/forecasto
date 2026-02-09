@@ -49,6 +49,13 @@ class CashflowRecordSummary(DecimalAsFloat):
     amount: Decimal
     area: str
 
+class AccountCashflowEntry(DecimalAsFloat):
+    """Cashflow data for a single bank account within a period."""
+
+    inflows: Decimal
+    outflows: Decimal
+    running_balance: Decimal
+
 class CashflowEntry(DecimalAsFloat):
     """Single cashflow entry."""
 
@@ -58,6 +65,7 @@ class CashflowEntry(DecimalAsFloat):
     net: Decimal
     running_balance: Decimal
     records: list[CashflowRecordSummary] | None = None
+    by_account: dict[str, AccountCashflowEntry] | None = None
 
 class AccountBalance(DecimalAsFloat):
     """Balance for a single account."""

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { User, Building, Bell, Shield, Users } from 'lucide-react'
+import { User, Building, Bell, Shield, Users, Landmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,6 +10,8 @@ import { Separator } from '@/components/ui/separator'
 import { useAuthStore } from '@/stores/authStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { MembersDialog } from '@/components/workspace/MembersDialog'
+import { BankAccountsTab } from '@/components/settings/BankAccountsTab'
+import { WorkspaceBankAccountsSection } from '@/components/settings/WorkspaceBankAccountsSection'
 import { toast } from '@/hooks/useToast'
 
 export function SettingsPage() {
@@ -83,6 +85,10 @@ export function SettingsPage() {
             <Users className="mr-2 h-4 w-4" />
             Membri
           </TabsTrigger>
+          <TabsTrigger value="bank-accounts">
+            <Landmark className="mr-2 h-4 w-4" />
+            Conti Bancari
+          </TabsTrigger>
           <TabsTrigger value="notifications">
             <Bell className="mr-2 h-4 w-4" />
             Notifiche
@@ -148,6 +154,9 @@ export function SettingsPage() {
                   <Button type="submit" disabled={isLoading}>
                     {isLoading ? 'Salvataggio...' : 'Salva Modifiche'}
                   </Button>
+                  {primaryWorkspace.role === 'owner' && (
+                    <WorkspaceBankAccountsSection workspaceId={primaryWorkspace.id} />
+                  )}
                 </form>
               ) : (
                 <div className="space-y-4">
@@ -205,6 +214,10 @@ export function SettingsPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="bank-accounts">
+          <BankAccountsTab />
         </TabsContent>
 
         <TabsContent value="notifications">

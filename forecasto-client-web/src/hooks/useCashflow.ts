@@ -1,7 +1,7 @@
 import { useQueries } from '@tanstack/react-query'
 import { cashflowApi } from '@/api/cashflow'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
-import type { CashflowParams, CashflowEntry, CashflowSummary } from '@/types/cashflow'
+import type { CashflowParams, CashflowEntry, CashflowSummary, InitialBalance } from '@/types/cashflow'
 
 export function useCashflow(params: CashflowParams) {
   const selectedWorkspaceIds = useWorkspaceStore(state => state.selectedWorkspaceIds)
@@ -23,7 +23,7 @@ export function useCashflow(params: CashflowParams) {
         return {
           cashflow: [] as CashflowEntry[],
           summary: undefined as CashflowSummary | undefined,
-          initialBalance: undefined as { total: number; by_account: Record<string, number> } | undefined,
+          initialBalance: undefined as InitialBalance | undefined,
           isLoading,
           isError,
         }
@@ -62,6 +62,23 @@ export function useCashflow(params: CashflowParams) {
                 }
               }
             }
+            // Merge by_account data
+            if (entry.by_account) {
+              if (!existing.by_account) existing.by_account = {}
+              for (const [accountId, accountData] of Object.entries(entry.by_account)) {
+                if (!existing.by_account[accountId]) {
+                  existing.by_account[accountId] = {
+                    inflows: toNum(accountData.inflows),
+                    outflows: toNum(accountData.outflows),
+                    running_balance: toNum(accountData.running_balance),
+                  }
+                } else {
+                  existing.by_account[accountId].inflows += toNum(accountData.inflows)
+                  existing.by_account[accountId].outflows += toNum(accountData.outflows)
+                  existing.by_account[accountId].running_balance += toNum(accountData.running_balance)
+                }
+              }
+            }
           } else {
             const newEntry: CashflowEntry = {
               date: entry.date,
@@ -82,6 +99,17 @@ export function useCashflow(params: CashflowParams) {
                 }
               }
             }
+            // Copy by_account data
+            if (entry.by_account) {
+              newEntry.by_account = {}
+              for (const [accountId, accountData] of Object.entries(entry.by_account)) {
+                newEntry.by_account[accountId] = {
+                  inflows: toNum(accountData.inflows),
+                  outflows: toNum(accountData.outflows),
+                  running_balance: toNum(accountData.running_balance),
+                }
+              }
+            }
             cashflowByDate.set(entry.date, newEntry)
           }
         }
@@ -92,24 +120,33 @@ export function useCashflow(params: CashflowParams) {
         (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
       )
 
-      // Aggregate initial balance
+      // Aggregate initial balance (new format with AccountBalance objects)
       const totalInitialBalance = responses.reduce(
         (sum, r) => sum + toNum(r.initial_balance?.total),
         0
       )
 
-      // Merge by_account
-      const mergedByAccount: Record<string, number> = {}
+      // Merge by_account from InitialBalance (AccountBalance objects with name, balance, credit_limit)
+      const mergedByAccount: Record<string, { name: string; balance: number; credit_limit: number }> = {}
       for (const response of responses) {
         const byAccount = response.initial_balance?.by_account
         if (byAccount) {
-          for (const [account, balance] of Object.entries(byAccount)) {
-            mergedByAccount[account] = (mergedByAccount[account] || 0) + toNum(balance)
+          for (const [accountId, accountBalance] of Object.entries(byAccount)) {
+            if (!mergedByAccount[accountId]) {
+              mergedByAccount[accountId] = {
+                name: accountBalance.name,
+                balance: toNum(accountBalance.balance),
+                credit_limit: toNum(accountBalance.credit_limit),
+              }
+            } else {
+              // Same account across workspaces: sum balances
+              mergedByAccount[accountId].balance += toNum(accountBalance.balance)
+            }
           }
         }
       }
 
-      // Recalculate running balance
+      // Recalculate total running balance
       let runningBalance = totalInitialBalance
       for (const entry of sortedEntries) {
         runningBalance += entry.net
@@ -121,10 +158,17 @@ export function useCashflow(params: CashflowParams) {
       if (sortedEntries.length > 0) {
         let minBalance = totalInitialBalance
         let minBalanceDate = ''
+        let maxBalance = totalInitialBalance
+        let maxBalanceDate = ''
+
         for (const entry of sortedEntries) {
           if (entry.running_balance < minBalance) {
             minBalance = entry.running_balance
             minBalanceDate = entry.date
+          }
+          if (entry.running_balance > maxBalance) {
+            maxBalance = entry.running_balance
+            maxBalanceDate = entry.date
           }
         }
 
@@ -132,10 +176,10 @@ export function useCashflow(params: CashflowParams) {
           total_inflows: responses.reduce((sum, r) => sum + toNum(r.summary?.total_inflows), 0),
           total_outflows: responses.reduce((sum, r) => sum + toNum(r.summary?.total_outflows), 0),
           net_cashflow: responses.reduce((sum, r) => sum + toNum(r.summary?.net_cashflow), 0),
-          initial_balance: totalInitialBalance,
           final_balance: runningBalance,
-          min_balance: minBalance,
-          min_balance_date: minBalanceDate,
+          min_balance: { date: minBalanceDate, amount: minBalance },
+          max_balance: { date: maxBalanceDate, amount: maxBalance },
+          credit_limit_breaches: [],
         }
       }
 
@@ -143,9 +187,10 @@ export function useCashflow(params: CashflowParams) {
         cashflow: sortedEntries,
         summary: aggregatedSummary,
         initialBalance: {
+          date: responses[0]?.initial_balance?.date || '',
           total: totalInitialBalance,
           by_account: mergedByAccount,
-        },
+        } as InitialBalance,
         isLoading,
         isError,
       }

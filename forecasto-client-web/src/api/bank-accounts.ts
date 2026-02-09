@@ -2,27 +2,61 @@ import apiClient from './client'
 import type { BankAccount, BankAccountCreate, BankAccountUpdate } from '@/types/cashflow'
 
 export const bankAccountsApi = {
-  list: async (workspaceId: string): Promise<BankAccount[]> => {
-    const response = await apiClient.get<BankAccount[]>(`/workspaces/${workspaceId}/bank-accounts`)
-    return response.data
+  // --- User-level endpoints (personal bank account registry) ---
+
+  listUserAccounts: async (): Promise<BankAccount[]> => {
+    const response = await apiClient.get<{ success: boolean; bank_accounts: BankAccount[] }>('/bank-accounts')
+    return response.data.bank_accounts
   },
 
-  get: async (workspaceId: string, accountId: string): Promise<BankAccount> => {
-    const response = await apiClient.get<BankAccount>(`/workspaces/${workspaceId}/bank-accounts/${accountId}`)
-    return response.data
+  create: async (data: BankAccountCreate): Promise<BankAccount> => {
+    const response = await apiClient.post<{ success: boolean; bank_account: BankAccount }>('/bank-accounts', data)
+    return response.data.bank_account
   },
 
-  create: async (workspaceId: string, data: BankAccountCreate): Promise<BankAccount> => {
-    const response = await apiClient.post<BankAccount>(`/workspaces/${workspaceId}/bank-accounts`, data)
-    return response.data
+  update: async (accountId: string, data: BankAccountUpdate): Promise<BankAccount> => {
+    const response = await apiClient.patch<{ success: boolean; bank_account: BankAccount }>(`/bank-accounts/${accountId}`, data)
+    return response.data.bank_account
   },
 
-  update: async (workspaceId: string, accountId: string, data: BankAccountUpdate): Promise<BankAccount> => {
-    const response = await apiClient.patch<BankAccount>(`/workspaces/${workspaceId}/bank-accounts/${accountId}`, data)
-    return response.data
+  // --- Workspace-level endpoints (1-to-1 association) ---
+
+  getWorkspaceAccount: async (workspaceId: string): Promise<BankAccount | null> => {
+    const response = await apiClient.get<{ success: boolean; bank_account: BankAccount | null }>(
+      `/workspaces/${workspaceId}/bank-account`
+    )
+    return response.data.bank_account
   },
 
-  delete: async (workspaceId: string, accountId: string): Promise<void> => {
-    await apiClient.delete(`/workspaces/${workspaceId}/bank-accounts/${accountId}`)
+  setWorkspaceAccount: async (workspaceId: string, accountId: string): Promise<BankAccount> => {
+    const response = await apiClient.put<{ success: boolean; bank_account: BankAccount }>(
+      `/workspaces/${workspaceId}/bank-account/${accountId}`
+    )
+    return response.data.bank_account
+  },
+
+  unsetWorkspaceAccount: async (workspaceId: string): Promise<void> => {
+    await apiClient.delete(`/workspaces/${workspaceId}/bank-account`)
+  },
+
+  // --- Balance endpoints ---
+
+  getBalances: async (workspaceId: string, accountId: string, fromDate?: string, toDate?: string) => {
+    const params = new URLSearchParams()
+    if (fromDate) params.set('from_date', fromDate)
+    if (toDate) params.set('to_date', toDate)
+    const query = params.toString() ? `?${params.toString()}` : ''
+    const response = await apiClient.get<{ success: boolean; balances: unknown[] }>(
+      `/workspaces/${workspaceId}/bank-accounts/${accountId}/balances${query}`
+    )
+    return response.data.balances
+  },
+
+  addBalance: async (workspaceId: string, accountId: string, data: { balance_date: string; balance: number; source?: string; note?: string }) => {
+    const response = await apiClient.post<{ success: boolean; balance: unknown }>(
+      `/workspaces/${workspaceId}/bank-accounts/${accountId}/balances`,
+      data
+    )
+    return response.data.balance
   },
 }

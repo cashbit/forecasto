@@ -11,9 +11,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.models.bank_account import BankAccount, BankAccountBalance
+from forecasto.models.workspace import Workspace
 from forecasto.models.record import Record
 from forecasto.schemas.cashflow import (
     AccountBalance,
+    AccountCashflowEntry,
     BalancePoint,
     CashflowEntry,
     CashflowRecordSummary,
@@ -48,6 +50,17 @@ class CashflowService:
         for record in records:
             records_by_date[record.date_cashflow].append(record)
 
+        # Resolve workspace's default bank account for records without explicit bank_account_id
+        ws_result = await self.db.execute(
+            select(Workspace.bank_account_id).where(Workspace.id == workspace_id)
+        )
+        workspace_bank_account_id = ws_result.scalar_one_or_none()
+
+        # Initialize per-account running balances
+        account_running_balances: dict[str, Decimal] = {}
+        for acct_id, acct_bal in initial_balance.by_account.items():
+            account_running_balances[acct_id] = acct_bal.balance
+
         # Calculate daily cashflow
         cashflow_entries = []
         running_balance = initial_balance.total
@@ -75,6 +88,34 @@ class CashflowService:
             running_balance += net
             total_inflows += inflows
             total_outflows += outflows
+
+            # Per-account breakdown
+            # Records without explicit bank_account_id fall back to the workspace's bank account
+            account_day_data: dict[str, dict[str, Decimal]] = defaultdict(
+                lambda: {"inflows": Decimal("0"), "outflows": Decimal("0")}
+            )
+            for r in day_records:
+                acct_id = r.bank_account_id or workspace_bank_account_id
+                if acct_id and acct_id in account_running_balances:
+                    amt = Decimal(str(r.total))
+                    if amt > 0:
+                        account_day_data[acct_id]["inflows"] += amt
+                    else:
+                        account_day_data[acct_id]["outflows"] += amt
+
+            # Update per-account running balances and build by_account
+            by_account_entries: dict[str, AccountCashflowEntry] = {}
+            for acct_id in account_running_balances:
+                day_data = account_day_data.get(acct_id)
+                acct_inflows = day_data["inflows"] if day_data else Decimal("0")
+                acct_outflows = day_data["outflows"] if day_data else Decimal("0")
+                acct_net = acct_inflows + acct_outflows
+                account_running_balances[acct_id] += acct_net
+                by_account_entries[acct_id] = AccountCashflowEntry(
+                    inflows=acct_inflows,
+                    outflows=acct_outflows,
+                    running_balance=account_running_balances[acct_id],
+                )
 
             # Track min/max
             if running_balance < min_balance.amount:
@@ -106,6 +147,7 @@ class CashflowService:
                         )
                         for r in day_records
                     ] if day_records else None,
+                    by_account=by_account_entries if by_account_entries else None,
                 )
                 cashflow_entries.append(entry)
 
@@ -140,15 +182,31 @@ class CashflowService:
         bank_account_id: str | None = None,
     ) -> InitialBalance:
         """Get initial balance for cashflow calculation."""
-        query = select(BankAccount).where(
-            BankAccount.workspace_id == workspace_id,
-            BankAccount.is_active == True,  # noqa: E712
-        )
-
+        # Get bank account associated with this workspace (1-to-1)
         if bank_account_id:
-            query = query.where(BankAccount.id == bank_account_id)
+            # Filter to specific account
+            result = await self.db.execute(
+                select(BankAccount).where(
+                    BankAccount.id == bank_account_id,
+                    BankAccount.is_active == True,  # noqa: E712
+                )
+            )
+        else:
+            # Get the account associated with workspace via direct FK
+            ws_result = await self.db.execute(
+                select(Workspace.bank_account_id).where(Workspace.id == workspace_id)
+            )
+            ws_bank_account_id = ws_result.scalar_one_or_none()
+            if not ws_bank_account_id:
+                return InitialBalance(date=start_date, total=Decimal("0"), by_account={})
 
-        result = await self.db.execute(query)
+            result = await self.db.execute(
+                select(BankAccount).where(
+                    BankAccount.id == ws_bank_account_id,
+                    BankAccount.is_active == True,  # noqa: E712
+                )
+            )
+
         accounts = list(result.scalars().all())
 
         by_account = {}
@@ -233,9 +291,8 @@ class CashflowService:
             "inflows": Decimal("0"),
             "outflows": Decimal("0"),
             "records": [],
+            "by_account": {},
         })
-
-        running_balance = entries[-1].running_balance if entries else Decimal("0")
 
         for entry in entries:
             key = get_group_key(entry.date)
@@ -244,6 +301,9 @@ class CashflowService:
             if entry.records:
                 grouped[key]["records"].extend(entry.records)
             grouped[key]["running_balance"] = entry.running_balance
+            # Keep the last by_account snapshot for this group
+            if entry.by_account:
+                grouped[key]["by_account"] = entry.by_account
 
         result = []
         for group_date in sorted(grouped.keys()):
@@ -255,6 +315,7 @@ class CashflowService:
                 net=data["inflows"] + data["outflows"],
                 running_balance=data["running_balance"],
                 records=data["records"] if data["records"] else None,
+                by_account=data["by_account"] if data["by_account"] else None,
             ))
 
         return result
@@ -267,9 +328,6 @@ class CashflowService:
         user_id: str,
     ) -> CashflowResponse:
         """Calculate consolidated cashflow across multiple workspaces."""
-        # Aggregate results from multiple workspaces
-        # Implementation would check user permissions for each workspace
-        # and aggregate the results
         params = CashflowRequest(
             from_date=from_date,
             to_date=to_date,
@@ -282,10 +340,6 @@ class CashflowService:
             result = await self.calculate_cashflow(workspace_id, params)
             all_entries.extend(result.cashflow)
             total_initial += result.initial_balance.total
-
-        # Merge and aggregate
-        # This is a simplified version - full implementation would
-        # properly merge entries by date
 
         return CashflowResponse(
             parameters=params,

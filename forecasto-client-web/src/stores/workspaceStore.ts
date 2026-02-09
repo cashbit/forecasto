@@ -103,7 +103,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       updateWorkspace: async (workspaceId, data) => {
         const workspace = await workspacesApi.update(workspaceId, data)
         set((state) => ({
-          workspaces: state.workspaces.map((w) => (w.id === workspaceId ? workspace : w)),
+          workspaces: state.workspaces.map((w) => (w.id === workspaceId ? { ...w, ...workspace } : w)),
         }))
       },
 

@@ -41,9 +41,13 @@ class Workspace(Base, UUIDMixin, TimestampMixin):
         },
     )
     email_whitelist: Mapped[list] = mapped_column(JSON, default=list)
+    bank_account_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # Relationships
     owner: Mapped["User"] = relationship("User")
+    bank_account: Mapped[Optional["BankAccount"]] = relationship("BankAccount", back_populates="workspaces")
     members: Mapped[list["WorkspaceMember"]] = relationship(
         "WorkspaceMember", back_populates="workspace", cascade="all, delete-orphan"
     )
@@ -55,9 +59,6 @@ class Workspace(Base, UUIDMixin, TimestampMixin):
     )
     projects: Mapped[list["Project"]] = relationship(
         "Project", back_populates="workspace", cascade="all, delete-orphan"
-    )
-    bank_accounts: Mapped[list["BankAccount"]] = relationship(
-        "BankAccount", back_populates="workspace", cascade="all, delete-orphan"
     )
     invitations: Mapped[list["Invitation"]] = relationship(
         "Invitation", back_populates="workspace", cascade="all, delete-orphan"

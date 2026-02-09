@@ -18,8 +18,17 @@ export const workspacesApi = {
   },
 
   update: async (workspaceId: string, data: WorkspaceUpdate): Promise<Workspace> => {
-    const response = await apiClient.patch<{ success: boolean; workspace: Workspace }>(`/workspaces/${workspaceId}`, data)
-    return response.data.workspace
+    const response = await apiClient.patch<{
+      success: boolean
+      workspace: Workspace
+      role: string
+      area_permissions: Record<string, string>
+    }>(`/workspaces/${workspaceId}`, data)
+    return {
+      ...response.data.workspace,
+      role: response.data.role as Workspace['role'],
+      area_permissions: response.data.area_permissions,
+    }
   },
 
   delete: async (workspaceId: string): Promise<void> => {
