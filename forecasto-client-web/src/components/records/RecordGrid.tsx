@@ -75,6 +75,8 @@ interface RecordGridProps {
   onBulkExport?: (records: Record[]) => void
   onBulkTransfer?: (records: Record[]) => void
   onBulkSetStage?: (records: Record[]) => void
+  visitedRecordIds?: Set<string>
+  activeRecordId?: string | null
 }
 
 export function RecordGrid({
@@ -92,6 +94,8 @@ export function RecordGrid({
   onBulkExport,
   onBulkTransfer,
   onBulkSetStage,
+  visitedRecordIds,
+  activeRecordId,
 }: RecordGridProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
@@ -701,14 +705,24 @@ export function RecordGrid({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.map((row) => (
+            {table.getRowModel().rows.map((row) => {
+              const isActive = activeRecordId === row.original.id
+              const isVisited = visitedRecordIds?.has(row.original.id) ?? false
+              return (
               <TableRow
                 key={row.id}
-                className={cn(
-                  "cursor-pointer",
-                  row.getIsSelected() && "bg-primary/10",
-                  ['0', 'unpaid', 'draft'].includes(row.original.stage) && new Date(row.original.date_cashflow) <= new Date() && !row.getIsSelected() && "bg-red-50 dark:bg-red-950/30"
-                )}
+                className="cursor-pointer"
+                style={{
+                  backgroundColor: isActive
+                    ? 'var(--color-row-active)'
+                    : row.getIsSelected()
+                      ? 'var(--color-row-selected)'
+                      : isVisited
+                        ? 'var(--color-row-visited)'
+                        : ['0', 'unpaid', 'draft'].includes(row.original.stage) && new Date(row.original.date_cashflow) <= new Date()
+                          ? 'var(--color-row-overdue)'
+                          : undefined,
+                }}
                 onClick={() => onSelectRecord?.(row.original)}
               >
                 {row.getVisibleCells().map((cell) => (
@@ -717,7 +731,8 @@ export function RecordGrid({
                   </TableCell>
                 ))}
               </TableRow>
-            ))}
+              )
+            })}
           </TableBody>
         </Table>
       </div>

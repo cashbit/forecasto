@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AxiosError } from 'axios'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -27,15 +27,35 @@ import { useFilterStore } from '@/stores/filterStore'
 import { useUiStore } from '@/stores/uiStore'
 import { toast } from '@/hooks/useToast'
 import { AREA_LABELS, AREAS } from '@/lib/constants'
+import { recordsApi } from '@/api/records'
 import type { Record, Area, RecordCreate, RecordUpdate } from '@/types/record'
 
 export function DashboardPage() {
   const { currentArea, setArea } = useFilterStore()
   const { createRecordDialogOpen, setCreateRecordDialogOpen, reviewMode } = useUiStore()
-  const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord } = useRecords()
+  const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord, primaryWorkspaceId } = useRecords()
 
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
+  const [visitedRecordIds, setVisitedRecordIds] = useState<Set<string>>(new Set())
+
+  const markEdited = (id: string) => {
+    setVisitedRecordIds(prev => new Set(prev).add(id))
+  }
+
+  // Refresh detail panel data: use fresh record from list, or fetch from API if not in filtered list
+  useEffect(() => {
+    if (!selectedRecord || editingRecord) return
+    const fresh = records.find(r => r.id === selectedRecord.id)
+    if (fresh) {
+      if (fresh !== selectedRecord) setSelectedRecord(fresh)
+    } else if (primaryWorkspaceId) {
+      recordsApi.get(primaryWorkspaceId, selectedRecord.id)
+        .then(r => setSelectedRecord(r))
+        .catch(() => setSelectedRecord(null))
+    }
+  }, [records, selectedRecord?.id, editingRecord, primaryWorkspaceId])
+
   const [transferRecord_, setTransferRecord] = useState<Record | null>(null)
   const [splitRecord_, setSplitRecord] = useState<Record | null>(null)
 
@@ -60,8 +80,9 @@ export function DashboardPage() {
         recordId: editingRecord.id,
         data: { ...formData, review_date: nextDate.toISOString().split('T')[0] }
       })
+      markEdited(editingRecord.id)
+      setSelectedRecord(editingRecord)
       setEditingRecord(null)
-      setSelectedRecord(null)
       toast({ title: `Revisione posticipata di ${days} giorni`, variant: 'success' })
     } catch {
       toast({ title: 'Errore durante la revisione', variant: 'destructive' })
@@ -96,8 +117,9 @@ export function DashboardPage() {
     if (!editingRecord) return
     try {
       await updateRecord({ recordId: editingRecord.id, data })
+      markEdited(editingRecord.id)
+      setSelectedRecord(editingRecord)
       setEditingRecord(null)
-      setSelectedRecord(null)
       toast({ title: 'Record aggiornato', variant: 'success' })
     } catch (error) {
       const axiosError = error as AxiosError<{ error?: string; message?: string }>
@@ -130,8 +152,9 @@ export function DashboardPage() {
       // Save form changes with stage reset to 0, then transfer
       await updateRecord({ recordId, data: { ...formData, stage: '0' } })
       await transferRecord({ recordId, toArea })
+      markEdited(recordId)
+      setSelectedRecord(editingRecord)
       setEditingRecord(null)
-      setSelectedRecord(null)
       toast({ title: `Record spostato in ${AREA_LABELS[toArea]}`, variant: 'success' })
     } catch (error) {
       const axiosError = error as AxiosError<{ error?: string; message?: string }>
@@ -390,6 +413,8 @@ export function DashboardPage() {
             onBulkExport={handleBulkExport}
             onBulkTransfer={(recs) => { setBulkRecords(recs); setShowBulkTransfer(true) }}
             onBulkSetStage={(recs) => { setBulkRecords(recs); setShowBulkStage(true) }}
+            visitedRecordIds={visitedRecordIds}
+            activeRecordId={editingRecord?.id || selectedRecord?.id}
           />
         </div>
       </div>

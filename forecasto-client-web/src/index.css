@@ -31,6 +31,10 @@
 }
 
 :root {
+  --color-row-active: #dbeafe;
+  --color-row-selected: hsl(222.2 47.4% 11.2% / 0.1);
+  --color-row-visited: #f0fdf4;
+  --color-row-overdue: #fef2f2;
   --background: 0 0% 100%;
   --foreground: 222.2 84% 4.9%;
   --card: 0 0% 100%;
@@ -54,6 +58,10 @@
 }
 
 .dark {
+  --color-row-active: hsl(217 50% 15%);
+  --color-row-selected: hsl(210 40% 98% / 0.1);
+  --color-row-visited: hsl(140 50% 10%);
+  --color-row-overdue: hsl(0 50% 12%);
   --background: 222.2 84% 4.9%;
   --foreground: 210 40% 98%;
   --card: 222.2 84% 4.9%;

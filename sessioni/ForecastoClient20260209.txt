@@ -1,0 +1,2196 @@
+Last login: Fri Feb  6 14:11:50 on ttys002
+cashbit@Mac ~ % cd dev/forecasto 
+cashbit@Mac forecasto % claude
+
+▗ ▗   ▖ ▖  Claude Code v2.1.37
+           Opus 4.6 · API Usage Billing
+  ▘▘ ▝▝    ~/dev/forecasto
+
+❯ Quando clicchiamo su rivedi a 7 gg o rivedi a 15 gg non solo dobbiamo modificare la data revisione ma dobbiamo        
+  anche salvare eventuali modifiche apportate al record nel form                                                       
+                                                                                                                        
+⏺ Explore(Find review buttons code)                                                                                     
+  ⎿  Done (35 tool uses · 70.2k tokens · 1m 19s)                                                                        
+                                                                                                                        
+⏺ Let me look at the relevant code more closely.                                                                        
+                                                                                                                        
+⏺ Read 2 files (ctrl+o to expand)                                                                                       
+  ⎿  Loaded forecasto-client-web/CLAUDE.md                                                                              
+                                                                                                                        
+⏺ Let me see how the form's onSubmit processes the data.                                                                
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                                        
+⏺ Chiaro il problema. Attualmente handleReviewRecord invia solo review_date, ignorando tutte le modifiche fatte nel     
+  form. Devo fare in modo che i pulsanti "Rivedi" validino e inviino anche i dati del form.
+                                                                                                                        
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 1 line, removed 1 line                                                                                       
+      50    onClose: () => void                                                                                         
+      51    isLoading?: boolean                                                                                  
+      52    reviewMode?: boolean                                                                                        
+      53 -  onReview?: (days: number) => void                                                                           
+      53 +  onReview?: (days: number, data: RecordUpdate) => void                                                       
+      54  }                                                                                                             
+      55                                                                                                                
+      56  // Map legacy stage values to 0/1                                                                             
+                                                                                                                        
+⏺ Now I need to make the review buttons trigger form validation and pass the processed data. I'll add a helper that     
+  processes form data for review, and change the button click handlers.                                                 
+                                                                                                                        
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)                                                    
+  ⎿  Added 14 lines, removed 1 line                                                                                     
+      166      calcVatFromTotal(watch('amount'), val)                                                                   
+      167    }                                                                                                          
+      168                                                                                                               
+      169 -  const handleFormSubmit = (data: FormData) => {                                                             
+      169 +  const processFormData = (data: FormData) => {                                                              
+      170      const amountNum = parseFloat(data.amount) || 0
+      171      const totalNum = parseFloat(data.total) || 0
+      172      const vat = data.vat || (amountNum > 0 ? (((totalNum - amountNum) / amountNum) * 100).toFixed(1)
+           : '0')
+     ...
+      179      // Remove sign and vat from data (UI-only fields)
+      180      const { sign, vat: _vat, review_date, ...submitData } = data
+      181
+      182 +    return { submitData, signedAmount, signedTotal, vat, review_date }                                
+      183 +  }                                                                                                   
+      184 +                                                                                                      
+      185 +  const handleFormSubmit = (data: FormData) => {                                                      
+      186 +    const { submitData, signedAmount, signedTotal, vat, review_date } = processFormData(data)         
+      187 +                                                                                                      
+      188      if (record) {
+      189        onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat, review_date:
+           review_date || undefined } as RecordUpdate)
+      190      } else {
+     ...
+      187      }
+      188    }
+      189
+      190 +  const handleReviewClick = (days: number) => {                                                       
+      191 +    handleSubmit((data: FormData) => {                                                                
+      192 +      const { submitData, signedAmount, signedTotal, vat } = processFormData(data)                    
+      193 +      onReview?.(days, { ...submitData, amount: signedAmount, total: signedTotal, vat } as            
+          +RecordUpdate)                                                                                         
+      194 +    })()                                                                                              
+      195 +  }                                                                                                   
+      196 +                                                                                                      
+      197    return (
+      198      <Card className="h-full border-0 rounded-none flex flex-col">
+      199        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2
+           flex-shrink-0">
+
+⏺ Now update the button click handlers to use the new function:
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)                                                    
+  ⎿  Added 2 lines, removed 2 lines
+      356              </Button>                                                                                        
+      357              {reviewMode && record && onReview && (                                                    
+      358                <>                                                                                             
+      359 -                <Button type="button" variant="outline" className="bg-amber-50 border-amber-300       
+          -hover:bg-amber-100 text-amber-700" onClick={() => onReview(7)}>                                       
+      359 +                <Button type="button" variant="outline" className="bg-amber-50 border-amber-300       
+          +hover:bg-amber-100 text-amber-700" onClick={() => handleReviewClick(7)}>                              
+      360                    Rivedi 7gg
+      361                  </Button>
+      362 -                <Button type="button" variant="outline" className="bg-amber-50 border-amber-300       
+          -hover:bg-amber-100 text-amber-700" onClick={() => onReview(15)}>                                      
+      362 +                <Button type="button" variant="outline" className="bg-amber-50 border-amber-300       
+          +hover:bg-amber-100 text-amber-700" onClick={() => handleReviewClick(15)}>                             
+      363                    Rivedi 15gg
+      364                  </Button>
+      365                </>
+
+⏺ Now update handleReviewRecord in DashboardPage to merge the form data with the new review_date:
+
+⏺ Update(forecasto-client-web/src/pages/DashboardPage.tsx)                                                              
+  ⎿  Added 2 lines, removed 2 lines
+      51    const [recordToDelete, setRecordToDelete] = useState<Record | null>(null)                                   
+      52    const [recordsToDelete, setRecordsToDelete] = useState<Record[] | null>(null)                        
+      53                                                                                                                
+      54 -  const handleReviewRecord = async (days: number) => {                                                 
+      54 +  const handleReviewRecord = async (days: number, formData: RecordUpdate) => {                         
+      55      if (!editingRecord) return
+      56      const nextDate = new Date()
+      57      nextDate.setDate(nextDate.getDate() + days)
+      58      try {
+      59        await updateRecord({
+      60          recordId: editingRecord.id,
+      61 -        data: { review_date: nextDate.toISOString().split('T')[0] }                                    
+      61 +        data: { ...formData, review_date: nextDate.toISOString().split('T')[0] }                       
+      62        })
+      63        setEditingRecord(null)
+      64        setSelectedRecord(null)
+
+⏺ Verifico che l'import di RecordUpdate sia presente in DashboardPage:
+
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                                             
+   
+⏺ L'import c'è. Verifico che tutto compili correttamente:                                                               
+                                                                                                   
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-client-web && npx tsc --noEmit 2>&1 | head -30)                        
+  ⎿  (No content)                                                                                  
+                                                                                                                        
+⏺ Nessun errore TypeScript. Ecco il riepilogo delle modifiche:                                                          
+                                                                                                                        
+  Problema: Cliccando "Rivedi 7gg" o "Rivedi 15gg" veniva salvata solo la nuova review_date, perdendo qualsiasi modifica
+   fatta nel form.
+                                                                                                                        
+  Soluzione in 3 punti:                                                                             
+
+  1. RecordForm.tsx - La firma di onReview passa ora anche i dati del form: (days: number, data: RecordUpdate) => void.
+  I pulsanti di revisione ora passano per handleSubmit di react-hook-form, quindi validano il form e inviano tutti i
+  dati processati (importi con segno, IVA, ecc.) insieme ai giorni.
+  2. DashboardPage.tsx - handleReviewRecord riceve i dati del form e li merge con la nuova review_date tramite {
+  ...formData, review_date: ... }, salvando tutto in un'unica chiamata API.
+  3. Bonus: siccome i pulsanti passano per handleSubmit, se il form ha errori di validazione la revisione non parte,
+  evitando di salvare dati incompleti.
+
+✻ Cooked for 2m 45s                                                                                                     
+  
+❯ recuperiamo spazio in fondo. Spostiamo il pulsante Nuovo record vicino a elimina nell'header della lista delle        
+  voci e il nome del workspace attivo vicino al pulsante revisione zero (a destra), eliminiamo così la barra nel       
+  footer della pagina e facciamo in modo che il footer della tabella sia il più in basso possibile                      
+                                                                                                                        
+⏺ Read 3 files (ctrl+o to expand)                                                                                       
+                                                                                                    
+⏺ Let me find where "Nuovo record" and the workspace name are currently displayed.                                      
+   
+⏺ Searched for 2 patterns, read 1 file (ctrl+o to expand)                                                               
+                                                                                                    
+⏺ Now let me find where Footer is used in the layout.                                                                   
+                                                                                                                        
+⏺ Searched for 1 pattern, read 1 file (ctrl+o to expand)                                                                
+  
+⏺ Ho il quadro completo. Ecco il piano:                                                                                 
+                                                                                                    
+  1. Rimuovere <Footer /> da MainLayout.tsx                                                                             
+  2. Aggiungere il nome workspace nell'Header.tsx accanto a "Revisione Zero"
+  3. Aggiungere il pulsante "Nuovo Record" nella toolbar di RecordGrid.tsx                                              
+  4. Adattare l'altezza in DashboardPage.tsx (il footer non occupa più spazio)                      
+
+  Procedo con le modifiche.
+
+⏺ Update(src/components/layout/MainLayout.tsx)         
+  ⎿  Added 1 line, removed 1 line
+      2  import { useEffect } from 'react'                                                                              
+      3  import { Header } from './Header'                                                                       
+      4  import { Sidebar } from './Sidebar'                                                                            
+      5 -import { Footer } from './Footer'                                                                       
+      5 +                                                                                                               
+      6  import { CreateWorkspaceDialog } from '@/components/workspaces/CreateWorkspaceDialog'                   
+      7  import { useWorkspaceStore } from '@/stores/workspaceStore'
+      8  import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+
+⏺ Update(src/components/layout/MainLayout.tsx)         
+  ⎿  Removed 2 lines
+      25            <Outlet />                                                                                          
+      26          </main>                                                                                        
+      27        </div>                                                                                                  
+      28 -      <Footer />                                                                                       
+      29 -                                                                                                       
+      28        {/* Dialogs */}
+      29        <CreateWorkspaceDialog />
+      30      </div>
+
+⏺ Now add the workspace name in the Header, next to "Revisione Zero":
+
+⏺ Update(src/components/layout/Header.tsx)                                                                              
+  ⎿  Added 9 lines
+      186            Revisione Zero                                                                                     
+      187          </Button>                                                                                     
+      188                                                                                                               
+      189 +        {selectedWorkspaceIds.length > 0 && (                                                         
+      190 +          <span className="text-sm text-muted-foreground truncate max-w-xs"                           
+          +title={workspaces.filter(w => selectedWorkspaceIds.includes(w.id)).map(w => w.name).join(', ')}>      
+      191 +            {selectedWorkspaceIds.length === 1                                                        
+      192 +              ? workspaces.find(w => w.id === selectedWorkspaceIds[0])?.name                          
+      193 +              : `${selectedWorkspaceIds.length} workspace`                                            
+      194 +            }                                                                                         
+      195 +          </span>                                                                                     
+      196 +        )}                                                                                            
+      197 +                                                                                                      
+      198          <div className="flex-1" />
+      199
+      200          <nav className="flex items-center gap-1">
+
+⏺ Now I need to add workspaces to the destructured imports from useWorkspaceStore in Header:
+
+⏺ Update(src/components/layout/Header.tsx)                                                                              
+  ⎿  Added 1 line, removed 1 line
+      31    const location = useLocation()                                                                              
+      32    const { user, logout } = useAuthStore()                                                              
+      33    const { sidebarOpen, toggleSidebar, reviewMode, toggleReviewMode } = useUiStore()                           
+      34 -  const { fetchWorkspaces, getPrimaryWorkspace, selectedWorkspaceIds } = useWorkspaceStore()           
+      34 +  const { fetchWorkspaces, getPrimaryWorkspace, selectedWorkspaceIds, workspaces                              
+         +} = useWorkspaceStore()                                                                                
+      35    const queryClient = useQueryClient()
+      36    const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
+      37    const [isAccepting, setIsAccepting] = useState<string | null>(null)
+
+⏺ Now add "Nuovo Record" button in RecordGrid toolbar. I'll add it next to the delete button in the bulk actions bar:
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+  
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 1 line, removed 1 line                                                                   
+      12    type VisibilityState,                                                                                       
+      13  } from '@tanstack/react-table'                                                                         
+      14  import { useState } from 'react'                                                                              
+      15 -import { ArrowUpDown, MoreHorizontal, Pencil, Trash, ArrowRight, Split, Merge, Calendar, Download,     
+         -Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight              
+         -} from 'lucide-react'                                                                                  
+      15 +import { ArrowUpDown, MoreHorizontal, Pencil, Trash, ArrowRight, Split, Merge, Calendar, Download,     
+         +Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus        
+         +} from 'lucide-react'                                                                                  
+      16  import { Checkbox } from '@/components/ui/checkbox'
+      17  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+      18  import { Button } from '@/components/ui/button'
+
+⏺ Update(src/components/records/RecordGrid.tsx)           
+  ⎿  Added 1 line
+      36  import { cn } from '@/lib/utils'                                                                              
+      37  import { useWorkspaceStore } from '@/stores/workspaceStore'                                            
+      38  import { useAuthStore } from '@/stores/authStore'                                                             
+      39 +import { useUiStore } from '@/stores/uiStore'                                                          
+      40
+      41  function parseAmount(amount: string | number): number {
+      42    if (typeof amount === 'number') return amount
+
+⏺ Now add the store usage inside the component and the button in the toolbar. Let me add the store hook:
+
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 2 lines, removed 1 line
+      107      return stored !== null ? stored === 'true' : true                                                        
+      108    })                                                                                                  
+      109    const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 100 })             
+      110 -  const { checkPermission } = useWorkspaceStore()                                                     
+      110 +  const { checkPermission, selectedWorkspaceIds } = useWorkspaceStore()                                      
+      111    const { user } = useAuthStore()                                                                     
+      112 +  const { setCreateRecordDialogOpen } = useUiStore()                                                  
+      113
+      114    const handleSetViewMode = (mode: 'compact' | 'extended') => {
+      115      setViewMode(mode)
+
+⏺ Now add the "Nuovo Record" button in the toolbar, next to the delete button:
+
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 10 lines
+      473        {/* Bulk Actions Bar - always visible */}                                                              
+      474        <div className="border-b bg-muted/30 px-4 py-2 flex-shrink-0">                                  
+      475          <div className="flex items-center gap-2">                                                            
+      476 +          <Button                                                                                     
+      477 +            size="sm"                                                                                 
+      478 +            className="h-8"                                                                           
+      479 +            onClick={() => setCreateRecordDialogOpen(true)}                                           
+      480 +            disabled={selectedWorkspaceIds.length === 0}                                              
+      481 +          >                                                                                           
+      482 +            <Plus className="h-3.5 w-3.5 mr-1" />                                                     
+      483 +            Nuovo                                                                                     
+      484 +          </Button>                                                                                   
+      485 +          <div className="w-px h-4 bg-border mx-2" />                                                 
+      486            <span className={cn("text-sm font-medium min-w-[100px]", !hasSelection &&
+           "text-muted-foreground")}>
+      487              {hasSelection
+      488                ? `${selectedRecords.length} ${selectedRecords.length === 1 ? 'selezionato' :
+           'selezionati'}`
+
+⏺ Now adjust the DashboardPage height since the footer (h-12 = 3rem) is gone. Currently h-[calc(100vh-7rem)], the header
+   is h-14 = 3.5rem, so without the footer it should be approximately h-[calc(100vh-3.5rem)]:
+                                                                                                                        
+⏺ Update(src/pages/DashboardPage.tsx)                     
+  ⎿  Added 1 line, removed 1 line                                                                                       
+      338    }                                                                                                          
+      339                                                                                                        
+      340    return (                                                                                                   
+      341 -    <div className="flex h-[calc(100vh-7rem)]">                                                       
+      341 +    <div className="flex h-[calc(100vh-3.5rem)]">                                                     
+      342        <div className="flex-1 flex flex-col overflow-hidden">
+      343          {/* Area Tabs */}
+      344          <div>
+
+⏺ Let me also check if there's a CashflowPage that uses a similar height:
+
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                                             
+  
+⏺ Good, only the DashboardPage had that. Now let me verify TypeScript compiles:                                         
+                                                                                                     
+⏺ Bash(npx tsc --noEmit 2>&1 | head -30)                                                                                
+  ⎿  (No content)                                                                                    
+                                                                                                                        
+⏺ Nessun errore. Verifichiamo i file modificati:                                                                        
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+   
+⏺ Tutto a posto. Ecco il riepilogo delle modifiche:                                                                     
+                                                                                                     
+  1. MainLayout.tsx - Rimossa la <Footer /> e il suo import. La pagina ora usa tutto lo spazio verticale disponibile.   
+                                                                                                     
+  2. Header.tsx - Aggiunto il nome del workspace attivo subito a destra del pulsante "Revisione Zero". Mostra il nome se
+   c'è 1 workspace selezionato, o "N workspace" se ce ne sono più di uno.                                               
+
+  3. RecordGrid.tsx - Aggiunto il pulsante "Nuovo" (con icona +) nella toolbar in alto, prima del contatore di selezione
+   e del pulsante elimina. Si disabilita se nessun workspace è selezionato.
+
+  4. DashboardPage.tsx - Altezza cambiata da calc(100vh-7rem) a calc(100vh-3.5rem) per sfruttare lo spazio liberato dal
+  footer rimosso.
+
+  Il footer della tabella (con totali e paginazione) ora arriva fino al fondo della pagina.
+
+✻ Worked for 2m 2s                                                                                                      
+  
+❯ nel form di editing convertiamo il menu a discesa dello stage in un pulsante switch                                   
+                                                                                      
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                                        
+⏺ Let me check what STAGES and STAGE_LABELS_BY_AREA look like to understand the possible values:                        
+                                                                                                     
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                                             
+                                                                                                     
+⏺ Ogni area ha esattamente 2 stage ('0' e '1'), quindi un toggle switch è perfetto. Sostituisco il Select con due       
+  bottoni toggle.                                                                                                       
+                                                                                                                        
+⏺ Update(src/components/records/RecordForm.tsx)                                                      
+  ⎿  Added 15 lines, removed 13 lines                                                                                   
+      295                                                                                                               
+      296            {/* Stato */}                                                                               
+      297            <div className="space-y-1">                                                                        
+      298 -            <Label htmlFor="stage">Stato</Label>                                                      
+      299 -            <Select value={selectedStage} onValueChange={(v) => setValue('stage', v)}>                
+      300 -              <SelectTrigger>                                                                         
+      301 -                <SelectValue placeholder="Seleziona" />                                               
+      302 -              </SelectTrigger>                                                                        
+      303 -              <SelectContent>                                                                         
+      304 -                {stages.map((stage) => (                                                              
+      305 -                  <SelectItem key={stage} value={stage}>                                              
+      306 -                    {STAGE_LABELS_BY_AREA[area]?.[stage] || stage}                                    
+      307 -                  </SelectItem>                                                                       
+      308 -                ))}                                                                                   
+      309 -              </SelectContent>                                                                        
+      310 -            </Select>                                                                                 
+      298 +            <Label>Stato</Label>                                                                      
+      299 +            <div className="flex gap-1">                                                              
+      300 +              {stages.map((stage) => (                                                                
+      301 +                <Button                                                                               
+      302 +                  key={stage}                                                                         
+      303 +                  type="button"                                                                       
+      304 +                  size="sm"                                                                           
+      305 +                  variant={selectedStage === stage ? (stage === '1' ? 'default' : 'destructive') :    
+          +'outline'}                                                                                            
+      306 +                  onClick={() => setValue('stage', stage)}                                            
+      307 +                  className="flex-1"                                                                  
+      308 +                >                                                                                     
+      309 +                  {STAGE_LABELS_BY_AREA[area]?.[stage] || stage}                                      
+      310 +                </Button>                                                                             
+      311 +              ))}                                                                                     
+      312 +            </div>                                                                                    
+      313              {errors.stage && <p className="text-sm text-destructive">{errors.stage.message}</p>}
+      314            </div>
+      315
+
+⏺ Ora verifico se i componenti Select sono ancora usati altrove nel file, per eventualmente rimuovere l'import
+  inutilizzato:
+                                                                                                                        
+⏺ Searched for 1 pattern (ctrl+o to expand)  
+                                                                                                                        
+⏺ Non sono più usati. Rimuovo l'import:                                                                                 
+  
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Removed 7 lines                                                                                 
+       6  import { Input } from '@/components/ui/input'                                                                 
+       7  import { Label } from '@/components/ui/label'                                                                 
+       8  import { Textarea } from '@/components/ui/textarea'                                                           
+       9 -import {                                                                                               
+      10 -  Select,                                                                                              
+      11 -  SelectContent,                                                                                       
+      12 -  SelectItem,                                                                                          
+      13 -  SelectTrigger,                                                                                       
+      14 -  SelectValue,                                                                                         
+      15 -} from '@/components/ui/select'                                                                        
+       9  import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+      10  import { Separator } from '@/components/ui/separator'
+      11  import { STAGES, STAGE_LABELS_BY_AREA, SIGN_OPTIONS } from '@/lib/constants'
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -20)
+  ⎿  (No content)
+                                                                                                                        
+⏺ Tutto compila. Il menu a discesa dello stage è ora un toggle con due bottoni affiancati, usando lo stesso pattern     
+  visivo del selettore "Tipo" (Entrata/Uscita) già presente nel form:                                                   
+                                                                                                                        
+  - Stage '0' (es. "Non Pagato", "Incerto"): bottone rosso (destructive) quando selezionato
+  - Stage '1' (es. "Pagato", "Probabile"): bottone primario (default) quando selezionato                                
+  - L'altro è sempre outline (grigio)                                                                                   
+
+✻ Crunched for 35s
+
+❯ sempre nel form di modifica inseriamo un tasto per spostare la voce al passaggio successivo. Da Budget a              
+  Prospect, A Orders ad Actual, quindi se siamo in order deve esserci il tasto sposta in actual. Nel caso stage        
+  fosse a 1, nel momento di passaggio deve sempre essere portato a 0                                                    
+                                                                                                                        
+⏺ Searched for 1 pattern, read 2 files (ctrl+o to expand)                                                               
+                                                                                                                        
+⏺ Now let me look at the footer area of the form to see where I'll add the button:                                      
+   
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                     
+⏺ Now let me check the AREA_LABELS and AREAS constants:                                                                 
+                                                                                                     
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                                             
+                                                                                                     
+⏺ La pipeline è budget → prospect → orders → actual. Ora implemento. Aggiungo una prop onTransfer al form e un pulsante 
+  nel footer che trasferisce allo step successivo.                                                                      
+                                                                                                                        
+⏺ Update(src/components/records/RecordForm.tsx)                                                      
+  ⎿  Added 1 line, removed 1 line                                                                                       
+       8  import { Textarea } from '@/components/ui/textarea'                                                           
+       9  import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'                        
+      10  import { Separator } from '@/components/ui/separator'                                                         
+      11 -import { STAGES, STAGE_LABELS_BY_AREA, SIGN_OPTIONS } from '@/lib/constants'                           
+      11 +import { STAGES, STAGE_LABELS_BY_AREA, SIGN_OPTIONS, AREA_LABELS } from '@/lib/constants'              
+      12  import type { Record as RecordType, RecordCreate, RecordUpdate, Area } from '@/types/record'
+      13  import type { Sign } from '@/types/workspace'
+      14  import { useWorkspaceStore } from '@/stores/workspaceStore'
+
+⏺ Update(src/components/records/RecordForm.tsx)      
+  ⎿  Added 1 line, removed 1 line
+      13  import type { Sign } from '@/types/workspace'                                                                 
+      14  import { useWorkspaceStore } from '@/stores/workspaceStore'                                            
+      15  import { useAuthStore } from '@/stores/authStore'                                                             
+      16 -import { AlertCircle, X } from 'lucide-react'                                                          
+      16 +import { AlertCircle, X, ArrowRight } from 'lucide-react'                                              
+      17
+      18  const schema = z.object({
+      19    account: z.string().min(1, 'Conto obbligatorio'),
+
+⏺ Now add the onPromote prop and the next area mapping:
+
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 1 line
+      44    isLoading?: boolean                                                                                         
+      45    reviewMode?: boolean                                                                                 
+      46    onReview?: (days: number, data: RecordUpdate) => void                                                       
+      47 +  onPromote?: (recordId: string, toArea: Area) => void                                                 
+      48  }
+      49
+      50  // Map legacy stage values to 0/1
+
+⏺ Read 1 file (ctrl+o to expand)                     
+
+⏺ Now add the next area map and update the component signature:                                                         
+   
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 8 lines, removed 1 line                                                                   
+      58    return stage ? (legacyMap[stage] || stage) : '0'                                                            
+      59  }                                                                                                             
+      60                                                                                                                
+      61 -export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoading, reviewMode,         
+         -onReview }: RecordFormProps) {                                                                         
+      61 +const NEXT_AREA: Partial<Record<string, Area>> = {                                                     
+      62 +  budget: 'prospect',                                                                                  
+      63 +  prospect: 'orders',                                                                                  
+      64 +  orders: 'actual',                                                                                    
+      65 +}                                                                                                      
+      66 +                                                                                                       
+      67 +export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoading, reviewMode,         
+         +onReview, onPromote }: RecordFormProps) {                                                              
+      68 +  const nextArea = NEXT_AREA[area]                                                                     
+      69    const stages = STAGES[area] || []
+      70    const { checkPermission } = useWorkspaceStore()
+      71    const { user } = useAuthStore()
+
+⏺ Now add the promote button in the footer, between the review buttons and the submit button:
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+   
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 11 lines                                                                                  
+      367                  </Button>                                                                                    
+      368                </>                                                                                     
+      369              )}                                                                                               
+      370 +            {record && nextArea && onPromote && (                                                            
+      371 +              <Button                                                                                 
+      372 +                type="button"                                                                         
+      373 +                variant="outline"                                                                     
+      374 +                className="bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-700"                
+      375 +                onClick={() => onPromote(record.id, nextArea)}                                        
+      376 +              >                                                                                       
+      377 +                <ArrowRight className="h-3.5 w-3.5 mr-1" />                                           
+      378 +                {AREA_LABELS[nextArea]}                                                               
+      379 +              </Button>                                                                               
+      380 +            )}                                                                                        
+      381              <Button type="submit" className="flex-1" disabled={isLoading || !canPerformAction}>
+      382                {isLoading ? 'Salvataggio...' : record ? 'Aggiorna' : 'Crea'}
+      383              </Button>
+
+⏺ Now I need to wire up onPromote in DashboardPage. The transfer should also save the current form changes, reset stage
+  to '0', and then transfer:
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                        
+                                                                                                                        
+⏺ Now let me see how transferRecord works and where the AREA_LABELS import is:                                          
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                     
+⏺ Good, transferRecord and updateRecord are already available. Now add the handlePromoteRecord handler and pass it to   
+  the form:                                                                                                             
+                                                                                                                        
+⏺ Update(src/pages/DashboardPage.tsx)                                                                
+  ⎿  Added 15 lines                                                                                                     
+      125      }                                                                                                        
+      126    }                                                                                                   
+      127                                                                                                               
+      128 +  const handlePromoteRecord = async (recordId: string, toArea: Area) => {                             
+      129 +    try {                                                                                             
+      130 +      // Reset stage to 0 before transferring                                                         
+      131 +      await updateRecord({ recordId, data: { stage: '0' } })                                          
+      132 +      await transferRecord({ recordId, toArea })                                                      
+      133 +      setEditingRecord(null)                                                                          
+      134 +      setSelectedRecord(null)                                                                         
+      135 +      toast({ title: `Record spostato in ${AREA_LABELS[toArea]}`, variant: 'success' })               
+      136 +    } catch (error) {                                                                                 
+      137 +      const axiosError = error as AxiosError<{ error?: string; message?: string }>                    
+      138 +      const message = axiosError.response?.data?.error || 'Errore durante lo spostamento.'            
+      139 +      toast({ title: 'Errore', description: message, variant: 'destructive' })                        
+      140 +    }                                                                                                 
+      141 +  }                                                                                                   
+      142 +                                                                                                      
+      143    const handleTransfer = async (recordId: string, toArea: Area, note?: string) => {
+      144      try {
+      145        await transferRecord({ recordId, toArea, note })
+
+⏺ Now pass the onPromote prop to RecordForm when editing:
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+   
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line                                                                                    
+      406                onClose={() => setEditingRecord(null)}                                                         
+      407                reviewMode={reviewMode}                                                                 
+      408                onReview={handleReviewRecord}                                                                  
+      409 +              onPromote={handlePromoteRecord}                                                                
+      410              />
+      411            ) : createRecordDialogOpen ? (
+      412              <RecordForm
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -20)                 
+  ⎿  (No content)
+                                                                                                                        
+⏺ Tutto compila. Ecco il riepilogo:                      
+                                                                                                                        
+  RecordForm.tsx:                                                                                                       
+  - Nuova prop onPromote?: (recordId: string, toArea: Area) => void
+  - Mappa NEXT_AREA: budget→prospect, prospect→orders, orders→actual                                                    
+  - Pulsante blu nel footer con freccia e nome dell'area successiva (es. "→ Prospect"), visibile solo in modifica e se
+  esiste un'area successiva (non in Actual)
+
+  DashboardPage.tsx:
+  - Nuovo handler handlePromoteRecord: prima resetta lo stage a '0' con updateRecord, poi esegue il transferRecord verso
+   l'area successiva
+  - Chiude il pannello di modifica e mostra un toast di conferma
+
+  Il flusso: l'utente modifica un record in Budget, clicca "→ Prospect" → lo stage viene forzato a 0 e il record viene
+  trasferito in Prospect.
+
+✻ Baked for 1m 37s                                                                                                      
+   
+❯ Anche qui, quando si preme il nuovo tasto, tutte le modifiche apportate nel form devono essere salvate                
+                                                                                                         
+⏺ Stessa logica dei pulsanti "Rivedi". Faccio passare i dati del form anche per il promote.                             
+                                                                                  
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                     
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 1 line, removed 1 line                                                                    
+      44    isLoading?: boolean                                                                                         
+      45    reviewMode?: boolean                                                                                 
+      46    onReview?: (days: number, data: RecordUpdate) => void                                                       
+      47 -  onPromote?: (recordId: string, toArea: Area) => void                                                        
+      47 +  onPromote?: (recordId: string, toArea: Area, data: RecordUpdate) => void                             
+      48  }
+      49
+      50  // Map legacy stage values to 0/1
+
+⏺ Now read the handleReviewClick to see the pattern, and add a similar handlePromoteClick:
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+   
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 8 lines                                                                                   
+      201      })()                                                                                                     
+      202    }                                                                                                   
+      203                                                                                                               
+      204 +  const handlePromoteClick = (toArea: Area) => {                                                      
+      205 +    if (!record) return                                                                               
+      206 +    handleSubmit((data: FormData) => {                                                                
+      207 +      const { submitData, signedAmount, signedTotal, vat } = processFormData(data)                    
+      208 +      onPromote?.(record.id, toArea, { ...submitData, amount: signedAmount, total: signedTotal, vat } 
+          + as RecordUpdate)                                                                                     
+      209 +    })()                                                                                              
+      210 +  }                                                                                                   
+      211 +                                                                                                      
+      212    return (
+      213      <Card className="h-full border-0 rounded-none flex flex-col">
+      214        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2
+           flex-shrink-0">
+
+⏺ Now update the button to use the new handler:
+
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 1 line, removed 1 line
+      380                  type="button"                                                                                
+      381                  variant="outline"                                                                     
+      382                  className="bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-700"                       
+      383 -                onClick={() => onPromote(record.id, nextArea)}                                        
+      383 +                onClick={() => handlePromoteClick(nextArea)}                                          
+      384                >
+      385                  <ArrowRight className="h-3.5 w-3.5 mr-1" />
+      386                  {AREA_LABELS[nextArea]}
+
+⏺ Now update handlePromoteRecord in DashboardPage to accept and save the form data:
+
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 3 lines, removed 3 lines
+      125      }                                                                                                        
+      126    }                                                                                                   
+      127                                                                                                               
+      128 -  const handlePromoteRecord = async (recordId: string, toArea: Area) => {                             
+      128 +  const handlePromoteRecord = async (recordId: string, toArea: Area, formData: RecordUpdate) => {     
+      129      try {
+      130 -      // Reset stage to 0 before transferring                                                         
+      131 -      await updateRecord({ recordId, data: { stage: '0' } })                                          
+      130 +      // Save form changes with stage reset to 0, then transfer                                       
+      131 +      await updateRecord({ recordId, data: { ...formData, stage: '0' } })                             
+      132        await transferRecord({ recordId, toArea })
+      133        setEditingRecord(null)
+      134        setSelectedRecord(null)
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -20)          
+  ⎿  (No content)
+                                                                                                                        
+⏺ Nessun errore. Ora il pulsante di promozione area:
+                                                                                                                        
+  1. Valida il form tramite handleSubmit                                                                                
+  2. Processa i dati (segno, IVA, importi)
+  3. Invia tutto a handlePromoteRecord che salva le modifiche del form con stage forzato a '0', poi trasferisce il      
+  record all'area successiva                                                                          
+
+✻ Brewed for 50s
+
+❯ non vedo con quale colonna sono ordinati i record e in che verso ascendente o discendente, possiamo rimediare ?       
+                                                                                                                  
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                   
+⏺ Attualmente tutti gli header usano ArrowUpDown indipendentemente dallo stato di ordinamento. Aggiungo ArrowUp e       
+  ArrowDown e creo un piccolo helper per mostrare l'icona corretta.                                   
+                                                                                                                        
+⏺ Update(src/components/records/RecordGrid.tsx)                                                       
+  ⎿  Added 1 line, removed 1 line                                                                                       
+      12    type VisibilityState,                                                                                       
+      13  } from '@tanstack/react-table'                                                                         
+      14  import { useState } from 'react'                                                                              
+      15 -import { ArrowUpDown,                                                                                  
+         -MoreHorizontal, Pencil, Trash, ArrowRight, Split, Merge, Calendar, Download, Check, CheckCircle, X,    
+         -User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus } from 'lucide-react'         
+      15 +import { ArrowUpDown, ArrowUp, ArrowDown,                                                              
+         +MoreHorizontal, Pencil, Trash, ArrowRight, Split, Merge, Calendar, Download, Check, CheckCircle, X,    
+         +User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus } from 'lucide-react'         
+      16  import { Checkbox } from '@/components/ui/checkbox'
+      17  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+      18  import { Button } from '@/components/ui/button'
+
+⏺ Now let me see the full pattern used for each sortable header so I can do a replace_all:
+
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                                             
+  
+⏺ Tutti gli header seguono lo stesso pattern. Aggiungo una funzione helper prima della definizione delle colonne e      
+  faccio un replace_all per sostituire l'icona statica:                                               
+                                                                                                                        
+⏺ Update(src/components/records/RecordGrid.tsx)                                                       
+  ⎿  Added 7 lines                                                                                                      
+      137      return checkPermission(record.area as Area, sign, 'can_delete_others', record.created_by,                
+           user?.id)                                                                                             
+      138    }                                                                                                          
+      139                                                                                                        
+      140 +  const SortIcon = ({ column }: { column: { getIsSorted: () => false | 'asc' | 'desc' } }) => {       
+      141 +    const sorted = column.getIsSorted()                                                               
+      142 +    if (sorted === 'asc') return <ArrowUp className="ml-1 h-3 w-3" />                                 
+      143 +    if (sorted === 'desc') return <ArrowDown className="ml-1 h-3 w-3" />                              
+      144 +    return <ArrowUpDown className="ml-1 h-3 w-3 opacity-30" />                                        
+      145 +  }                                                                                                   
+      146 +                                                                                                      
+      147    const columns: ColumnDef<Record>[] = useMemo(
+      148      () => [
+      149        {
+
+⏺ Now replace all the static <ArrowUpDown className="ml-1 h-3 w-3" /> inside column headers with <SortIcon 
+  column={column} />. Let me read each header to do the replacements. They all follow the same pattern, so I can use
+  replace_all:                                                                                                          
+  
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 9 lines, removed 9 lines                                                                   
+      177              className="px-1 h-8"                                                                             
+      178            >                                                                                           
+      179              Data                                                                                             
+      180 -            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      180 +            <SortIcon column={column} />                                                              
+      181            </Button>
+      182          ),
+      183          cell: ({ row }) => <DateDisplay date={row.original.date_cashflow} />,
+     ...
+      193              className="px-1 h-8"
+      194            >
+      195              Conto
+      196 -            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      196 +            <SortIcon column={column} />                                                              
+      197            </Button>
+      198          ),
+      199          cell: ({ row }) => <span className={cn("font-medium block",
+           textCellClass)}>{row.original.account}</span>,
+     ...
+      209              className="px-1 h-8"
+      210            >
+      211              Riferimento
+      212 -            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      212 +            <SortIcon column={column} />                                                              
+      213            </Button>
+      214          ),
+      215          cell: ({ row }) => (
+     ...
+      227              className="px-1 h-8"
+      228            >
+      229              ID Trans.
+      230 -            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      230 +            <SortIcon column={column} />                                                              
+      231            </Button>
+      232          ),
+      233          cell: ({ row }) => (
+     ...
+      245              className="px-1 h-8"
+      246            >
+      247              Respons.
+      248 -            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      248 +            <SortIcon column={column} />                                                              
+      249            </Button>
+      250          ),
+      251          cell: ({ row }) => (
+     ...
+      263              className="px-1 h-8"
+      264            >
+      265              Progetto
+      266 -            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      266 +            <SortIcon column={column} />                                                              
+      267            </Button>
+      268          ),
+      269          cell: ({ row }) => (
+     ...
+      281              className="justify-end w-full px-1 h-8"
+      282            >
+      283              Imponibile
+      284 -            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      284 +            <SortIcon column={column} />                                                              
+      285            </Button>
+      286          ),
+      287          cell: ({ row }) => (
+     ...
+      301              className="justify-end w-full px-1 h-8"
+      302            >
+      303              Totale
+      304 -            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      304 +            <SortIcon column={column} />                                                              
+      305            </Button>
+      306          ),
+      307          cell: ({ row }) => (
+     ...
+      321              className="px-1 h-8"
+      322            >
+      323              Stato
+      324 -            <ArrowUpDown className="ml-1 h-3 w-3" />                                                  
+      324 +            <SortIcon column={column} />                                                              
+      325            </Button>
+      326          ),
+      327          cell: ({ row }) => {
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -20)           
+  ⎿  (No content)
+                                                                                                                        
+⏺ Fatto. Ora le icone di ordinamento nelle intestazioni della tabella sono:                                             
+                                                                                                                        
+  - Nessun ordinamento: ↕ semitrasparente (opacity-30) — indica che la colonna è ordinabile ma non attiva               
+  - Ascendente: ↑ pieno                                                            
+  - Discendente: ↓ pieno                                                                                                
+                                                                                                                        
+  Solo la colonna attivamente ordinata mostra la freccia direzionale visibile, rendendo immediatamente chiaro quale
+  colonna e in che verso è applicato l'ordinamento.
+
+✻ Crunched for 41s
+
+❯ nella visualizzazione di dettaglio e nel form di editing mettiamo progetto subito sotto id transazione                
+                                                                                                         
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                   
+⏺ Ora vedo l'ordine attuale nel form. Devo spostare "Codice Progetto" subito dopo "ID Transazione". Leggo anche il      
+  RecordDetail.                                                                    
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                   
+                                                                                                                        
+⏺ Ora ho chiaro l'ordine attuale in entrambi i file. Faccio le due modifiche in parallelo.                              
+   
+  RecordDetail.tsx: sposto "Progetto" subito dopo "ID Transazione" (prima di "Responsabile").                           
+                                                                                   
+  RecordForm.tsx: sposto "Codice Progetto" subito dopo "ID Transazione" (prima delle date).                             
+                                                                                                                        
+⏺ Update(src/components/records/RecordDetail.tsx)
+  ⎿  Added 4 lines, removed 4 lines
+      47          </div>                                                                                                
+      48                                                                                                         
+      49          <div>                                                                                                 
+      50 -          <p className="text-sm text-muted-foreground">Responsabile</p>                                
+      51 -          <p className="font-medium">{record.owner || '-'}</p>                                         
+      50 +          <p className="text-sm text-muted-foreground">Progetto</p>                                    
+      51 +          <p className="font-mono text-sm">{record.project_code || '-'}</p>                            
+      52          </div>
+      53
+      54          <div>
+      55 -          <p className="text-sm text-muted-foreground">Progetto</p>                                    
+      56 -          <p className="font-mono text-sm">{record.project_code || '-'}</p>                            
+      55 +          <p className="text-sm text-muted-foreground">Responsabile</p>                                
+      56 +          <p className="font-medium">{record.owner || '-'}</p>                                         
+      57          </div>
+      58
+      59          <div>
+
+⏺ Ora il form — sposto "Codice Progetto" subito dopo "ID Transazione" e lo rimuovo dalla posizione attuale:
+
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 6 lines
+      270              {errors.transaction_id && <p className="text-sm                                                  
+           text-destructive">{errors.transaction_id.message}</p>}                                                
+      271            </div>                                                                                             
+      272                                                                                                        
+      273 +          {/* Codice Progetto */}                                                                     
+      274 +          <div className="space-y-1">                                                                 
+      275 +            <Label htmlFor="project_code">Codice Progetto</Label>                                     
+      276 +            <Input id="project_code" {...register('project_code')} placeholder="es. PROJ-001" />      
+      277 +          </div>                                                                                      
+      278 +                                                                                                      
+      279            {/* Data Cashflow + Data Offerta (grid 2 col) */}
+      280            <div className="grid grid-cols-2 gap-2">
+      281              <div className="space-y-1">
+
+⏺ Ora rimuovo il vecchio blocco "Codice Progetto" dalla posizione precedente (dopo "Responsabile"):
+
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Removed 6 lines
+      334              <Input id="owner" {...register('owner')} placeholder="Nome" />                                   
+      335            </div>                                                                                      
+      336                                                                                                               
+      337 -          {/* Codice Progetto */}                                                                     
+      338 -          <div className="space-y-1">                                                                 
+      339 -            <Label htmlFor="project_code">Codice Progetto</Label>                                     
+      340 -            <Input id="project_code" {...register('project_code')} placeholder="es. PROJ-001" />      
+      341 -          </div>                                                                                      
+      342 -                                                                                                      
+      337            {/* Prossima Azione */}
+      338            <div className="space-y-1">
+      339              <Label htmlFor="nextaction">Prossima Azione</Label>
+
+⏺ Verifico che non ci siano duplicati e che non ci siano errori. Devo controllare che il replace abbia rimosso il blocco
+   giusto (quello dopo Responsabile, non quello appena aggiunto):
+                                                                                                                        
+⏺ Searched for 1 pattern (ctrl+o to expand)  
+                                                                                                                        
+⏺ Una sola occorrenza nel template, perfetto.                                                                           
+                                                                                                                        
+⏺ Bash(npx tsc --noEmit 2>&1 | head -20)                                                                                
+  ⎿  (No content)                                                                  
+                                                                                                                        
+⏺ Fatto. In entrambe le viste l'ordine dei campi ora è:                                                                 
+                                                                                                                        
+  1. Conto                                                                                                              
+  2. Riferimento
+  3. ID Transazione                                                                                                     
+  4. Progetto (spostato qui)                                                                         
+  5. Date / Importi / Stato / Responsabile / ...
+
+✻ Churned for 45s                                                                                                       
+         
+❯ in fase di editing vorrei un pulante per espandere il campo note in una overlay a sinistra della form di editing      
+  in modo da poterlo vedere ed editare meglio                                                                          
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                                        
+⏺ Ora vedo il contesto. L'overlay deve apparire a sinistra del pannello di editing (che è a destra). Aggiungo uno stato 
+  per espandere le note, un'icona "Expand" e un pannello overlay posizionato a sinistra.
+                                                                                                                        
+⏺ Update(src/components/records/RecordForm.tsx)                                                      
+  ⎿  Added 1 line, removed 1 line                                                                                       
+      13  import type { Sign } from '@/types/workspace'                                                                 
+      14  import { useWorkspaceStore } from '@/stores/workspaceStore'                                            
+      15  import { useAuthStore } from '@/stores/authStore'                                                             
+      16 -import { AlertCircle, X, ArrowRight } from 'lucide-react'                                              
+      16 +import { AlertCircle, X, ArrowRight, Maximize2, Minimize2 } from 'lucide-react'                        
+      17
+      18  const schema = z.object({
+      19    account: z.string().min(1, 'Conto obbligatorio'),
+
+⏺ Now I need to add state for the expanded notes. Let me read around the component state:
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+   
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 1 line                                                                                    
+      116                                                                                                               
+      117    // Track which field (vat or total) was last manually edited                                        
+      118    const [lastEdited, setLastEdited] = useState<'vat' | 'total'>('total')                                     
+      119 +  const [noteExpanded, setNoteExpanded] = useState(false)                                                    
+      120
+      121    // Check permission based on selected sign
+      122    const canPerformAction = selectedSign
+
+⏺ Now replace the Note field with the expand button, and add the overlay panel. Let me read the full return to
+  understand the structure:
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                
+                                                                                                                        
+⏺ Now I'll replace the notes section and wrap the whole return in a fragment that includes the overlay:                 
+  
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 12 lines, removed 1 line                                                                  
+      349                                                                                                               
+      350            {/* Note */}                                                                                       
+      351            <div className="space-y-1">                                                                        
+      352 -            <Label htmlFor="note">Note</Label>                                                        
+      352 +            <div className="flex items-center justify-between">                                       
+      353 +              <Label htmlFor="note">Note</Label>                                                      
+      354 +              <Button                                                                                 
+      355 +                type="button"                                                                         
+      356 +                variant="ghost"                                                                       
+      357 +                size="icon"                                                                           
+      358 +                className="h-6 w-6"                                                                   
+      359 +                onClick={() => setNoteExpanded(!noteExpanded)}                                        
+      360 +              >                                                                                       
+      361 +                {noteExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5   
+          +w-3.5" />}                                                                                            
+      362 +              </Button>                                                                               
+      363 +            </div>                                                                                    
+      364              <Textarea id="note" {...register('note')} rows={2} />
+      365            </div>
+      366          </CardContent>
+
+⏺ Now wrap the entire return to include the overlay panel to the left. Let me read the full return statement boundaries:
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+   
+⏺ Now I'll wrap the return in a fragment and add the overlay panel to the left:                                         
+                                                                                                     
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 19 lines
+      211    }                                                                                                          
+      212                                                                                                        
+      213    return (                                                                                                   
+      214 +    <>                                                                                                
+      215 +    {/* Note expanded overlay */}                                                                     
+      216 +    {noteExpanded && (                                                                                
+      217 +      <div className="w-80 border-r flex flex-col bg-background absolute right-full top-0 h-full z-20 
+          + shadow-lg">                                                                                          
+      218 +        <div className="flex items-center justify-between p-4 border-b flex-shrink-0">                
+      219 +          <Label className="text-lg font-semibold">Note</Label>                                       
+      220 +          <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() =>        
+          +setNoteExpanded(false)}>                                                                              
+      221 +            <X className="h-4 w-4" />                                                                 
+      222 +          </Button>                                                                                   
+      223 +        </div>                                                                                        
+      224 +        <div className="flex-1 p-4 min-h-0">                                                          
+      225 +          <Textarea                                                                                   
+      226 +            value={watch('note') || ''}                                                               
+      227 +            onChange={(e) => setValue('note', e.target.value)}                                        
+      228 +            className="h-full resize-none"                                                            
+      229 +          />                                                                                          
+      230 +        </div>                                                                                        
+      231 +      </div>                                                                                          
+      232 +    )}                                                                                                
+      233      <Card className="h-full border-0 rounded-none flex flex-col">
+      234        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2
+           flex-shrink-0">
+      235          <CardTitle className="text-lg">
+
+⏺ Now close the fragment:                        
+
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 1 line
+      424          </div>                                                                                               
+      425        </form>                                                                                         
+      426      </Card>                                                                                                  
+      427 +    </>                                                                                               
+      428    )
+      429  }
+
+⏺ Now I need to make the parent container relative so the overlay positions correctly. Let me check the parent in
+  DashboardPage:
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                 
+                                                                                                                        
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line, removed 1 line
+      396                                                                                                               
+      397        {/* Right Panel — 3 states: editing, creating, detail */}                                       
+      398        {(selectedRecord || editingRecord || createRecordDialogOpen) && (                                      
+      399 -        <div className="w-120 border-l">                                                                     
+      399 +        <div className="w-120 border-l relative">                                                     
+      400            {editingRecord ? (
+      401              <RecordForm
+      402                record={editingRecord}
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -20)           
+  ⎿  (No content)
+                                                                                                                        
+⏺ Nessun errore. Ecco cosa è stato fatto:           
+                                                                                                                        
+  RecordForm.tsx:                                                                                                       
+  - Aggiunto stato noteExpanded per controllare l'overlay
+  - Il campo "Note" ora ha un'icona expand/collapse (Maximize2/Minimize2) nell'header della label                       
+  - Quando espanso, appare un pannello overlay (w-80) posizionato a sinistra del form (absolute right-full) con:
+    - Header con titolo "Note" e pulsante chiudi
+    - Textarea a tutta altezza, collegata allo stesso campo note del form tramite watch/setValue (bidirezionale: le
+  modifiche nell'overlay si riflettono nel campo inline e viceversa)
+
+  DashboardPage.tsx:
+  - Aggiunto relative al container del pannello destro per consentire il posizionamento assoluto dell'overlay
+
+✻ Crunched for 1m 15s                                                                                                   
+   
+❯ il campo note potrebbe colorarsi in base alla sintassi markdown                                                       
+                                                                                  
+⏺ Searched for 1 pattern, read 1 file (ctrl+o to expand)                                                                
+                                                                                                                        
+⏺ Nessuna libreria di highlighting presente. Creo un componente leggero MarkdownTextarea con la tecnica del textarea    
+  trasparente sovrapposto a un div con syntax highlighting.                                          
+                                                                                                                        
+⏺ Write(src/components/common/MarkdownTextarea.tsx)                                                  
+  ⎿  Wrote 87 lines to src/components/common/MarkdownTextarea.tsx                                                       
+     import { useRef, useEffect, type TextareaHTMLAttributes } from 'react'                                             
+     import { cn } from '@/lib/utils'
+                                                                                                                        
+     function highlightMarkdown(text: string): string {                            
+       const lines = text.split('\n')                                                                                   
+       return lines                                                                
+         .map((line) => {
+           const escaped = line
+             .replace(/&/g, '&amp;')
+             .replace(/</g, '&lt;')
+     … +77 lines (ctrl+o to expand)
+
+⏺ Now add the CSS styles for the markdown highlighting. Let me find the main CSS file:
+
+⏺ Searched for 1 pattern, read 1 file (ctrl+o to expand)                                                                
+   
+⏺ Update(src/index.css)                                                                                                 
+  ⎿  Added 38 lines                                                                               
+       89  #root {                                                                                                      
+       90    min-height: 100vh;                                                                                  
+       91  }                                                                                                            
+       92 +                                                                                                             
+       93 +/* Markdown syntax highlighting */                                                                    
+       94 +.markdown-highlight {                                                                                 
+       95 +  color: hsl(var(--foreground));                                                                      
+       96 +}                                                                                                     
+       97 +.markdown-highlight .md-heading {                                                                     
+       98 +  color: #2563eb;                                                                                     
+       99 +  font-weight: 700;                                                                                   
+      100 +}                                                                                                     
+      101 +.markdown-highlight .md-bold {                                                                        
+      102 +  color: #c026d3;                                                                                     
+      103 +  font-weight: 700;                                                                                   
+      104 +}                                                                                                     
+      105 +.markdown-highlight .md-italic {                                                                      
+      106 +  color: #c026d3;                                                                                     
+      107 +  font-style: italic;                                                                                 
+      108 +}                                                                                                     
+      109 +.markdown-highlight .md-code {                                                                        
+      110 +  color: #d97706;                                                                                     
+      111 +  background: hsl(var(--muted));                                                                      
+      112 +  border-radius: 3px;                                                                                 
+      113 +  padding: 0 2px;                                                                                     
+      114 +}                                                                                                     
+      115 +.markdown-highlight .md-blockquote {                                                                  
+      116 +  color: #6b7280;                                                                                     
+      117 +  font-style: italic;                                                                                 
+      118 +}                                                                                                     
+      119 +.markdown-highlight .md-list {                                                                        
+      120 +  color: #059669;                                                                                     
+      121 +  font-weight: 600;                                                                                   
+      122 +}                                                                                                     
+      123 +.markdown-highlight .md-link {                                                                        
+      124 +  color: #2563eb;                                                                                     
+      125 +  text-decoration: underline;                                                                         
+      126 +}                                                                                                     
+      127 +.markdown-highlight .md-hr {                                                                          
+      128 +  color: #9ca3af;                                                                                     
+      129 +}                                                                                                     
+
+⏺ Now update the RecordForm to use MarkdownTextarea instead of plain Textarea for the notes fields:
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+   
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 1 line                                                                                 
+      14  import { useWorkspaceStore } from '@/stores/workspaceStore'                                                   
+      15  import { useAuthStore } from '@/stores/authStore'                                                      
+      16  import { AlertCircle, X, ArrowRight, Maximize2, Minimize2 } from 'lucide-react'                               
+      17 +import { MarkdownTextarea } from '@/components/common/MarkdownTextarea'                                       
+      18
+      19  const schema = z.object({
+      20    account: z.string().min(1, 'Conto obbligatorio'),
+
+⏺ Now replace both note fields (inline and overlay) with the MarkdownTextarea:
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+   
+⏺ Replace the inline Textarea with MarkdownTextarea:                                                                    
+                                                                                                    
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 5 lines, removed 1 line                                                                  
+      381                  {noteExpanded ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5          
+           w-3.5" />}                                                                                                   
+      382                </Button>                                                                                      
+      383              </div>                                                                                    
+      384 -            <Textarea id="note" {...register('note')} rows={2} />                                     
+      384 +            <MarkdownTextarea                                                                         
+      385 +              value={watch('note') || ''}                                                             
+      386 +              onValueChange={(v) => setValue('note', v)}                                              
+      387 +              heightClass="h-20"                                                                      
+      388 +            />                                                                                        
+      389            </div>
+      390          </CardContent>
+      391
+
+⏺ Now update the overlay textarea too:               
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+   
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 2 lines, removed 3 lines                                                                 
+      223            </Button>                                                                                          
+      224          </div>                                                                                        
+      225          <div className="flex-1 p-4 min-h-0">                                                                 
+      226 -          <Textarea                                                                                          
+      226 +          <MarkdownTextarea                                                                           
+      227              value={watch('note') || ''}
+      228 -            onChange={(e) => setValue('note', e.target.value)}                                        
+      229 -            className="h-full resize-none"                                                            
+      228 +            onValueChange={(v) => setValue('note', v)}                                                
+      229            />
+      230          </div>
+      231        </div>
+
+⏺ Now check if Textarea is still used anywhere in the file, and if not, remove the import:
+
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                                             
+   
+⏺ Textarea non è più usata direttamente, rimuovo l'import:                                                              
+                                                                                                    
+⏺ Update(src/components/records/RecordForm.tsx)                                                                         
+  ⎿  Added 1 line, removed 1 line                                                                   
+       5  import { Button } from '@/components/ui/button'                                                               
+       6  import { Input } from '@/components/ui/input'                                                          
+       7  import { Label } from '@/components/ui/label'                                                                 
+       8 -import { Textarea } from '@/components/ui/textarea'                                                    
+       8 +                                                                                                       
+       9  import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+      10  import { Separator } from '@/components/ui/separator'
+      11  import { STAGES, STAGE_LABELS_BY_AREA, SIGN_OPTIONS, AREA_LABELS } from '@/lib/constants'
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -20)             
+  ⎿  (No content)
+                                                                                                                        
+⏺ Tutto compila. Ecco il riepilogo:                  
+                                                                                                                        
+  Nuovo componente MarkdownTextarea — textarea con syntax highlighting in tempo reale, basato sulla tecnica classica:   
+  - Un <div> sottostante renderizza il testo con span colorati per la sintassi markdown
+  - Un <textarea> trasparente sovrapposto gestisce l'input (il cursore resta visibile grazie a caret-foreground)        
+  - Lo scroll è sincronizzato tra i due layer                                                       
+
+  Sintassi evidenziata:
+  - # Heading — blu, grassetto
+  - **bold** / *italic* — viola
+  - `code` — arancione con sfondo muted
+  - > blockquote — grigio, corsivo
+  - - lista / 1. lista — verde
+  - [link](url) — blu sottolineato
+  - --- — grigio
+
+  Usato in entrambi i campi note del form (inline e overlay espanso).
+
+✻ Brewed for 1m 44s                                                                                                     
+   
+❯ Quando una riga viene selezionata per la modifica dovrebbe avere un highlite permanente, anche dopo che ho            
+  confermato le modifiche, mi serve per sapere dove ero arrivato con la scansione delle righe                          
+                                                                                                                        
+⏺ Read 2 files (ctrl+o to expand)                                                                                       
+                                                                                                                        
+⏺ Chiaro. Aggiungo un Set di ID visitati in DashboardPage e lo passo a RecordGrid per evidenziare le righe.             
+   
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line                                                                                   
+      36                                                                                                                
+      37    const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)                            
+      38    const [editingRecord, setEditingRecord] = useState<Record | null>(null)                                     
+      39 +  const [visitedRecordIds, setVisitedRecordIds] = useState<Set<string>>(new Set())                     
+      40    const [transferRecord_, setTransferRecord] = useState<Record | null>(null)
+      41    const [splitRecord_, setSplitRecord] = useState<Record | null>(null)
+      42
+
+⏺ Ora creo un wrapper per setEditingRecord che marca anche l'ID come visitato:
+
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 7 lines
+      37    const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)                                   
+      38    const [editingRecord, setEditingRecord] = useState<Record | null>(null)                              
+      39    const [visitedRecordIds, setVisitedRecordIds] = useState<Set<string>>(new Set())                            
+      40 +                                                                                                       
+      41 +  const markAsVisited = (record: Record | null) => {                                                   
+      42 +    if (record) {                                                                                      
+      43 +      setVisitedRecordIds(prev => new Set(prev).add(record.id))                                        
+      44 +    }                                                                                                  
+      45 +    setEditingRecord(record)                                                                           
+      46 +  }                                                                                                    
+      47    const [transferRecord_, setTransferRecord] = useState<Record | null>(null)
+      48    const [splitRecord_, setSplitRecord] = useState<Record | null>(null)
+      49
+
+⏺ Ora devo sostituire tutti i punti dove un record entra in editing dall'esterno (cioè onEditRecord={setEditingRecord})
+  con markAsVisited. Cerco le occorrenze:
+                                                                                                                        
+⏺ Searched for 1 pattern (ctrl+o to expand)  
+                                                                                                                        
+⏺ Le righe dove un record entra in editing sono:                                                  
+  - Riga 390: onEditRecord={setEditingRecord} — dalla griglia                                                           
+  - Riga 430: onEdit={() => setEditingRecord(selectedRecord)} — dal dettaglio                                           
+   
+  Le righe dove setEditingRecord(null) sono per chiudere il pannello — quelle vanno lasciate.                           
+                                                                                                  
+⏺ Update(src/pages/DashboardPage.tsx)              
+  ⎿  Added 1 line, removed 1 line
+      387              records={records}                                                                                
+      388              isLoading={isLoading}                                                                     
+      389              onSelectRecord={setSelectedRecord}                                                               
+      390 -            onEditRecord={setEditingRecord}                                                           
+      390 +            onEditRecord={markAsVisited}                                                              
+      391              onDeleteRecord={handleDeleteRecord}
+      392              onTransferRecord={setTransferRecord}
+      393              onSplitRecord={setSplitRecord}
+
+⏺ Update(src/pages/DashboardPage.tsx)              
+  ⎿  Added 1 line, removed 1 line
+      427              <RecordDetail                                                                                    
+      428                record={selectedRecord}                                                                 
+      429                onClose={() => setSelectedRecord(null)}                                                        
+      430 -              onEdit={() => setEditingRecord(selectedRecord)}                                         
+      430 +              onEdit={() => markAsVisited(selectedRecord)}                                            
+      431              />
+      432            ) : null}
+      433          </div>
+
+⏺ Ora passo visitedRecordIds a RecordGrid. Aggiungo la prop:
+
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 1 line
+      75    onBulkExport?: (records: Record[]) => void                                                                  
+      76    onBulkTransfer?: (records: Record[]) => void                                                         
+      77    onBulkSetStage?: (records: Record[]) => void                                                                
+      78 +  visitedRecordIds?: Set<string>                                                                       
+      79  }
+      80
+      81  export function RecordGrid({
+
+⏺ Update(src/components/records/RecordGrid.tsx)    
+  ⎿  Added 1 line
+      93    onBulkExport,                                                                                               
+      94    onBulkTransfer,                                                                                      
+      95    onBulkSetStage,                                                                                             
+      96 +  visitedRecordIds,                                                                                    
+      97  }: RecordGridProps) {
+      98    const [sorting, setSorting] = useState<SortingState>([])
+      99    const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+
+⏺ Ora aggiungo l'highlight nella riga della tabella:
+
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 2 lines, removed 1 line
+      709                  className={cn(                                                                               
+      710                    "cursor-pointer",                                                                   
+      711                    row.getIsSelected() && "bg-primary/10",                                                    
+      712 -                  ['0', 'unpaid', 'draft'].includes(row.original.stage) && new                        
+          -Date(row.original.date_cashflow) <= new Date() && !row.getIsSelected() &&                             
+          -"bg-red-50 dark:bg-red-950/30"                                                                        
+      712 +                  ['0', 'unpaid', 'draft'].includes(row.original.stage) && new                        
+          +Date(row.original.date_cashflow) <= new Date() && !row.getIsSelected() &&                             
+          +!visitedRecordIds?.has(row.original.id) && "bg-red-50 dark:bg-red-950/30",                            
+      713 +                  visitedRecordIds?.has(row.original.id) && !row.getIsSelected() && "bg-green-50      
+          +dark:bg-green-950/30"                                                                                 
+      714                  )}
+      715                  onClick={() => onSelectRecord?.(row.original)}
+      716                >
+
+⏺ Infine passo la prop dal DashboardPage:          
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+   
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line                                                                                   
+      398              onBulkExport={handleBulkExport}                                                                  
+      399              onBulkTransfer={(recs) => { setBulkRecords(recs); setShowBulkTransfer(true) }}            
+      400              onBulkSetStage={(recs) => { setBulkRecords(recs); setShowBulkStage(true) }}                      
+      401 +            visitedRecordIds={visitedRecordIds}                                                              
+      402            />
+      403          </div>
+      404        </div>
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -20)              
+  ⎿  (No content)
+                                                                                                                        
+⏺ Fatto. Ecco come funziona:                                                                                            
+                                                                                                                        
+  - Quando un record viene aperto in modifica (dal menu azioni della griglia o dal pulsante "Modifica" nel dettaglio),  
+  il suo ID viene aggiunto a un Set<string> di record visitati                   
+  - Le righe visitate restano evidenziate in verde chiaro (bg-green-50) anche dopo aver confermato le modifiche e chiuso
+   il form                                                                                                              
+  - L'highlight verde ha la precedenza sull'highlight rosso (scaduto/non pagato), così è chiaro che quella riga è già
+  stata processata
+  - L'highlight di selezione checkbox (bg-primary/10) ha la precedenza su tutto
+  - Il set si resetta naturalmente al refresh della pagina, ricominciando da zero una nuova sessione di scansione
+
+✻ Sautéed for 1m 18s
+
+❯ ok, durante la visita la riga selezionata dovrebbe comunque essere evidenziata con un colore diverso, così so         
+  esattamente su che riga sto lavorando in quel momento                                                                
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                                        
+⏺ Aggiungo una prop activeRecordId per la riga attualmente in modifica, con un highlight blu distinto dal verde         
+  "visitato".
+                                                                                                                        
+⏺ Update(src/components/records/RecordGrid.tsx)                                                     
+  ⎿  Added 1 line                                                                                                       
+      76    onBulkTransfer?: (records: Record[]) => void                                                                
+      77    onBulkSetStage?: (records: Record[]) => void                                                         
+      78    visitedRecordIds?: Set<string>                                                                              
+      79 +  activeRecordId?: string | null                                                                       
+      80  }
+      81
+      82  export function RecordGrid({
+
+⏺ Update(src/components/records/RecordGrid.tsx)
+  ⎿  Added 1 line
+       95    onBulkTransfer,                                                                                            
+       96    onBulkSetStage,                                                                                     
+       97    visitedRecordIds,                                                                                          
+       98 +  activeRecordId,                                                                                     
+       99  }: RecordGridProps) {
+      100    const [sorting, setSorting] = useState<SortingState>([])
+      101    const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+
+⏺ Ora aggiorno la logica di highlight nella riga: attivo (blu) > checkbox > visitato (verde) > scaduto (rosso):
+
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 9 lines, removed 3 lines
+      710                  key={row.id}                                                                                 
+      711                  className={cn(                                                                        
+      712                    "cursor-pointer",                                                                          
+      713 -                  row.getIsSelected() && "bg-primary/10",                                             
+      714 -                  ['0', 'unpaid', 'draft'].includes(row.original.stage) && new                        
+          -Date(row.original.date_cashflow) <= new Date() && !row.getIsSelected() &&                             
+          -!visitedRecordIds?.has(row.original.id) && "bg-red-50 dark:bg-red-950/30",                            
+      715 -                  visitedRecordIds?.has(row.original.id) && !row.getIsSelected() && "bg-green-50      
+          -dark:bg-green-950/30"                                                                                 
+      713 +                  activeRecordId === row.original.id                                                  
+      714 +                    ? "bg-blue-100 dark:bg-blue-950/40"                                               
+      715 +                    : row.getIsSelected()                                                             
+      716 +                      ? "bg-primary/10"                                                               
+      717 +                      : visitedRecordIds?.has(row.original.id)                                        
+      718 +                        ? "bg-green-50 dark:bg-green-950/30"                                          
+      719 +                        : ['0', 'unpaid', 'draft'].includes(row.original.stage) && new                
+          +Date(row.original.date_cashflow) <= new Date()                                                        
+      720 +                          ? "bg-red-50 dark:bg-red-950/30"                                            
+      721 +                          : ""                                                                        
+      722                  )}
+      723                  onClick={() => onSelectRecord?.(row.original)}
+      724                >
+
+⏺ Passo la prop da DashboardPage:
+
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line
+      399              onBulkTransfer={(recs) => { setBulkRecords(recs); setShowBulkTransfer(true) }}                   
+      400              onBulkSetStage={(recs) => { setBulkRecords(recs); setShowBulkStage(true) }}               
+      401              visitedRecordIds={visitedRecordIds}                                                              
+      402 +            activeRecordId={editingRecord?.id}                                                        
+      403            />
+      404          </div>
+      405        </div>
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -10)             
+  ⎿  (No content)
+                                                                                                                        
+⏺ Fatto. Ora le righe hanno 4 stati visivi con priorità chiara:
+                                                                                                                        
+  1. Blu (bg-blue-100) — riga attualmente in modifica                                                                   
+  2. Primary/10 — riga selezionata con checkbox
+  3. Verde chiaro (bg-green-50) — riga già visitata/modificata                                                          
+  4. Rosso chiaro (bg-red-50) — scaduto/non pagato (solo se non visitata)                           
+
+  Così durante la scansione vedi in blu dove stai lavorando ora, e in verde tutte quelle già processate.
+
+✻ Cogitated for 37s                                                                                                     
+   
+❯ non sembra funzionare                                                                                                 
+                                                                                 
+⏺ Lasciami verificare lo stato attuale del codice per capire il problema.                                               
+                                                                                                                        
+⏺ Read 2 files (ctrl+o to expand)                                                                                       
+                                                                                                    
+❯ non vedo il blu                                                                                                       
+                                                                                                    
+⏺ Il problema è probabilmente la classe hover della TableRow che sovrascrive il background. Verifico:                   
+                                                                                                    
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                      
+⏺ Ecco il problema. La TableRow ha le classi hover:bg-muted/50 data-[state=selected]:bg-muted hardcoded prima delle     
+  classi passate via className. In Tailwind v4, con classi dello stesso livello di specificità, l'ordine nel CSS        
+  generato conta, e hover:bg-muted/50 può sovrascrivere bg-blue-100. Inoltre il data-[state=selected]:bg-muted di       
+  tanstack-table potrebbe anche interferire.                                           
+                                                                                                                        
+  Il fix è usare !important tramite il prefisso ! di Tailwind sulle classi di highlight:                                
+
+⏺ Update(src/components/records/RecordGrid.tsx)  
+  ⎿  Added 4 lines, removed 4 lines
+      711                  className={cn(                                                                               
+      712                    "cursor-pointer",                                                                   
+      713                    activeRecordId === row.original.id                                                         
+      714 -                    ? "bg-blue-100 dark:bg-blue-950/40"                                               
+      714 +                    ? "!bg-blue-100 dark:!bg-blue-950/40"                                             
+      715                      : row.getIsSelected()
+      716 -                      ? "bg-primary/10"                                                               
+      716 +                      ? "!bg-primary/10"                                                              
+      717                        : visitedRecordIds?.has(row.original.id)
+      718 -                        ? "bg-green-50 dark:bg-green-950/30"                                          
+      718 +                        ? "!bg-green-50 dark:!bg-green-950/30"                                        
+      719                          : ['0', 'unpaid', 'draft'].includes(row.original.stage) && new
+           Date(row.original.date_cashflow) <= new Date()
+      720 -                          ? "bg-red-50 dark:bg-red-950/30"                                            
+      720 +                          ? "!bg-red-50 dark:!bg-red-950/30"                                          
+      721                            : ""
+      722                  )}
+      723                  onClick={() => onSelectRecord?.(row.original)}
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -10)         
+  ⎿  (No content)
+                                                                                                                        
+⏺ Il problema era che TableRow ha hover:bg-muted/50 e data-[state=selected]:bg-muted hardcoded nel componente base, che 
+  sovrascrivevano i colori passati tramite className. Aggiungendo il prefisso ! (important) su tutti i background di    
+  highlight, questi hanno ora la precedenza garantita.                                                                  
+                                                                                      
+  Prova di nuovo: dovresti vedere blu sulla riga in modifica, verde sulle righe già visitate, e rosso sulle scadute non 
+  ancora toccate.                                                                                                       
+
+✻ Crunched for 1m 20s
+
+❯ ancora non funziona                                                                                                   
+                                                                                         
+⏺ Devo investigare più a fondo. Verifico il tipo Record e il flusso dati.                                               
+                                                                                                                      
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                                             
+                                                                                                    
+⏺ L'id è corretto. Il problema è quasi certamente CSS. Verifico come Tailwind v4 gestisce !important e se               
+  cn/tailwind-merge lo strippano:                                                                   
+                                                                                                                        
+⏺ Bash(node -e "const {cn} = require('./src/lib/utils.js'); console.log(cn('hover:bg-muted/50', '!bg-blue-100'))" 2>&1
+      || true)                                                                                                          
+  ⎿  node:internal/modules/cjs/loader:1404                                                                              
+       throw err;
+       ^                                                                                                                
+     … +19 lines (ctrl+o to expand)                                                                 
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                                                     
+                                                                                                                        
+⏺ Bash(node -e "                                                                                                        
+      const { clsx } = require('clsx');…)                                                                               
+  ⎿ With !prefix: border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer !bg-bl     
+    ue-100                                                                                                              
+    With suffix!: border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted cursor-pointer bg-blu     
+    … +5 lines (ctrl+o to expand)                                                                                       
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+⏺ Il problema è che Tailwind v4 non supporta il prefisso ! per !important, e hover:bg-muted/50 della TableRow
+  sovrascrive sempre. Cambio approccio: uso style inline per il background, che ha sempre la precedenza sulle classi    
+  CSS.                                                                                                                  
+                                                                                                                        
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 9 lines, removed 9 lines                                                                                     
+      708              {table.getRowModel().rows.map((row) => (                                                         
+      709                <TableRow                                                                                      
+      710                  key={row.id}                                                                                 
+      711 -                className={cn(                                                                               
+      712 -                  "cursor-pointer",                                                                          
+      713 -                  activeRecordId === row.original.id                                                         
+      714 -                    ? "!bg-blue-100 dark:!bg-blue-950/40"                                                    
+      711 +                className="cursor-pointer"                                                                   
+      712 +                style={{                                                                                     
+      713 +                  backgroundColor: activeRecordId === row.original.id                                        
+      714 +                    ? 'var(--color-row-active)'                                                              
+      715                      : row.getIsSelected()                                                                    
+      716 -                      ? "!bg-primary/10"                                                                     
+      716 +                      ? 'var(--color-row-selected)'                                                          
+      717                        : visitedRecordIds?.has(row.original.id)
+      718 -                        ? "!bg-green-50 dark:!bg-green-950/30"                                        
+      718 +                        ? 'var(--color-row-visited)'                                                  
+      719                          : ['0', 'unpaid', 'draft'].includes(row.original.stage) && new
+           Date(row.original.date_cashflow) <= new Date()
+      720 -                          ? "!bg-red-50 dark:!bg-red-950/30"                                          
+      721 -                          : ""                                                                        
+      722 -                )}                                                                                    
+      720 +                          ? 'var(--color-row-overdue)'                                                
+      721 +                          : undefined                                                                 
+      722 +                }}                                                                                    
+      723                  onClick={() => onSelectRecord?.(row.original)}
+      724                >
+      725                  {row.getVisibleCells().map((cell) => (
+
+⏺ Ora definisco le variabili CSS nel file di stile:    
+
+⏺ Update(src/index.css)                                                                                                 
+  ⎿  Added 4 lines
+      31  }                                                                                                             
+      32                                                                                                         
+      33  :root {                                                                                                       
+      34 +  --color-row-active: #dbeafe;                                                                         
+      35 +  --color-row-selected: hsl(222.2 47.4% 11.2% / 0.1);                                                  
+      36 +  --color-row-visited: #f0fdf4;                                                                        
+      37 +  --color-row-overdue: #fef2f2;                                                                        
+      38    --background: 0 0% 100%;
+      39    --foreground: 222.2 84% 4.9%;
+      40    --card: 0 0% 100%;
+
+⏺ Update(src/index.css)                                
+  ⎿  Added 4 lines
+      58  }                                                                                                             
+      59                                                                                                         
+      60  .dark {                                                                                                       
+      61 +  --color-row-active: hsl(217 50% 15%);                                                                
+      62 +  --color-row-selected: hsl(210 40% 98% / 0.1);                                                        
+      63 +  --color-row-visited: hsl(140 50% 10%);                                                               
+      64 +  --color-row-overdue: hsl(0 50% 12%);                                                                 
+      65    --background: 222.2 84% 4.9%;
+      66    --foreground: 210 40% 98%;
+      67    --card: 222.2 84% 4.9%;
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -10)               
+  ⎿  (No content)
+                                                                                                                        
+⏺ Ora l'approccio è completamente diverso: uso style={{ backgroundColor }} inline sulle righe, che ha sempre la         
+  precedenza su qualsiasi classe CSS (incluso hover:bg-muted/50 della TableRow base). I colori sono definiti come       
+  variabili CSS in :root e .dark per supportare anche il dark mode.                                                     
+                                                                                 
+  - Blu (#dbeafe) — riga attualmente in modifica                                                                        
+  - Verde (#f0fdf4) — riga già visitata                                                                                 
+  - Rosso (#fef2f2) — scaduta non pagata
+  - Primary/10 — selezionata con checkbox
+
+  Prova ora.
+
+✻ Cooked for 1m 42s
+
+❯ ancora niente                                                                                                         
+                               
+⏺ Faccio un debug diretto per capire cosa sta succedendo. Verifico lo stato attuale dei file.                           
+                                                                                 
+⏺ Read 2 files (ctrl+o to expand)                                                                                       
+                                                                                                    
+⏺ Il codice sembra corretto. Il problema potrebbe essere che l'inline style su <tr> viene sovrascritto dalla            
+  pseudo-classe hover:bg-muted/50 tramite le proprietà @layer di Tailwind v4 che hanno !important implicito. Aggiungo un
+   console.log temporaneo per verificare se i dati arrivano correttamente:                                              
+                                                                                                    
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 7 lines, removed 1 line                                                                                      
+      705              ))}                                                                                              
+      706            </TableHeader>                                                                              
+      707            <TableBody>                                                                                        
+      708 -            {table.getRowModel().rows.map((row) => (                                                  
+      708 +            {table.getRowModel().rows.map((row) => {                                                  
+      709 +              const isActive = activeRecordId === row.original.id                                     
+      710 +              const isVisited = visitedRecordIds?.has(row.original.id) ?? false                       
+      711 +              if (isActive || isVisited) {                                                            
+      712 +                console.log('ROW HIGHLIGHT', { id: row.original.id, isActive, isVisited,              
+          +activeRecordId })                                                                                     
+      713 +              }                                                                                       
+      714 +              return (                                                                                
+      715                <TableRow
+      716                  key={row.id}
+      717                  className="cursor-pointer"
+
+⏺ Devo anche chiudere la funzione freccia:            
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+  
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 2 lines, removed 1 line                                                                  
+      734                    </TableCell>                                                                               
+      735                  ))}                                                                                   
+      736                </TableRow>                                                                                    
+      737 -            ))}                                                                                              
+      737 +              )                                                                                       
+      738 +            })}                                                                                       
+      739            </TableBody>
+      740          </Table>
+      741        </div>
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -10)              
+  ⎿  (No content)
+                                                                                                                        
+⏺ Apri la console del browser (F12 → Console), poi apri un record in modifica e dimmi se vedi messaggi ROW HIGHLIGHT
+  nella console. Questo ci dirà se il problema è nei dati o nel CSS.                                                    
+                                                                                                                        
+  In alternativa, faccio un test più aggressivo — aggiungo un bordo rosso visibile che non può essere sovrascritto, così
+   vediamo subito se la logica funziona:                                                                                
+                                                                                                    
+⏺ Update(src/components/records/RecordGrid.tsx)       
+  ⎿  Added 4 lines, removed 3 lines
+      716                  key={row.id}                                                                                 
+      717                  className="cursor-pointer"                                                            
+      718                  style={{                                                                                     
+      719 -                  backgroundColor: activeRecordId === row.original.id                                 
+      719 +                  backgroundColor: isActive                                                           
+      720                      ? 'var(--color-row-active)'
+      721                      : row.getIsSelected()
+      722                        ? 'var(--color-row-selected)'
+      723 -                      : visitedRecordIds?.has(row.original.id)                                        
+      723 +                      : isVisited                                                                     
+      724                          ? 'var(--color-row-visited)'
+      725                          : ['0', 'unpaid', 'draft'].includes(row.original.stage) && new
+           Date(row.original.date_cashflow) <= new Date()
+      726                            ? 'var(--color-row-overdue)'
+      727 -                          : undefined                                                                 
+      727 +                          : undefined,                                                                
+      728 +                  outline: isActive ? '2px solid #3b82f6' : isVisited ? '2px solid #22c55e' :         
+          +undefined,                                                                                            
+      729                  }}
+      730                  onClick={() => onSelectRecord?.(row.original)}
+      731                >
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -10)              
+  ⎿  (No content)
+                                                                                                                        
+⏺ Prova ora. Dovresti vedere:                                                                                           
+  - Bordo blu sulla riga in modifica                                                                                    
+  - Bordo verde sulle righe già visitate                                                                                
+  - Messaggi ROW HIGHLIGHT nella console del browser                             
+                                                                                                                        
+  Se non vedi nulla neanche così, il problema è nei dati (gli ID non corrispondono). Se vedi i bordi ma non lo sfondo, è
+   puramente CSS. Dimmi cosa succede.
+
+✻ Cogitated for 1m 2s
+
+❯ vedo l'over quando passo con il mouse, vedo il verfe e i bordi verdi dopo l'editing ma non vedo il blu della riga     
+   selezionata                                                                                                         
+                                                                                                                        
+⏺ Bene, i dati funzionano (il verde si vede). Il problema è solo con activeRecordId. Aggiungo un log in DashboardPage   
+  per capire:                                                                                                           
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                  
+                                                                                                                        
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 2 lines
+      39    const [visitedRecordIds, setVisitedRecordIds] = useState<Set<string>>(new Set())                            
+      40                                                                                                         
+      41    const markAsVisited = (record: Record | null) => {                                                          
+      42 +    console.log('MARK_AS_VISITED', record?.id)                                                                
+      43      if (record) {
+      44        setVisitedRecordIds(prev => new Set(prev).add(record.id))
+      45      }
+      46      setEditingRecord(record)
+      47    }
+      48 +  console.log('DASHBOARD_RENDER', { editingRecordId: editingRecord?.id, visitedCount:                  
+         +visitedRecordIds.size })                                                                               
+      49    const [transferRecord_, setTransferRecord] = useState<Record | null>(null)
+      50    const [splitRecord_, setSplitRecord] = useState<Record | null>(null)
+      51
+
+⏺ E aggiungo un log anche nel RecordGrid per verificare il valore della prop ricevuta:
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+   
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 1 line                                                                                   
+       97    visitedRecordIds,                                                                                          
+       98    activeRecordId,                                                                                     
+       99  }: RecordGridProps) {                                                                                        
+      100 +  console.log('GRID_RENDER', { activeRecordId, visitedCount: visitedRecordIds?.size })                       
+      101    const [sorting, setSorting] = useState<SortingState>([])
+      102    const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+      103    const [viewMode, setViewMode] = useState<'compact' | 'extended'>(() => {
+
+⏺ Ora apri la console del browser, apri un record in modifica, e dimmi cosa vedi come output dei log:
+  - MARK_AS_VISITED con quale ID
+  - DASHBOARD_RENDER con editingRecordId                                                                                
+  - GRID_RENDER con activeRecordId
+                                                                                                                        
+✻ Cooked for 1m 3s                                                                                  
+
+❯ ho cliccato su una sola riga e vedo questo: DASHBOARD_RENDER {editingRecordId: undefined, visitedCount:               
+  0}editingRecordId: undefinedvisitedCount: 0[[Prototype]]: Object                                                  
+  DashboardPage.tsx:48 DASHBOARD_RENDER {editingRecordId: undefined, visitedCount: 0}editingRecordId:                   
+  undefinedvisitedCount: 0[[Prototype]]: Object                                                                     
+  RecordGrid.tsx:100 GRID_RENDER {activeRecordId: undefined, visitedCount: 0}activeRecordId: undefinedvisitedCount:     
+   0[[Prototype]]: Object                                                                                           
+  RecordGrid.tsx:100 GRID_RENDER                                                                                    
+
+⏺ Chiaro! Il problema è che cliccando una riga si imposta solo selectedRecord (dettaglio), non editingRecord. Il blu si
+  attiva solo dopo aver cliccato "Modifica". Devo evidenziare anche la riga selezionata per la visualizzazione.
+                                                                                                                        
+⏺ Update(src/pages/DashboardPage.tsx)
+  ⎿  Added 1 line, removed 1 line                                                                                       
+      401              onBulkTransfer={(recs) => { setBulkRecords(recs); setShowBulkTransfer(true) }}                   
+      402              onBulkSetStage={(recs) => { setBulkRecords(recs); setShowBulkStage(true) }}               
+      403              visitedRecordIds={visitedRecordIds}                                                              
+      404 -            activeRecordId={editingRecord?.id}                                                        
+      404 +            activeRecordId={editingRecord?.id || selectedRecord?.id}                                  
+      405            />
+      406          </div>
+      407        </div>
+
+⏺ Anche selectedRecord deve marcare la riga come visitata, dato che l'utente la sta scandendo:
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+   
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 4 lines, removed 1 line                                                                  
+      388            <RecordGrid                                                                                        
+      389              records={records}                                                                         
+      390              isLoading={isLoading}                                                                            
+      391 -            onSelectRecord={setSelectedRecord}                                                               
+      391 +            onSelectRecord={(record) => {                                                             
+      392 +              setSelectedRecord(record)                                                               
+      393 +              setVisitedRecordIds(prev => new Set(prev).add(record.id))                               
+      394 +            }}                                                                                        
+      395              onEditRecord={markAsVisited}
+      396              onDeleteRecord={handleDeleteRecord}
+      397              onTransferRecord={setTransferRecord}
+
+⏺ Ora rimuovo i console.log di debug:
+
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Removed 2 lines
+      39    const [visitedRecordIds, setVisitedRecordIds] = useState<Set<string>>(new Set())                            
+      40                                                                                                         
+      41    const markAsVisited = (record: Record | null) => {                                                          
+      42 -    console.log('MARK_AS_VISITED', record?.id)                                                         
+      42      if (record) {
+      43        setVisitedRecordIds(prev => new Set(prev).add(record.id))
+      44      }
+      45      setEditingRecord(record)
+      46    }
+      47 -  console.log('DASHBOARD_RENDER', { editingRecordId: editingRecord?.id, visitedCount:                  
+         -visitedRecordIds.size })                                                                               
+      47    const [transferRecord_, setTransferRecord] = useState<Record | null>(null)
+      48    const [splitRecord_, setSplitRecord] = useState<Record | null>(null)
+      49
+
+⏺ Update(src/components/records/RecordGrid.tsx)  
+  ⎿  Removed 1 line
+       97    visitedRecordIds,                                                                                          
+       98    activeRecordId,                                                                                     
+       99  }: RecordGridProps) {                                                                                        
+      100 -  console.log('GRID_RENDER', { activeRecordId, visitedCount: visitedRecordIds?.size })                
+      100    const [sorting, setSorting] = useState<SortingState>([])
+      101    const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
+      102    const [viewMode, setViewMode] = useState<'compact' | 'extended'>(() => {
+
+⏺ Update(src/components/records/RecordGrid.tsx)  
+  ⎿  Removed 3 lines
+      708              {table.getRowModel().rows.map((row) => {                                                         
+      709                const isActive = activeRecordId === row.original.id                                     
+      710                const isVisited = visitedRecordIds?.has(row.original.id) ?? false                              
+      711 -              if (isActive || isVisited) {                                                            
+      712 -                console.log('ROW HIGHLIGHT', { id: row.original.id, isActive, isVisited,              
+          -activeRecordId })                                                                                     
+      713 -              }                                                                                       
+      711                return (
+      712                <TableRow
+      713                  key={row.id}
+
+⏺ Rimuovo anche l'outline di debug:              
+
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Removed 1 line
+      722                          : ['0', 'unpaid', 'draft'].includes(row.original.stage) && new                       
+           Date(row.original.date_cashflow) <= new Date()                                                        
+      723                            ? 'var(--color-row-overdue)'                                                       
+      724                            : undefined,                                                                
+      725 -                  outline: isActive ? '2px solid #3b82f6' : isVisited ? '2px solid #22c55e' :         
+          -undefined,                                                                                            
+      725                  }}
+      726                  onClick={() => onSelectRecord?.(row.original)}
+      727                >
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -10)         
+  ⎿  (No content)
+                                                                                                                        
+⏺ Il problema era che activeRecordId riceveva solo editingRecord?.id (che è undefined finché non si clicca "Modifica"),
+  mentre il click sulla riga imposta selectedRecord. Ora:                                                               
+                                                                                                                        
+  - activeRecordId = editingRecord?.id || selectedRecord?.id — si attiva al click sulla riga
+  - Anche il semplice click (non solo "Modifica") marca la riga come visitata                                           
+                                                                                                     
+  Risultato: blu appena clicchi una riga, verde quando passi alla successiva.
+
+✻ Churned for 50s
+
+❯ il verde deve però vedersi solo se ho modificato il record non se l'ho solo guardato                                  
+                                                                                               
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                  
+⏺ Chiaro. Il verde deve attivarsi solo al salvataggio effettivo, non al click o all'apertura dell'editing. Modifico:    
+                                                                                                     
+  1. markAsVisited → non marca più come visitato, solo apre l'editor                                                    
+  2. onSelectRecord → non marca come visitato                                                        
+  3. Verde solo dopo salvataggio riuscito (handleUpdateRecord, handleReviewRecord, handlePromoteRecord)                 
+                                                                                                                        
+⏺ Update(src/pages/DashboardPage.tsx)
+  ⎿  Added 2 lines, removed 5 lines
+      38    const [editingRecord, setEditingRecord] = useState<Record | null>(null)                                     
+      39    const [visitedRecordIds, setVisitedRecordIds] = useState<Set<string>>(new Set())                     
+      40                                                                                                                
+      41 -  const markAsVisited = (record: Record | null) => {                                                   
+      42 -    if (record) {                                                                                      
+      43 -      setVisitedRecordIds(prev => new Set(prev).add(record.id))                                        
+      44 -    }                                                                                                  
+      45 -    setEditingRecord(record)                                                                           
+      41 +  const markEdited = (id: string) => {                                                                 
+      42 +    setVisitedRecordIds(prev => new Set(prev).add(id))                                                 
+      43    }
+      44    const [transferRecord_, setTransferRecord] = useState<Record | null>(null)
+      45    const [splitRecord_, setSplitRecord] = useState<Record | null>(null)
+
+⏺ Ora devo aggiornare tutti i riferimenti a markAsVisited → setEditingRecord, e aggiungere markEdited nei handler di
+  salvataggio:
+                                                                                                                        
+⏺ Searched for 1 pattern (ctrl+o to expand)  
+                                                                                                                        
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line, removed 1 line                                                                                       
+      387                setSelectedRecord(record)                                                                      
+      388                setVisitedRecordIds(prev => new Set(prev).add(record.id))                               
+      389              }}                                                                                               
+      390 -            onEditRecord={markAsVisited}                                                                     
+      390 +            onEditRecord={setEditingRecord}                                                           
+      391              onDeleteRecord={handleDeleteRecord}                                                            
+      392              onTransferRecord={setTransferRecord}                                                      
+      393              onSplitRecord={setSplitRecord}
+
+⏺ Update(src/pages/DashboardPage.tsx)              
+  ⎿  Added 1 line, removed 1 line
+      429              <RecordDetail                                                                                    
+      430                record={selectedRecord}                                                                 
+      431                onClose={() => setSelectedRecord(null)}                                                        
+      432 -              onEdit={() => markAsVisited(selectedRecord)}                                                
+      432 +              onEdit={() => setEditingRecord(selectedRecord)}                                         
+      433              />                                                                                             
+      434            ) : null}                                                                                   
+      435          </div>
+
+⏺ Ora rimuovo il setVisitedRecordIds dal onSelectRecord:
+
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line, removed 4 lines
+      383            <RecordGrid                                                                                        
+      384              records={records}                                                                             
+      385              isLoading={isLoading}                                                                            
+      386 -            onSelectRecord={(record) => {                                                                  
+      387 -              setSelectedRecord(record)                                                               
+      388 -              setVisitedRecordIds(prev => new Set(prev).add(record.id))                                    
+      389 -            }}                                                                                        
+      386 +            onSelectRecord={setSelectedRecord}                                                        
+      387              onEditRecord={setEditingRecord}
+      388              onDeleteRecord={handleDeleteRecord}
+      389              onTransferRecord={setTransferRecord}
+
+⏺ Ora aggiungo markEdited nei 3 handler di salvataggio riuscito:
+
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line
+      101      if (!editingRecord) return                                                                               
+      102      try {                                                                                                 
+      103        await updateRecord({ recordId: editingRecord.id, data })                                               
+      104 +      markEdited(editingRecord.id)                                                                         
+      105        setEditingRecord(null)                                                                                 
+      106        setSelectedRecord(null)                                                                              
+      107        toast({ title: 'Record aggiornato', variant: 'success' })
+
+⏺ Update(src/pages/DashboardPage.tsx)              
+  ⎿  Added 1 line
+      65          recordId: editingRecord.id,                                                                           
+      66          data: { ...formData, review_date: nextDate.toISOString().split('T')[0] }                       
+      67        })                                                                                                      
+      68 +      markEdited(editingRecord.id)                                                                      
+      69        setEditingRecord(null)                                                                           
+      70        setSelectedRecord(null)                                                                               
+      71        toast({ title: `Revisione posticipata di ${days} giorni`, variant: 'success' })
+
+⏺ Read 1 file (ctrl+o to expand)                   
+
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line
+      137        // Save form changes with stage reset to 0, then transfer                                              
+      138        await updateRecord({ recordId, data: { ...formData, stage: '0' } })                              
+      139        await transferRecord({ recordId, toArea })                                                             
+      140 +      markEdited(recordId)                                                                                 
+      141        setEditingRecord(null)                                                                                 
+      142        setSelectedRecord(null)                                                                                
+      143        toast({ title: `Record spostato in ${AREA_LABELS[toArea]}`, variant: 'success' })
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -10)             
+  ⎿  (No content)
+                                                                                                                        
+⏺ Ora la logica è:                                                                                                      
+                                                                                                                        
+  - Blu: la riga su cui stai lavorando (click sulla riga o in modifica)                                                 
+  - Verde: solo dopo un salvataggio riuscito (Aggiorna, Rivedi 7/15gg, o promozione area)                             
+  - Cliccare una riga per guardare il dettaglio → blu, ma niente verde                                                  
+                                                                                                                        
+✻ Sautéed for 1m 10s                                                                                                    
+                                                                                                                        
+❯ ok, quando un record viene salvato torniamo in modalità visualizzazione dettaglio di quel record, sarà l'utente a     
+   chidere la visualizzazione di dettaglio quando lo desidera                                                          
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                                        
+⏺ Dopo il salvataggio devo tenere selectedRecord puntato al record appena salvato (così si apre il dettaglio) e solo    
+  annullare editingRecord. Ma selectedRecord ha i dati vecchi — devo aggiornarlo con i dati freschi dalla lista records.
+   Il modo più semplice: mantengo selectedRecord con lo stesso oggetto e il pannello destro mostra il dettaglio dato che
+   editingRecord diventa null.                                                                                    
+                                                                                                                        
+  Il problema è che attualmente setSelectedRecord(null) viene chiamato dopo il salvataggio. Devo solo mantenerlo:     
+                                                                                                                        
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line, removed 1 line
+      103      try {                                                                                                    
+      104        await updateRecord({ recordId: editingRecord.id, data })                                        
+      105        markEdited(editingRecord.id)                                                                           
+      106 +      setSelectedRecord(editingRecord)                                                                  
+      107        setEditingRecord(null)                                                                          
+      108 -      setSelectedRecord(null)                                                                              
+      108        toast({ title: 'Record aggiornato', variant: 'success' })
+      109      } catch (error) {
+      110        const axiosError = error as AxiosError<{ error?: string; message?: string }>
+
+⏺ Stesso trattamento per review e promote:
+
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line, removed 1 line
+      66          data: { ...formData, review_date: nextDate.toISOString().split('T')[0] }                              
+      67        })                                                                                                 
+      68        markEdited(editingRecord.id)                                                                            
+      69 +      setSelectedRecord(editingRecord)                                                                      
+      70        setEditingRecord(null)                                                                           
+      71 -      setSelectedRecord(null)                                                                               
+      71        toast({ title: `Revisione posticipata di ${days} giorni`, variant: 'success' })
+      72      } catch {
+      73        toast({ title: 'Errore durante la revisione', variant: 'destructive' })
+
+⏺ Update(src/pages/DashboardPage.tsx)
+  ⎿  Added 1 line, removed 1 line
+      138        await updateRecord({ recordId, data: { ...formData, stage: '0' } })                                    
+      139        await transferRecord({ recordId, toArea })                                                      
+      140        markEdited(recordId)                                                                                   
+      141 +      setSelectedRecord(editingRecord)                                                                  
+      142        setEditingRecord(null)                                                                          
+      143 -      setSelectedRecord(null)                                                                              
+      143        toast({ title: `Record spostato in ${AREA_LABELS[toArea]}`, variant: 'success' })
+      144      } catch (error) {
+      145        const axiosError = error as AxiosError<{ error?: string; message?: string }>
+
+⏺ Ora però selectedRecord potrebbe avere dati stale (pre-salvataggio). Il pannello dettaglio lo mostra con i dati vecchi
+   finché react-query non ricarica. Per risolvere, uso i dati freschi dalla lista records quando disponibili. Verifico
+  come RecordDetail riceve il record:                                                                                   
+   
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                                   
+⏺ Per mostrare sempre i dati freschi, uso il record dalla lista records (aggiornata da react-query) con fallback su     
+  selectedRecord:                                                                                                     
+                                                                                                                        
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                 
+  ⎿  Added 1 line, removed 1 line                                                                                       
+      427              />                                                                                               
+      428            ) : selectedRecord ? (                                                                      
+      429              <RecordDetail                                                                                    
+      430 -              record={selectedRecord}                                                                   
+      430 +              record={records.find(r => r.id === selectedRecord.id) || selectedRecord}                
+      431                onClose={() => setSelectedRecord(null)}                                                      
+      432                onEdit={() => setEditingRecord(selectedRecord)}
+      433              />
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -10)
+  ⎿  (No content)
+                                                                                                                        
+⏺ Fatto. Ora dopo il salvataggio:    
+                                                                                                                        
+  1. Il form di editing si chiude                                                                                       
+  2. Si apre automaticamente il dettaglio dello stesso record (con dati aggiornati dalla cache react-query) 
+  3. La riga resta evidenziata in blu (è ancora il record attivo)                                                       
+  4. Il verde appare sulla riga come "modificato"                                                                  
+  5. L'utente chiude il dettaglio quando vuole, cliccando la X o selezionando un'altra riga                 
+                                                                                                                      
+✻ Baked for 53s                                                                                                         
+   
+❯ ok ma quando il record modificato esce dalla lista delle voci perchè non corrisponde più al filtro vedo la            
+  versione vecchia del record e non la nuova                                                                           
+                                                                                                                        
+⏺ Il record salvato non è più nella lista filtrata, quindi il fallback mostra i dati vecchi. La soluzione: se il record 
+  non è più nella lista, chiudo il pannello dettaglio.                                                                  
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                                            
+                                                                                                                        
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line, removed 1 line                                                                           
+      1 -import { useState } from 'react'                                                                               
+      1 +import { useState, useEffect } from 'react'                                                               
+      2  import { AxiosError } from 'axios'                                                                             
+      3  import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'                                           
+      4  import {                                                                                                       
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)    
+
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 8 lines
+      41    const markEdited = (id: string) => {                                                                        
+      42      setVisitedRecordIds(prev => new Set(prev).add(id))                                                      
+      43    }                                                                                                           
+      44 +                                                                                                              
+      45 +  // Close detail panel if selected record is no longer in the filtered list                           
+      46 +  useEffect(() => {                                                                                    
+      47 +    if (selectedRecord && !editingRecord && !records.find(r => r.id === selectedRecord.id)) {          
+      48 +      setSelectedRecord(null)                                                                          
+      49 +    }                                                                                                  
+      50 +  }, [records, selectedRecord, editingRecord])                                                         
+      51 +                                                                                                       
+      52    const [transferRecord_, setTransferRecord] = useState<Record | null>(null)
+      53    const [splitRecord_, setSplitRecord] = useState<Record | null>(null)
+      54
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -10)
+  ⎿  (No content)
+                                                                                                                        
+⏺ Ora quando react-query ricarica la lista dopo il salvataggio, se il record non è più presente tra i risultati
+  filtrati, il pannello dettaglio si chiude automaticamente. Se il record è ancora nella lista, il dettaglio mostra i   
+  dati aggiornati.                                                                                                      
+            
+✻ Crunched for 34s                                                                                                      
+                                                                                                                      
+❯ non potremmo invece fare che il pannello ricarica i dati freschi anzichè chiudersi ?                                  
+                                                                                                                      
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                                             
+                                                                                                                      
+⏺ C'è un endpoint per recuperare un singolo record. Ora uso quello per ricaricare i dati freschi nel pannello dettaglio 
+  dopo il salvataggio.                                                                                             
+                                                                                                                        
+⏺ Searched for 1 pattern, read 1 file (ctrl+o to expand)                                                              
+                                                                                                                        
+⏺ primaryWorkspaceId è esposto da useRecords. Lo uso per fare una fetch diretta del record dopo il salvataggio.         
+                                                                                                                        
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line                                                                                                  
+      27  import { useUiStore } from '@/stores/uiStore'                                                                 
+      28  import { toast } from '@/hooks/useToast'                                                                    
+      29  import { AREA_LABELS, AREAS } from '@/lib/constants'                                                          
+      30 +import { recordsApi } from '@/api/records'                                                                    
+      31  import type { Record, Area, RecordCreate, RecordUpdate } from '@/types/record'                         
+      32                                                                                                              
+      33  export function DashboardPage() {
+
+⏺ Ora aggiungo primaryWorkspaceId dalla destructuring di useRecords, e creo un helper per ricaricare il record fresco
+  dopo il salvataggio:
+                                                                                                                        
+⏺ Update(src/pages/DashboardPage.tsx)
+  ⎿  Added 1 line, removed 1 line                                                                                       
+      33  export function DashboardPage() {                                                                             
+      34    const { currentArea, setArea } = useFilterStore()                                                    
+      35    const { createRecordDialogOpen, setCreateRecordDialogOpen, reviewMode } = useUiStore()                      
+      36 -  const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord } = useRecords()  
+      36 +  const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord,                
+         +primaryWorkspaceId } = useRecords()                                                                         
+      37
+      38    const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
+      39    const [editingRecord, setEditingRecord] = useState<Record | null>(null)
+
+⏺ Ora sostituisco il useEffect che chiude il pannello con uno che ricarica i dati freschi:
+
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 10 lines, removed 4 lines
+      43      setVisitedRecordIds(prev => new Set(prev).add(id))                                                        
+      44    }                                                                                                      
+      45                                                                                                                
+      46 -  // Close detail panel if selected record is no longer in the filtered list                                
+      46 +  // Refresh detail panel data: use fresh record from list, or fetch from API if not in filtered list  
+      47    useEffect(() => {                                                                                         
+      48 -    if (selectedRecord && !editingRecord && !records.find(r => r.id === selectedRecord.id)) {          
+      49 -      setSelectedRecord(null)                                                                          
+      48 +    if (!selectedRecord || editingRecord) return                                                       
+      49 +    const fresh = records.find(r => r.id === selectedRecord.id)                                        
+      50 +    if (fresh) {                                                                                       
+      51 +      if (fresh !== selectedRecord) setSelectedRecord(fresh)                                           
+      52 +    } else if (primaryWorkspaceId) {                                                                   
+      53 +      recordsApi.get(primaryWorkspaceId, selectedRecord.id)                                            
+      54 +        .then(r => setSelectedRecord(r))                                                               
+      55 +        .catch(() => setSelectedRecord(null))                                                          
+      56      }
+      57 -  }, [records, selectedRecord, editingRecord])                                                         
+      57 +  }, [records, selectedRecord?.id, editingRecord, primaryWorkspaceId])                                 
+      58
+      59    const [transferRecord_, setTransferRecord] = useState<Record | null>(null)
+      60    const [splitRecord_, setSplitRecord] = useState<Record | null>(null)
+
+⏺ Ora posso anche semplificare il RecordDetail — non serve più il fallback records.find:
+
+⏺ Update(src/pages/DashboardPage.tsx)                                                                                   
+  ⎿  Added 1 line, removed 1 line
+      442              />                                                                                               
+      443            ) : selectedRecord ? (                                                                        
+      444              <RecordDetail                                                                                    
+      445 -              record={records.find(r => r.id === selectedRecord.id) || selectedRecord}                     
+      445 +              record={selectedRecord}                                                                 
+      446                onClose={() => setSelectedRecord(null)}                                                      
+      447                onEdit={() => setEditingRecord(selectedRecord)}
+      448              />
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -10)             
+  ⎿  (No content)
+                                                                                                                        
+⏺ Ora dopo il salvataggio:                           
+                                                                                                                        
+  1. Se il record è ancora nella lista filtrata → il useEffect lo aggiorna con i dati freschi dalla cache               
+  2. Se il record non è più nella lista (es. cambiato area, stage, filtro) → fa una GET diretta all'API per recuperare i
+   dati aggiornati e li mostra nel dettaglio                                                                            
+  3. Solo se la fetch fallisce (record cancellato) → chiude il pannello                                            
+                                                                                                            
+✻ Cooked for 51s                                                                                                      
+
+❯ /exit                                                                                                                 
+  ⎿  Goodbye!       
+                                                                                                                        
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯                                                                                                                       
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ accept edits on (shift+tab to cycle) · 3 files +60 -12 · ctrl+t to hide tasks Context left until auto-compact: 5%
+                                                                                                                        
+Resume this session with:
+claude --resume 34e33a0a-32aa-4caa-9924-1fda15d55a3d
+
+Total cost:            $16.94
+Total duration (API):  25m 29s
+Total duration (wall): 2h 17m 14s
+Total code changes:    410 lines added, 124 lines removed
+Usage by model:
+    claude-haiku-4-5:  23.8k input, 7.6k output, 1.1m cache read, 67.4k cache write ($0.2537)
+     claude-opus-4-6:  303 input, 56.9k output, 23.5m cache read, 565.3k cache write ($16.68)
+cashbit@Mac forecasto % 
