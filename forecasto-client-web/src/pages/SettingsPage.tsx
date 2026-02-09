@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { User, Building, Bell, Shield, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { useAuthStore } from '@/stores/authStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { MembersDialog } from '@/components/workspace/MembersDialog'
+import { toast } from '@/hooks/useToast'
 
 export function SettingsPage() {
   const { user } = useAuthStore()
@@ -19,6 +20,7 @@ export function SettingsPage() {
 
   // Use the first selected workspace for settings
   const primaryWorkspace = workspaces.find(w => w.id === selectedWorkspaceIds[0])
+  const canEditWorkspace = primaryWorkspace?.role === 'owner' || primaryWorkspace?.role === 'admin'
 
   const profileForm = useForm({
     defaultValues: {
@@ -34,6 +36,16 @@ export function SettingsPage() {
     },
   })
 
+  // Reset workspace form when primaryWorkspace changes (async load or workspace switch)
+  useEffect(() => {
+    if (primaryWorkspace) {
+      workspaceForm.reset({
+        name: primaryWorkspace.name || '',
+        description: primaryWorkspace.description || '',
+      })
+    }
+  }, [primaryWorkspace?.id, primaryWorkspace?.name, primaryWorkspace?.description])
+
   const handleProfileSave = async () => {
     setIsLoading(true)
     // TODO: Implement profile update
@@ -45,6 +57,9 @@ export function SettingsPage() {
     setIsLoading(true)
     try {
       await updateWorkspace(primaryWorkspace.id, data)
+      toast({ title: 'Workspace aggiornato', variant: 'success' })
+    } catch {
+      toast({ title: 'Errore durante il salvataggio', variant: 'destructive' })
     } finally {
       setIsLoading(false)
     }
@@ -110,27 +125,55 @@ export function SettingsPage() {
               <CardDescription>Configura il workspace corrente</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={workspaceForm.handleSubmit(handleWorkspaceSave)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="ws-name">Nome Workspace</Label>
-                  <Input id="ws-name" {...workspaceForm.register('name')} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ws-description">Descrizione</Label>
-                  <Input id="ws-description" {...workspaceForm.register('description')} />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label>Impostazioni</Label>
-                  <div className="text-sm text-muted-foreground">
-                    <p>Valuta: {primaryWorkspace?.settings?.currency || 'EUR'}</p>
-                    <p>Timezone: {primaryWorkspace?.settings?.timezone || 'Europe/Rome'}</p>
+              {!primaryWorkspace ? (
+                <p className="text-muted-foreground">Seleziona un workspace per modificarlo.</p>
+              ) : canEditWorkspace ? (
+                <form onSubmit={workspaceForm.handleSubmit(handleWorkspaceSave)} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="ws-name">Nome Workspace</Label>
+                    <Input id="ws-name" {...workspaceForm.register('name')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ws-description">Descrizione</Label>
+                    <Input id="ws-description" {...workspaceForm.register('description')} />
+                  </div>
+                  <Separator />
+                  <div className="space-y-2">
+                    <Label>Impostazioni</Label>
+                    <div className="text-sm text-muted-foreground">
+                      <p>Valuta: {primaryWorkspace?.settings?.currency || 'EUR'}</p>
+                      <p>Timezone: {primaryWorkspace?.settings?.timezone || 'Europe/Rome'}</p>
+                    </div>
+                  </div>
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? 'Salvataggio...' : 'Salva Modifiche'}
+                  </Button>
+                </form>
+              ) : (
+                <div className="space-y-4">
+                  <div className="rounded-md border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950 p-4">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      Solo il proprietario (owner) o un amministratore possono modificare le impostazioni di questo workspace. Il tuo ruolo attuale è <strong>{primaryWorkspace.role}</strong>.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Nome Workspace</Label>
+                    <p className="text-sm">{primaryWorkspace.name}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Descrizione</Label>
+                    <p className="text-sm">{primaryWorkspace.description || '-'}</p>
+                  </div>
+                  <Separator />
+                  <div className="space-y-2">
+                    <Label>Impostazioni</Label>
+                    <div className="text-sm text-muted-foreground">
+                      <p>Valuta: {primaryWorkspace?.settings?.currency || 'EUR'}</p>
+                      <p>Timezone: {primaryWorkspace?.settings?.timezone || 'Europe/Rome'}</p>
+                    </div>
                   </div>
                 </div>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? 'Salvataggio...' : 'Salva Modifiche'}
-                </Button>
-              </form>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

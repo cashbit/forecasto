@@ -55,6 +55,15 @@ class WorkspaceCreate(BaseModel):
     email_whitelist: list[str] | None = None
     settings: dict | None = None
 
+class WorkspaceUpdate(BaseModel):
+    """Workspace update request."""
+
+    name: str | None = None
+    description: str | None = None
+    fiscal_year: int | None = None
+    is_archived: bool | None = None
+    settings: dict | None = None
+
 class WorkspaceResponse(BaseModel):
     """Workspace response."""
 

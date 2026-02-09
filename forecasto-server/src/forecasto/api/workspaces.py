@@ -21,6 +21,7 @@ from forecasto.schemas.workspace import (
     MemberUser,
     WorkspaceCreate,
     WorkspaceResponse,
+    WorkspaceUpdate,
     WorkspaceWithRole,
 )
 from forecasto.services.workspace_service import WorkspaceService
@@ -76,6 +77,23 @@ async def get_workspace(
         "role": member.role,
         "area_permissions": member.area_permissions,
     }
+
+@router.patch("/{workspace_id}", response_model=dict)
+async def update_workspace(
+    workspace_id: str,
+    data: WorkspaceUpdate,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Update workspace details."""
+    workspace, member = workspace_data
+    service = WorkspaceService(db)
+    updated = await service.update_workspace(workspace, data, member)
+    await db.commit()
+    await db.refresh(updated)
+    return {"success": True, "workspace": WorkspaceResponse.model_validate(updated)}
 
 @router.delete("/{workspace_id}", response_model=dict)
 async def delete_workspace(

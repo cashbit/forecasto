@@ -12,26 +12,17 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table'
 import { useState } from 'react'
-import { ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, Pencil, Trash, ArrowRight, Split, Merge, Calendar, Download, Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown, Trash, ArrowRight, Split, Merge, Calendar, Download, Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus, FolderOutput, Pencil } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AmountDisplay } from '@/components/common/AmountDisplay'
 import { DateDisplay } from '@/components/common/DateDisplay'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { EmptyState } from '@/components/common/EmptyState'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
-import type { Record, Area } from '@/types/record'
-import type { Sign } from '@/types/workspace'
+import type { Record } from '@/types/record'
 import { FileSpreadsheet } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
@@ -55,18 +46,10 @@ function parseAmount(amount: string | number): number {
   return parseFloat(str) || 0
 }
 
-function getSignFromAmount(amount: string): Sign {
-  const num = parseAmount(amount)
-  return num >= 0 ? 'in' : 'out'
-}
-
 interface RecordGridProps {
   records: Record[]
   isLoading?: boolean
   onSelectRecord?: (record: Record) => void
-  onEditRecord?: (record: Record) => void
-  onDeleteRecord?: (record: Record) => void
-  onTransferRecord?: (record: Record) => void
   onSplitRecord?: (record: Record) => void
   onBulkDelete?: (records: Record[]) => void
   onBulkMerge?: (records: Record[]) => void
@@ -75,6 +58,8 @@ interface RecordGridProps {
   onBulkExport?: (records: Record[]) => void
   onBulkTransfer?: (records: Record[]) => void
   onBulkSetStage?: (records: Record[]) => void
+  onBulkMoveWorkspace?: (records: Record[]) => void
+  onBulkEdit?: (records: Record[]) => void
   visitedRecordIds?: Set<string>
   activeRecordId?: string | null
 }
@@ -83,9 +68,6 @@ export function RecordGrid({
   records,
   isLoading,
   onSelectRecord,
-  onEditRecord,
-  onDeleteRecord,
-  onTransferRecord,
   onSplitRecord,
   onBulkDelete,
   onBulkMerge,
@@ -94,6 +76,8 @@ export function RecordGrid({
   onBulkExport,
   onBulkTransfer,
   onBulkSetStage,
+  onBulkMoveWorkspace,
+  onBulkEdit,
   visitedRecordIds,
   activeRecordId,
 }: RecordGridProps) {
@@ -111,7 +95,7 @@ export function RecordGrid({
     return stored !== null ? stored === 'true' : true
   })
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 100 })
-  const { checkPermission, selectedWorkspaceIds } = useWorkspaceStore()
+  const { selectedWorkspaceIds } = useWorkspaceStore()
   const { user } = useAuthStore()
   const { setCreateRecordDialogOpen } = useUiStore()
 
@@ -130,16 +114,6 @@ export function RecordGrid({
 
   const columnVisibility: VisibilityState = { project_code: showProject, owner: showOwner }
   const textCellClass = viewMode === 'compact' ? 'truncate' : 'whitespace-normal break-words'
-
-  const canEditRecord = (record: Record): boolean => {
-    const sign = getSignFromAmount(record.amount)
-    return checkPermission(record.area as Area, sign, 'can_edit_others', record.created_by, user?.id)
-  }
-
-  const canDeleteRecord = (record: Record): boolean => {
-    const sign = getSignFromAmount(record.amount)
-    return checkPermission(record.area as Area, sign, 'can_delete_others', record.created_by, user?.id)
-  }
 
   const SortIcon = ({ column }: { column: { getIsSorted: () => false | 'asc' | 'desc' } }) => {
     const sorted = column.getIsSorted()
@@ -169,6 +143,30 @@ export function RecordGrid({
           />
         ),
         enableSorting: false,
+      },
+      {
+        accessorKey: 'stage',
+        size: 30,
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-1 h-8"
+          >
+            Stato
+            <SortIcon column={column} />
+          </Button>
+        ),
+        cell: ({ row }) => {
+          const stage = row.original.stage
+          if (stage === '1' || stage === 'paid' || stage === 'completed') {
+            return <Check className="h-4 w-4 text-green-600" />
+          } else if (stage === '0' || stage === 'unpaid' || stage === 'draft') {
+            return <X className="h-4 w-4 text-red-500" />
+          }
+          return <StatusBadge status={stage} area={row.original.area} />
+        },
       },
       {
         accessorKey: 'date_cashflow',
@@ -315,30 +313,6 @@ export function RecordGrid({
         ),
       },
       {
-        accessorKey: 'stage',
-        size: 12,
-        header: ({ column }) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-1 h-8"
-          >
-            Stato
-            <SortIcon column={column} />
-          </Button>
-        ),
-        cell: ({ row }) => {
-          const stage = row.original.stage
-          if (stage === '1' || stage === 'paid' || stage === 'completed') {
-            return <Check className="h-4 w-4 text-green-600" />
-          } else if (stage === '0' || stage === 'unpaid' || stage === 'draft') {
-            return <X className="h-4 w-4 text-red-500" />
-          }
-          return <StatusBadge status={stage} area={row.original.area} />
-        },
-      },
-      {
         id: 'other_user',
         size: 28,
         header: '',
@@ -361,67 +335,8 @@ export function RecordGrid({
         },
         enableSorting: false,
       },
-      {
-        id: 'actions',
-        size: 6,
-        cell: ({ row }) => {
-          const record = row.original
-          const canEdit = canEditRecord(record)
-          const canDelete = canDeleteRecord(record)
-          return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Apri menu</span>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Azioni</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() => onEditRecord?.(record)}
-                  disabled={!canEdit}
-                  className={cn(!canEdit && "opacity-50 cursor-not-allowed")}
-                >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Modifica
-                  {!canEdit && " (non autorizzato)"}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onTransferRecord?.(record)}
-                  disabled={!canEdit}
-                  className={cn(!canEdit && "opacity-50 cursor-not-allowed")}
-                >
-                  <ArrowRight className="mr-2 h-4 w-4" />
-                  Trasferisci
-                  {!canEdit && " (non autorizzato)"}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onSplitRecord?.(record)}
-                  disabled={!canEdit}
-                  className={cn(!canEdit && "opacity-50 cursor-not-allowed")}
-                >
-                  <Split className="mr-2 h-4 w-4" />
-                  Dividi in Rate
-                  {!canEdit && " (non autorizzato)"}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => onDeleteRecord?.(record)}
-                  disabled={!canDelete}
-                  className={cn("text-destructive", !canDelete && "opacity-50 cursor-not-allowed")}
-                >
-                  <Trash className="mr-2 h-4 w-4" />
-                  Elimina
-                  {!canDelete && " (non autorizzato)"}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )
-        },
-      },
     ],
-    [onEditRecord, onDeleteRecord, onTransferRecord, onSplitRecord, canEditRecord, canDeleteRecord, user?.id, textCellClass]
+    [user?.id, textCellClass]
   )
 
   const table = useReactTable({
@@ -581,6 +496,22 @@ export function RecordGrid({
               <TooltipContent>Esporta CSV</TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => selectedRecords.length === 1 && onSplitRecord?.(selectedRecords[0])}
+                  disabled={selectedRecords.length !== 1}
+                  className="h-8 w-8 p-0"
+                >
+                  <Split className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Dividi in Rate</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <div className="w-px h-4 bg-border mx-2" />
           <TooltipProvider>
             <Tooltip>
@@ -612,6 +543,39 @@ export function RecordGrid({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Cambia Stage</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onBulkMoveWorkspace?.(selectedRecords)}
+                  disabled={!hasSelection}
+                  className="h-8 w-8 p-0"
+                >
+                  <FolderOutput className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Sposta in altro Workspace</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <div className="w-px h-4 bg-border mx-2" />
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onBulkEdit?.(selectedRecords)}
+                  disabled={!hasSelection}
+                  className="h-8 w-8 p-0"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Modifica Massiva</TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <div className="flex-1" />
@@ -658,7 +622,7 @@ export function RecordGrid({
                     onClick={() => handleSetShowOwner(!showOwner)}
                   >
                     {showOwner ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                    Owner
+                    Respons.
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>{showOwner ? 'Nascondi colonna Responsabile' : 'Mostra colonna Responsabile'}</TooltipContent>
@@ -737,80 +701,84 @@ export function RecordGrid({
         </Table>
       </div>
 
-      {/* Footer with totals and pagination - always visible */}
-      <div className="border-t bg-muted/50 px-4 py-2 flex-shrink-0">
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-3">
-            <select
-              value={pagination.pageSize}
-              onChange={(e) => {
-                setPagination({ pageIndex: 0, pageSize: Number(e.target.value) })
-              }}
-              className="h-7 rounded border bg-background text-xs px-1 cursor-pointer"
-            >
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-              <option value={500}>500</option>
-              <option value={99999}>Tutti</option>
-            </select>
-            <span className="text-muted-foreground">
-              {totals.count} record
-            </span>
-            {table.getPageCount() > 1 && (
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => table.previousPage()}
-                  disabled={!table.getCanPreviousPage()}
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                <span className="text-xs text-muted-foreground px-1">
-                  {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => table.nextPage()}
-                  disabled={!table.getCanNextPage()}
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-6">
+      {/* Footer with pagination + totals aligned to columns */}
+      <div className="border-t bg-muted/50 flex-shrink-0">
+        <table className="table-fixed font-narrow w-full">
+          <colgroup>
+            {table.getVisibleLeafColumns().map(col => (
+              <col key={col.id} style={{ width: col.getSize() }} />
+            ))}
+          </colgroup>
+          <tbody>
             {totals.selectedCount > 0 && (
-              <>
-                <div className="text-muted-foreground">
-                  Selezionati ({totals.selectedCount}):
-                </div>
-                <div>
-                  <span className="text-muted-foreground mr-1">Imp:</span>
+              <tr>
+                <td colSpan={table.getVisibleLeafColumns().findIndex(col => col.id === 'amount')} className="px-2 py-1 text-sm text-right text-muted-foreground">
+                  Sel. ({totals.selectedCount}):
+                </td>
+                <td className="px-2 py-1 text-right text-sm">
                   <AmountDisplay amount={totals.selectedAmount} className="font-medium" />
-                </div>
-                <div>
-                  <span className="text-muted-foreground mr-1">Tot:</span>
+                </td>
+                <td className="px-2 py-1 text-right text-sm">
                   <AmountDisplay amount={totals.selectedTotal} className="font-medium" />
-                </div>
-                <div className="w-px h-4 bg-border" />
-              </>
+                </td>
+                <td colSpan={table.getVisibleLeafColumns().length - table.getVisibleLeafColumns().findIndex(col => col.id === 'amount') - 2}></td>
+              </tr>
             )}
-
-            <div>
-              <span className="text-muted-foreground mr-1">Imponibile:</span>
-              <AmountDisplay amount={totals.allAmount} className="font-semibold" />
-            </div>
-            <div>
-              <span className="text-muted-foreground mr-1">Totale:</span>
-              <AmountDisplay amount={totals.allTotal} className="font-semibold" />
-            </div>
-          </div>
-        </div>
+            <tr>
+              <td colSpan={table.getVisibleLeafColumns().findIndex(col => col.id === 'amount')} className="px-2 py-1">
+                <div className="flex items-center gap-3 text-sm">
+                  <select
+                    value={pagination.pageSize}
+                    onChange={(e) => {
+                      setPagination({ pageIndex: 0, pageSize: Number(e.target.value) })
+                    }}
+                    className="h-7 rounded border bg-background text-xs px-1 cursor-pointer"
+                  >
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={500}>500</option>
+                    <option value={99999}>Tutti</option>
+                  </select>
+                  <span className="text-muted-foreground text-sm">
+                    {totals.count} record
+                  </span>
+                  {table.getPageCount() > 1 && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => table.previousPage()}
+                        disabled={!table.getCanPreviousPage()}
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="text-xs text-muted-foreground px-1">
+                        {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={() => table.nextPage()}
+                        disabled={!table.getCanNextPage()}
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </td>
+              <td className="px-2 py-1 text-right text-sm">
+                <AmountDisplay amount={totals.allAmount} className="font-semibold" />
+              </td>
+              <td className="px-2 py-1 text-right text-sm">
+                <AmountDisplay amount={totals.allTotal} className="font-semibold" />
+              </td>
+              <td colSpan={table.getVisibleLeafColumns().length - table.getVisibleLeafColumns().findIndex(col => col.id === 'amount') - 2}></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   )

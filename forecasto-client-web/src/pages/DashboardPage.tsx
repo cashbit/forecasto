@@ -22,18 +22,22 @@ import { BulkSetDayDialog } from '@/components/records/BulkSetDayDialog'
 import { BulkTransferDialog } from '@/components/records/BulkTransferDialog'
 import { BulkStageDialog } from '@/components/records/BulkStageDialog'
 import { BulkMergeDialog } from '@/components/records/BulkMergeDialog'
+import { BulkMoveWorkspaceDialog } from '@/components/records/BulkMoveWorkspaceDialog'
+import { BulkEditDialog } from '@/components/records/BulkEditDialog'
 import { useRecords } from '@/hooks/useRecords'
 import { useFilterStore } from '@/stores/filterStore'
 import { useUiStore } from '@/stores/uiStore'
 import { toast } from '@/hooks/useToast'
 import { AREA_LABELS, AREAS } from '@/lib/constants'
 import { recordsApi } from '@/api/records'
+import { useQueryClient } from '@tanstack/react-query'
 import type { Record, Area, RecordCreate, RecordUpdate } from '@/types/record'
 
 export function DashboardPage() {
   const { currentArea, setArea } = useFilterStore()
   const { createRecordDialogOpen, setCreateRecordDialogOpen, reviewMode } = useUiStore()
   const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord, primaryWorkspaceId } = useRecords()
+  const queryClient = useQueryClient()
 
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
@@ -66,6 +70,8 @@ export function DashboardPage() {
   const [showBulkTransfer, setShowBulkTransfer] = useState(false)
   const [showBulkStage, setShowBulkStage] = useState(false)
   const [showBulkMerge, setShowBulkMerge] = useState(false)
+  const [showBulkMoveWorkspace, setShowBulkMoveWorkspace] = useState(false)
+  const [showBulkEdit, setShowBulkEdit] = useState(false)
 
   // Delete confirmation state
   const [recordToDelete, setRecordToDelete] = useState<Record | null>(null)
@@ -348,6 +354,67 @@ export function DashboardPage() {
     }
   }
 
+  const handleBulkMoveWorkspace = async (targetWorkspaceId: string) => {
+    if (!bulkRecords) return
+
+    try {
+      for (const record of bulkRecords) {
+        const recordData: RecordCreate = {
+          area: record.area,
+          type: record.type,
+          account: record.account,
+          reference: record.reference,
+          note: record.note,
+          date_cashflow: record.date_cashflow,
+          date_offer: record.date_offer,
+          owner: record.owner,
+          amount: record.amount,
+          vat: record.vat,
+          total: record.total,
+          stage: record.stage,
+          nextaction: record.nextaction,
+          transaction_id: record.transaction_id || '',
+          bank_account_id: record.bank_account_id,
+          project_code: record.project_code,
+          classification: record.classification,
+        }
+        await recordsApi.create(targetWorkspaceId, recordData)
+        await deleteRecord(record.id, record.workspace_id)
+      }
+
+      setShowBulkMoveWorkspace(false)
+      setBulkRecords(null)
+      // Invalidate target workspace queries too
+      queryClient.invalidateQueries({ queryKey: ['records', targetWorkspaceId] })
+      toast({ title: 'Record spostati', description: `${bulkRecords.length} record spostati nel nuovo workspace`, variant: 'success' })
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error?: string; message?: string }>
+      const message = axiosError.response?.data?.error || 'Errore durante lo spostamento.'
+      toast({ title: 'Errore', description: message, variant: 'destructive' })
+    }
+  }
+
+  const handleBulkEdit = async (data: RecordUpdate) => {
+    if (!bulkRecords) return
+
+    try {
+      for (const record of bulkRecords) {
+        await updateRecord({
+          recordId: record.id,
+          data,
+        })
+      }
+
+      setShowBulkEdit(false)
+      setBulkRecords(null)
+      toast({ title: 'Record aggiornati', description: `${bulkRecords.length} record modificati`, variant: 'success' })
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error?: string; message?: string }>
+      const message = axiosError.response?.data?.error || 'Errore durante la modifica massiva.'
+      toast({ title: 'Errore', description: message, variant: 'destructive' })
+    }
+  }
+
   const handleBulkExport = (selectedRecords: Record[]) => {
     const headers = ['Data', 'Conto', 'Riferimento', 'ID Transazione', 'Responsabile', 'Imponibile', 'Totale', 'Stage', 'Area', 'Revisione']
     const rows = selectedRecords.map(r => [
@@ -402,9 +469,6 @@ export function DashboardPage() {
             records={records}
             isLoading={isLoading}
             onSelectRecord={setSelectedRecord}
-            onEditRecord={setEditingRecord}
-            onDeleteRecord={handleDeleteRecord}
-            onTransferRecord={setTransferRecord}
             onSplitRecord={setSplitRecord}
             onBulkDelete={handleBulkDelete}
             onBulkMerge={(recs) => { setBulkRecords(recs); setShowBulkMerge(true) }}
@@ -413,6 +477,8 @@ export function DashboardPage() {
             onBulkExport={handleBulkExport}
             onBulkTransfer={(recs) => { setBulkRecords(recs); setShowBulkTransfer(true) }}
             onBulkSetStage={(recs) => { setBulkRecords(recs); setShowBulkStage(true) }}
+            onBulkMoveWorkspace={(recs) => { setBulkRecords(recs); setShowBulkMoveWorkspace(true) }}
+            onBulkEdit={(recs) => { setBulkRecords(recs); setShowBulkEdit(true) }}
             visitedRecordIds={visitedRecordIds}
             activeRecordId={editingRecord?.id || selectedRecord?.id}
           />
@@ -502,6 +568,21 @@ export function DashboardPage() {
         open={showBulkMerge}
         onOpenChange={(open) => { if (!open) { setShowBulkMerge(false); setBulkRecords(null) } }}
         onConfirm={handleBulkMerge}
+      />
+
+      <BulkMoveWorkspaceDialog
+        records={bulkRecords}
+        open={showBulkMoveWorkspace}
+        onOpenChange={(open) => { if (!open) { setShowBulkMoveWorkspace(false); setBulkRecords(null) } }}
+        onConfirm={handleBulkMoveWorkspace}
+      />
+
+      <BulkEditDialog
+        records={bulkRecords}
+        currentArea={currentArea}
+        open={showBulkEdit}
+        onOpenChange={(open) => { if (!open) { setShowBulkEdit(false); setBulkRecords(null) } }}
+        onConfirm={handleBulkEdit}
       />
 
       {/* Delete Confirmation Dialog - Single Record */}

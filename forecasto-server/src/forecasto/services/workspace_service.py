@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from forecasto.exceptions import ForbiddenException, NotFoundException, ValidationException
 from forecasto.models.user import User
 from forecasto.models.workspace import Invitation, Workspace, WorkspaceMember
-from forecasto.schemas.workspace import InvitationCreate, MemberUpdate, WorkspaceCreate
+from forecasto.schemas.workspace import InvitationCreate, MemberUpdate, WorkspaceCreate, WorkspaceUpdate
 from forecasto.utils.security import hash_password
 
 class WorkspaceService:
@@ -78,6 +78,22 @@ class WorkspaceService:
         workspace = result.scalar_one_or_none()
         if not workspace:
             raise NotFoundException(f"Workspace {workspace_id} not found")
+        return workspace
+
+    async def update_workspace(
+        self,
+        workspace: Workspace,
+        data: WorkspaceUpdate,
+        requesting_member: WorkspaceMember,
+    ) -> Workspace:
+        """Update workspace details. Only owners and admins can update."""
+        if requesting_member.role not in ("owner", "admin"):
+            raise ForbiddenException("Only owners and admins can update workspaces")
+
+        update_data = data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(workspace, key, value)
+
         return workspace
 
     async def get_members(self, workspace_id: str) -> list[WorkspaceMember]:

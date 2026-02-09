@@ -180,11 +180,20 @@ interface RecordFiltersProps {
   availableOwners?: string[]
 }
 
+const TEXT_FILTER_FIELDS = [
+  { value: '', label: 'Tutto' },
+  { value: 'account', label: 'Conto' },
+  { value: 'reference', label: 'Riferimento' },
+  { value: 'note', label: 'Note' },
+  { value: 'owner', label: 'Responsabile' },
+  { value: 'transaction_id', label: 'ID Trans.' },
+] as const
+
 export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
   const {
-    currentArea, sign, stageFilter, textFilter,
+    currentArea, sign, stageFilter, textFilter, textFilterField,
     yearFilter, ownerFilter, nextactionFilter, expiredFilter, projectCodeFilter,
-    setSign, setStageFilter, setTextFilter, resetFilters,
+    setSign, setStageFilter, setTextFilter, setTextFilterField, resetFilters,
     toggleOwnerFilter, clearOwnerFilter, setNextactionFilter, setExpiredFilter, setProjectCodeFilter
   } = useFilterStore()
 
@@ -206,14 +215,25 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
       <div className="flex items-center gap-4">
         <DateFilter />
 
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Cerca per riferimento, conto..."
-            value={textFilter}
-            onChange={(e) => setTextFilter(e.target.value)}
-            className="pl-9"
-          />
+        <div className="relative flex-1 max-w-sm flex">
+          <select
+            value={textFilterField || ''}
+            onChange={(e) => setTextFilterField(e.target.value as any || null)}
+            className="h-10 rounded-l-md border border-r-0 bg-muted text-xs px-2 cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            {TEXT_FILTER_FIELDS.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder={textFilterField ? `Cerca in ${TEXT_FILTER_FIELDS.find(f => f.value === textFilterField)?.label}...` : 'Cerca per riferimento, conto...'}
+              value={textFilter}
+              onChange={(e) => setTextFilter(e.target.value)}
+              className="pl-9 rounded-l-none"
+            />
+          </div>
         </div>
 
         <div className="relative flex-1 max-w-sm">
@@ -261,8 +281,8 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
           onChange={(v) => setNextactionFilter(v as 'all' | 'with' | 'without')}
           options={[
             { value: 'all', label: 'Tutti' },
-            { value: 'with', label: 'Con NextAction' },
-            { value: 'without', label: 'Senza NextAction' },
+            { value: 'with', label: 'Con Prossima Azione' },
+            { value: 'without', label: 'Senza Prossima Azione' },
           ]}
         />
 
@@ -287,7 +307,7 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
       {/* Owner filter row */}
       {(uniqueOwners.length > 0 || hasOwnerFilter) && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-muted-foreground">Owner:</span>
+          <span className="text-sm text-muted-foreground">Responsabile:</span>
           <button
             onClick={() => toggleOwnerFilter('_noowner_')}
             className={cn(
@@ -297,7 +317,7 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
                 : "bg-background hover:bg-muted"
             )}
           >
-            Senza Owner
+            Senza Respons.
           </button>
           {uniqueOwners.map((owner) => (
             <button

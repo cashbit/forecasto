@@ -85,12 +85,15 @@ export interface RecordUpdate {
   classification?: Classification
 }
 
+export type TextFilterField = 'account' | 'reference' | 'note' | 'owner' | 'transaction_id'
+
 export interface RecordFilters {
   area: Area
   date_start?: string
   date_end?: string
   sign?: 'in' | 'out' | 'all'
   text_filter?: string
+  text_filter_field?: TextFilterField
   project_code?: string
   bank_account_id?: string
   page?: number

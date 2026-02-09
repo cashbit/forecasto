@@ -1,0 +1,876 @@
+
+           Claude Code v2.1.37
+▗ ▗   ▖ ▖  Opus 4.6 · API Usage Billing
+           ~/dev/forecasto
+  ▘▘ ▝▝    Opus 4.6 is here · Most capable for ambitious work
+
+❯ trasferiamo la funzione "dividi in rate" come pulsante nella barra insieme agli altri puslanti dove abbiamo       
+  elimina, unisci, sposta etc., ed eliminiamo i tre puntini da ogni riga e relativo menu, spostiamo la colonna      
+  stato come prima colonna della tabella                                                                            
+
+⏺ Looking at the codebase to understand the current structure before making changes.
+
+⏺ Explore(Explore forecast table structure)
+  ⎿  Done (25 tool uses · 58.6k tokens · 1m 11s)
+
+⏺ Now let me read the key file to make the changes.
+
+⏺ Read 1 file (ctrl+o to expand)
+  ⎿  Loaded forecasto-client-web/CLAUDE.md
+
+⏺ Now I have a clear picture. Let me now check how the DashboardPage handles onSplitRecord to understand what needs to
+  change for the bulk split functionality.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Now I have the full picture. Let me make all three changes:
+
+  1. Add "Dividi in Rate" button to the toolbar
+  2. Remove the three-dots menu column
+  3. Move "Stato" column to first position (after checkbox)
+
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 24 lines
+      171          enableSorting: false,                                                                         
+      172        },                                                                                              
+      173        {                                                                                                      
+      174 +        accessorKey: 'stage',                                                                         
+      175 +        size: 12,                                                                                            
+      176 +        header: ({ column }) => (                                                                     
+      177 +          <Button                                                                                     
+      178 +            variant="ghost"                                                                           
+      179 +            size="sm"                                                                                 
+      180 +            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}                      
+      181 +            className="px-1 h-8"                                                                      
+      182 +          >                                                                                           
+      183 +            Stato                                                                                     
+      184 +            <SortIcon column={column} />                                                              
+      185 +          </Button>                                                                                   
+      186 +        ),                                                                                            
+      187 +        cell: ({ row }) => {                                                                          
+      188 +          const stage = row.original.stage                                                            
+      189 +          if (stage === '1' || stage === 'paid' || stage === 'completed') {                           
+      190 +            return <Check className="h-4 w-4 text-green-600" />                                       
+      191 +          } else if (stage === '0' || stage === 'unpaid' || stage === 'draft') {                      
+      192 +            return <X className="h-4 w-4 text-red-500" />                                             
+      193 +          }                                                                                           
+      194 +          return <StatusBadge status={stage} area={row.original.area} />                              
+      195 +        },                                                                                            
+      196 +      },                                                                                              
+      197 +      {                                                                                               
+      198          accessorKey: 'date_cashflow',
+      199          size: 65,
+      200          header: ({ column }) => (
+
+⏺ Now remove the old stage column and the actions column (three-dots menu).
+
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)                                                    
+  ⎿  Removed 24 lines
+      339          ),                                                                                                   
+      340        },                                                                                              
+      341        {                                                                                                      
+      342 -        accessorKey: 'stage',                                                                                
+      343 -        size: 12,                                                                                            
+      344 -        header: ({ column }) => (                                                                            
+      345 -          <Button                                                                                            
+      346 -            variant="ghost"                                                                                  
+      347 -            size="sm"                                                                                        
+      348 -            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}                             
+      349 -            className="px-1 h-8"                                                                             
+      350 -          >                                                                                                  
+      351 -            Stato                                                                                            
+      352 -            <SortIcon column={column} />                                                                     
+      353 -          </Button>                                                                                          
+      354 -        ),                                                                                                   
+      355 -        cell: ({ row }) => {                                                                                 
+      356 -          const stage = row.original.stage                                                                   
+      357 -          if (stage === '1' || stage === 'paid' || stage === 'completed') {                                  
+      358 -            return <Check className="h-4 w-4 text-green-600" />                                              
+      359 -          } else if (stage === '0' || stage === 'unpaid' || stage === 'draft') {                             
+      360 -            return <X className="h-4 w-4 text-red-500" />                                                    
+      361 -          }                                                                                                  
+      362 -          return <StatusBadge status={stage} area={row.original.area} />                                     
+      363 -        },                                                                                                   
+      364 -      },                                                                                                     
+      365 -      {                                                                                                      
+      342          id: 'other_user',                                                                                    
+      343          size: 28,                                                                                            
+      344          header: '',                                                                                          
+                                                                                                                        
+⏺ Now remove the actions column (three-dots menu).                                                                      
+                                                                                                                        
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)                                                    
+  ⎿  Added 1 line, removed 60 lines                                                                                     
+      361          },                                                                                                   
+      362          enableSorting: false,                                                                                
+      363        },                                                                                                     
+      364 -      {                                                                                                      
+      365 -        id: 'actions',                                                                                       
+      366 -        size: 6,                                                                                             
+      367 -        cell: ({ row }) => {                                                                          
+      368 -          const record = row.original                                                                 
+      369 -          const canEdit = canEditRecord(record)                                                       
+      370 -          const canDelete = canDeleteRecord(record)                                                   
+      371 -          return (                                                                                    
+      372 -            <DropdownMenu>                                                                            
+      373 -              <DropdownMenuTrigger asChild>                                                           
+      374 -                <Button variant="ghost" className="h-8 w-8 p-0">                                      
+      375 -                  <span className="sr-only">Apri menu</span>                                          
+      376 -                  <MoreHorizontal className="h-4 w-4" />                                              
+      377 -                </Button>                                                                             
+      378 -              </DropdownMenuTrigger>                                                                  
+      379 -              <DropdownMenuContent align="end">                                                       
+      380 -                <DropdownMenuLabel>Azioni</DropdownMenuLabel>                                         
+      381 -                <DropdownMenuItem                                                                     
+      382 -                  onClick={() => onEditRecord?.(record)}                                              
+      383 -                  disabled={!canEdit}                                                                 
+      384 -                  className={cn(!canEdit && "opacity-50 cursor-not-allowed")}                         
+      385 -                >                                                                                     
+      386 -                  <Pencil className="mr-2 h-4 w-4" />                                                 
+      387 -                  Modifica                                                                            
+      388 -                  {!canEdit && " (non autorizzato)"}                                                  
+      389 -                </DropdownMenuItem>                                                                   
+      390 -                <DropdownMenuItem                                                                     
+      391 -                  onClick={() => onTransferRecord?.(record)}                                          
+      392 -                  disabled={!canEdit}                                                                 
+      393 -                  className={cn(!canEdit && "opacity-50 cursor-not-allowed")}                         
+      394 -                >                                                                                     
+      395 -                  <ArrowRight className="mr-2 h-4 w-4" />                                             
+      396 -                  Trasferisci                                                                         
+      397 -                  {!canEdit && " (non autorizzato)"}                                                  
+      398 -                </DropdownMenuItem>                                                                   
+      399 -                <DropdownMenuItem                                                                     
+      400 -                  onClick={() => onSplitRecord?.(record)}                                             
+      401 -                  disabled={!canEdit}                                                                 
+      402 -                  className={cn(!canEdit && "opacity-50 cursor-not-allowed")}                         
+      403 -                >                                                                                     
+      404 -                  <Split className="mr-2 h-4 w-4" />                                                  
+      405 -                  Dividi in Rate                                                                      
+      406 -                  {!canEdit && " (non autorizzato)"}                                                  
+      407 -                </DropdownMenuItem>                                                                   
+      408 -                <DropdownMenuSeparator />                                                             
+      409 -                <DropdownMenuItem                                                                     
+      410 -                  onClick={() => onDeleteRecord?.(record)}                                            
+      411 -                  disabled={!canDelete}                                                               
+      412 -                  className={cn("text-destructive", !canDelete && "opacity-50 cursor-not-allowed")}   
+      413 -                >                                                                                     
+      414 -                  <Trash className="mr-2 h-4 w-4" />                                                  
+      415 -                  Elimina                                                                             
+      416 -                  {!canDelete && " (non autorizzato)"}                                                
+      417 -                </DropdownMenuItem>                                                                   
+      418 -              </DropdownMenuContent>                                                                  
+      419 -            </DropdownMenu>                                                                           
+      420 -          )                                                                                           
+      421 -        },                                                                                            
+      422 -      },                                                                                              
+      364      ],
+      365 -    [onEditRecord, onDeleteRecord, onTransferRecord, onSplitRecord, canEditRecord, canDeleteRecord,   
+          -user?.id, textCellClass]                                                                              
+      365 +    [user?.id, textCellClass]                                                                         
+      366    )
+      367
+      368    const table = useReactTable({
+
+⏺ Now add the "Dividi in Rate" button to the toolbar, after the "Esporta CSV" button and before the separator.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)                                                    
+  ⎿  Added 16 lines
+      522                <TooltipContent>Esporta CSV</TooltipContent>                                                   
+      523              </Tooltip>                                                                                
+      524            </TooltipProvider>                                                                                 
+      525 +          <TooltipProvider>                                                                           
+      526 +            <Tooltip>                                                                                 
+      527 +              <TooltipTrigger asChild>                                                                
+      528 +                <Button                                                                               
+      529 +                  variant="outline"                                                                   
+      530 +                  size="sm"                                                                           
+      531 +                  onClick={() => selectedRecords.length === 1 && onSplitRecord?.(selectedRecords[0])} 
+      532 +                  disabled={selectedRecords.length !== 1}                                             
+      533 +                  className="h-8 w-8 p-0"                                                             
+      534 +                >                                                                                     
+      535 +                  <Split className="h-3.5 w-3.5" />                                                   
+      536 +                </Button>                                                                             
+      537 +              </TooltipTrigger>                                                                       
+      538 +              <TooltipContent>Dividi in Rate</TooltipContent>                                         
+      539 +            </Tooltip>                                                                                
+      540 +          </TooltipProvider>                                                                          
+      541            <div className="w-px h-4 bg-border mx-2" />
+      542            <TooltipProvider>
+      543              <Tooltip>
+
+⏺ Now let me clean up the unused imports since we removed the dropdown menu and some icons that are no longer needed.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)                                                    
+  ⎿  Added 1 line, removed 1 line
+      12    type VisibilityState,                                                                                       
+      13  } from '@tanstack/react-table'                                                                         
+      14  import { useState } from 'react'                                                                              
+      15 -import { ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, Pencil,                                      
+         -Trash, ArrowRight, Split, Merge, Calendar, Download, Check, CheckCircle, X, User, LayoutList, WrapText,
+         - Eye, EyeOff, ChevronLeft, ChevronRight, Plus } from 'lucide-react'                                    
+      15 +import { ArrowUpDown, ArrowUp, ArrowDown,                                                              
+         +Trash, ArrowRight, Split, Merge, Calendar, Download, Check, CheckCircle, X, User, LayoutList, WrapText,
+         + Eye, EyeOff, ChevronLeft, ChevronRight, Plus } from 'lucide-react'                                    
+      16  import { Checkbox } from '@/components/ui/checkbox'
+      17  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+      18  import { Button } from '@/components/ui/button'
+
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Removed 8 lines
+      16  import { Checkbox } from '@/components/ui/checkbox'                                                           
+      17  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'  
+      18  import { Button } from '@/components/ui/button'                                                               
+      19 -import {                                                                                               
+      20 -  DropdownMenu,                                                                                        
+      21 -  DropdownMenuContent,                                                                                 
+      22 -  DropdownMenuItem,                                                                                    
+      23 -  DropdownMenuLabel,                                                                                   
+      24 -  DropdownMenuSeparator,                                                                               
+      25 -  DropdownMenuTrigger,                                                                                 
+      26 -} from '@/components/ui/dropdown-menu'                                                                 
+      19  import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+      20  import { AmountDisplay } from '@/components/common/AmountDisplay'
+      21  import { DateDisplay } from '@/components/common/DateDisplay'
+
+⏺ Now let me verify the file compiles correctly by checking the final state.
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+  
+⏺ Good. Now let me also check that the canEditRecord and canDeleteRecord functions are still used (they were used in the
+   removed actions column). Let me check if they're used elsewhere.                                 
+                                                                                                                        
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                         
+                                                                                                                        
+⏺ Those functions are now unused since the actions column was removed. Let me also check if onEditRecord,               
+  onDeleteRecord, onTransferRecord are used elsewhere in the component (beyond the props/interface).
+                                                                                                                        
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                         
+                                                                                                                        
+⏺ These props are no longer used inside the component (they were only used in the now-removed dropdown menu). Let me    
+  clean them up - remove the unused props, functions, and imports.
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)    
+                                                                                                                        
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)                                
+  ⎿  Removed 6 lines
+      56    records: Record[]                                                                                           
+      57    isLoading?: boolean                                                                                  
+      58    onSelectRecord?: (record: Record) => void                                                                   
+      59 -  onEditRecord?: (record: Record) => void                                                              
+      60 -  onDeleteRecord?: (record: Record) => void                                                            
+      61 -  onTransferRecord?: (record: Record) => void                                                          
+      59    onSplitRecord?: (record: Record) => void
+      60    onBulkDelete?: (records: Record[]) => void
+      61    onBulkMerge?: (records: Record[]) => void
+     ...
+      75    records,
+      76    isLoading,
+      77    onSelectRecord,
+      78 -  onEditRecord,                                                                                        
+      79 -  onDeleteRecord,                                                                                      
+      80 -  onTransferRecord,                                                                                    
+      78    onSplitRecord,
+      79    onBulkDelete,
+      80    onBulkMerge,
+
+⏺ Now remove the unused canEditRecord and canDeleteRecord functions.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)                                                    
+  ⎿  Removed 10 lines       
+      117    const columnVisibility: VisibilityState = { project_code: showProject, owner: showOwner }                  
+      118    const textCellClass = viewMode === 'compact' ? 'truncate' : 'whitespace-normal break-words'         
+      119                                                                                                               
+      120 -  const canEditRecord = (record: Record): boolean => {                                                
+      121 -    const sign = getSignFromAmount(record.amount)                                                     
+      122 -    return checkPermission(record.area as Area, sign, 'can_edit_others', record.created_by, user?.id) 
+      123 -  }                                                                                                   
+      124 -                                                                                                      
+      125 -  const canDeleteRecord = (record: Record): boolean => {                                              
+      126 -    const sign = getSignFromAmount(record.amount)                                                     
+      127 -    return checkPermission(record.area as Area, sign, 'can_delete_others', record.created_by,         
+          -user?.id)                                                                                             
+      128 -  }                                                                                                   
+      129 -                                                                                                      
+      120    const SortIcon = ({ column }: { column: { getIsSorted: () => false | 'asc' | 'desc' } }) => {
+      121      const sorted = column.getIsSorted()
+      122      if (sorted === 'asc') return <ArrowUp className="ml-1 h-3 w-3" />
+
+⏺ Now let me check if checkPermission, getSignFromAmount, Sign, Area are still used elsewhere.
+
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                                             
+                                        
+⏺ These are all unused now. Let me clean them up.                                                                       
+                                                          
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)                                                    
+  ⎿  Removed 5 lines                                  
+      47    return parseFloat(str) || 0                                                                                 
+      48  }                                                                                                      
+      49                                                                                                                
+      50 -function getSignFromAmount(amount: string): Sign {                                                     
+      51 -  const num = parseAmount(amount)                                                                      
+      52 -  return num >= 0 ? 'in' : 'out'                                                                       
+      53 -}                                                                                                      
+      54 -                                                                                                       
+      50  interface RecordGridProps {
+      51    records: Record[]
+      52    isLoading?: boolean
+
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 1 line, removed 2 lines
+      22  import { StatusBadge } from '@/components/common/StatusBadge'                                                 
+      23  import { EmptyState } from '@/components/common/EmptyState'                                            
+      24  import { LoadingSpinner } from '@/components/common/LoadingSpinner'                                           
+      25 -import type { Record, Area } from '@/types/record'                                                     
+      26 -import type { Sign } from '@/types/workspace'                                                          
+      25 +import type { Record } from '@/types/record'                                                           
+      26  import { FileSpreadsheet } from 'lucide-react'
+      27  import { cn } from '@/lib/utils'
+      28  import { useWorkspaceStore } from '@/stores/workspaceStore'
+
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)
+  ⎿  Added 1 line, removed 1 line
+      91      return stored !== null ? stored === 'true' : true                                                         
+      92    })                                                                                                   
+      93    const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 100 })              
+      94 -  const { checkPermission, selectedWorkspaceIds } = useWorkspaceStore()                                
+      94 +  const { selectedWorkspaceIds } = useWorkspaceStore()                                                 
+      95    const { user } = useAuthStore()
+      96    const { setCreateRecordDialogOpen } = useUiStore()
+      97
+
+⏺ Now let me update the DashboardPage to remove the props that are no longer accepted by RecordGrid.
+
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                          
+⏺ Update(forecasto-client-web/src/pages/DashboardPage.tsx)                                                              
+  ⎿  Removed 3 lines                                                                                         
+      402              records={records}                                                                                
+      403              isLoading={isLoading}                                                                          
+      404              onSelectRecord={setSelectedRecord}                                                               
+      405 -            onEditRecord={setEditingRecord}                                                                  
+      406 -            onDeleteRecord={handleDeleteRecord}                                                       
+      407 -            onTransferRecord={setTransferRecord}                                                      
+      405              onSplitRecord={setSplitRecord}
+      406              onBulkDelete={handleBulkDelete}
+      407              onBulkMerge={(recs) => { setBulkRecords(recs); setShowBulkMerge(true) }}
+
+⏺ Now let me build to verify everything compiles.
+
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-client-web && npx tsc --noEmit 2>&1 | head -40)                        
+  ⎿  (No content)                                                                                                     
+                                                                                                                        
+⏺ No TypeScript errors. Let me do a quick final review of the changes.                                                
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                                      
+⏺ Everything looks correct. Here's a summary of the changes made:                                                       
+                                                                                                                      
+  RecordGrid.tsx:                                                                                                       
+  1. "Dividi in Rate" button added to toolbar — placed after "Esporta CSV", enabled only when exactly 1 record is      
+  selected (since split works on a single record)                                                                       
+  2. Three-dots menu removed — the entire actions column with the DropdownMenu (MoreHorizontal icon) has been removed   
+  from every row                                            
+  3. "Stato" column moved to first position — now appears right after the checkbox column, before "Data"
+  4. Cleaned up unused code — removed DropdownMenu imports, MoreHorizontal/Pencil icons, canEditRecord/canDeleteRecord
+  functions, getSignFromAmount, and the onEditRecord/onDeleteRecord/onTransferRecord props
+
+  DashboardPage.tsx:
+  - Removed the now-unused props (onEditRecord, onDeleteRecord, onTransferRecord) from the RecordGrid invocation
+
+✻ Baked for 3m 14s                                                                                                      
+                                                                                                                    
+❯ sarebbe possibile avere totale imponibile e totale con iva del footer allineati con le colonne imponibile e           
+  totale togliendo le etichette "imponibile" e "totale" ?                                                               
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                                        
+⏺ Now let me check the table structure to understand the column layout and use a <tfoot> approach for proper alignment. 
+   
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                      
+⏺ Now let me check the columns order to count them. I need to see the full column list to know which index amount and   
+  total are at.                                                                                                         
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                                      
+                                                                                                                        
+⏺ The best approach is to use a <tfoot> inside the table so the totals align naturally with the columns. Let me         
+  implement this.
+                                                                                                                        
+⏺ Update(src/components/records/RecordGrid.tsx)                                                       
+  ⎿  Added 65 lines, removed 70 lines                                                                                   
+      661                )                                                                                              
+      662              })}                                                                                       
+      663            </TableBody>                                                                                       
+      664 -        </Table>                                                                                      
+      665 -      </div>                                                                                          
+      666 -                                                                                                      
+      667 -      {/* Footer with totals and pagination - always visible */}                                      
+      668 -      <div className="border-t bg-muted/50 px-4 py-2 flex-shrink-0">                                  
+      669 -        <div className="flex items-center justify-between text-sm">                                   
+      670 -          <div className="flex items-center gap-3">                                                   
+      671 -            <select                                                                                   
+      672 -              value={pagination.pageSize}                                                             
+      673 -              onChange={(e) => {                                                                      
+      674 -                setPagination({ pageIndex: 0, pageSize: Number(e.target.value) })                     
+      675 -              }}                                                                                      
+      676 -              className="h-7 rounded border bg-background text-xs px-1 cursor-pointer"                
+      677 -            >                                                                                         
+      678 -              <option value={50}>50</option>                                                          
+      679 -              <option value={100}>100</option>                                                        
+      680 -              <option value={500}>500</option>                                                        
+      681 -              <option value={99999}>Tutti</option>                                                    
+      682 -            </select>                                                                                 
+      683 -            <span className="text-muted-foreground">                                                  
+      684 -              {totals.count} record                                                                   
+      685 -            </span>                                                                                   
+      686 -            {table.getPageCount() > 1 && (                                                            
+      687 -              <div className="flex items-center gap-1">                                               
+      688 -                <Button                                                                               
+      689 -                  variant="outline"                                                                   
+      690 -                  size="sm"                                                                           
+      691 -                  className="h-7 w-7 p-0"                                                             
+      692 -                  onClick={() => table.previousPage()}                                                
+      693 -                  disabled={!table.getCanPreviousPage()}                                              
+      694 -                >                                                                                     
+      695 -                  <ChevronLeft className="h-3.5 w-3.5" />                                             
+      696 -                </Button>                                                                             
+      697 -                <span className="text-xs text-muted-foreground px-1">                                 
+      698 -                  {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}                
+      699 -                </span>                                                                               
+      700 -                <Button                                                                               
+      701 -                  variant="outline"                                                                   
+      702 -                  size="sm"                                                                           
+      703 -                  className="h-7 w-7 p-0"                                                             
+      704 -                  onClick={() => table.nextPage()}                                                    
+      705 -                  disabled={!table.getCanNextPage()}                                                  
+      706 -                >                                                                                     
+      707 -                  <ChevronRight className="h-3.5 w-3.5" />                                            
+      708 -                </Button>                                                                             
+      709 -              </div>                                                                                  
+      710 -            )}                                                                                        
+      711 -          </div>                                                                                      
+      712 -                                                                                                      
+      713 -          <div className="flex items-center gap-6">                                                   
+      664 +          <tfoot className="sticky bottom-0 bg-muted/50 z-10 font-narrow">                            
+      665              {totals.selectedCount > 0 && (
+      666 -              <>                                                                                      
+      667 -                <div className="text-muted-foreground">                                               
+      668 -                  Selezionati ({totals.selectedCount}):                                               
+      669 -                </div>                                                                                
+      670 -                <div>                                                                                 
+      671 -                  <span className="text-muted-foreground mr-1">Imp:</span>                            
+      666 +              <tr className="border-t">                                                               
+      667 +                <td colSpan={6 + (showOwner ? 1 : 0) + (showProject ? 1 : 0)} className="px-2 py-1    
+          +text-sm text-right text-muted-foreground">                                                            
+      668 +                  Sel. ({totals.selectedCount}):                                                      
+      669 +                </td>                                                                                 
+      670 +                <td className="px-2 py-1 text-right text-sm">                                         
+      671                    <AmountDisplay amount={totals.selectedAmount} className="font-medium" />
+      672 -                </div>                                                                                
+      673 -                <div>                                                                                 
+      674 -                  <span className="text-muted-foreground mr-1">Tot:</span>                            
+      672 +                </td>                                                                                 
+      673 +                <td className="px-2 py-1 text-right text-sm">                                         
+      674                    <AmountDisplay amount={totals.selectedTotal} className="font-medium" />
+      675 -                </div>                                                                                
+      676 -                <div className="w-px h-4 bg-border" />                                                
+      677 -              </>                                                                                     
+      675 +                </td>                                                                                 
+      676 +                <td></td>                                                                             
+      677 +              </tr>                                                                                   
+      678              )}
+      679 +            <tr className="border-t">                                                                 
+      680 +              <td colSpan={6 + (showOwner ? 1 : 0) + (showProject ? 1 : 0)} className="px-2 py-1      
+          +text-sm text-right text-muted-foreground">                                                            
+      681 +                {totals.count} record                                                                 
+      682 +              </td>                                                                                   
+      683 +              <td className="px-2 py-1 text-right text-sm">                                           
+      684 +                <AmountDisplay amount={totals.allAmount} className="font-semibold" />                 
+      685 +              </td>                                                                                   
+      686 +              <td className="px-2 py-1 text-right text-sm">                                           
+      687 +                <AmountDisplay amount={totals.allTotal} className="font-semibold" />                  
+      688 +              </td>                                                                                   
+      689 +              <td></td>                                                                               
+      690 +            </tr>                                                                                     
+      691 +          </tfoot>                                                                                    
+      692 +        </Table>                                                                                      
+      693 +      </div>                                                                                          
+      694
+      695 -            <div>                                                                                     
+      696 -              <span className="text-muted-foreground mr-1">Imponibile:</span>                         
+      697 -              <AmountDisplay amount={totals.allAmount} className="font-semibold" />                   
+      695 +      {/* Footer with pagination - always visible */}                                                 
+      696 +      <div className="border-t bg-muted/50 px-4 py-2 flex-shrink-0">                                  
+      697 +        <div className="flex items-center text-sm gap-3">                                             
+      698 +          <select                                                                                     
+      699 +            value={pagination.pageSize}                                                               
+      700 +            onChange={(e) => {                                                                        
+      701 +              setPagination({ pageIndex: 0, pageSize: Number(e.target.value) })                       
+      702 +            }}                                                                                        
+      703 +            className="h-7 rounded border bg-background text-xs px-1 cursor-pointer"                  
+      704 +          >                                                                                           
+      705 +            <option value={50}>50</option>                                                            
+      706 +            <option value={100}>100</option>                                                          
+      707 +            <option value={500}>500</option>                                                          
+      708 +            <option value={99999}>Tutti</option>                                                      
+      709 +          </select>                                                                                   
+      710 +          {table.getPageCount() > 1 && (                                                              
+      711 +            <div className="flex items-center gap-1">                                                 
+      712 +              <Button                                                                                 
+      713 +                variant="outline"                                                                     
+      714 +                size="sm"                                                                             
+      715 +                className="h-7 w-7 p-0"                                                               
+      716 +                onClick={() => table.previousPage()}                                                  
+      717 +                disabled={!table.getCanPreviousPage()}                                                
+      718 +              >                                                                                       
+      719 +                <ChevronLeft className="h-3.5 w-3.5" />                                               
+      720 +              </Button>                                                                               
+      721 +              <span className="text-xs text-muted-foreground px-1">                                   
+      722 +                {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}                  
+      723 +              </span>                                                                                 
+      724 +              <Button                                                                                 
+      725 +                variant="outline"                                                                     
+      726 +                size="sm"                                                                             
+      727 +                className="h-7 w-7 p-0"                                                               
+      728 +                onClick={() => table.nextPage()}                                                      
+      729 +                disabled={!table.getCanNextPage()}                                                    
+      730 +              >                                                                                       
+      731 +                <ChevronRight className="h-3.5 w-3.5" />                                              
+      732 +              </Button>                                                                               
+      733              </div>
+      734 -            <div>                                                                                     
+      735 -              <span className="text-muted-foreground mr-1">Totale:</span>                             
+      736 -              <AmountDisplay amount={totals.allTotal} className="font-semibold" />                    
+      737 -            </div>                                                                                    
+      738 -          </div>                                                                                      
+      734 +          )}                                                                                          
+      735          </div>
+      736        </div>
+      737      </div>
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -20)
+  ⎿  (No content)
+                                                                                                                        
+⏺ Nessun errore TypeScript. Ecco il riepilogo:
+                                                                                                                        
+  - Totali nel <tfoot> della tabella con sticky bottom-0, allineati perfettamente sotto le colonne "Imponibile" e       
+  "Totale"
+  - Etichette rimosse — niente più "Imponibile:" e "Totale:", solo i numeri allineati                                   
+  - Riga selezionati — quando ci sono record selezionati, appare una riga sopra con "Sel. (N):" e i relativi totali,
+  anch'essi allineati
+  - Riga totali generali — mostra "N record" a sinistra e i totali allineati sotto le colonne
+  - Il colSpan si adatta dinamicamente alla visibilità delle colonne Owner e Progetto
+  - La barra paginazione resta separata sotto, semplificata con solo il selettore pagine e la navigazione
+
+✻ Brewed for 1m 19s                 
+
+❯ però mettiamoli nella stessa parte dove abbiamo la paginazione, così si sovrappongono alle voci                       
+  ⎿  [Image #1]                                                                                                         
+                                                                                                                        
+⏺ Capito, il tfoot si sovrappone ai dati. Meglio mettere tutto nella barra footer, usando una tabella speculare per     
+  allineare i totali con le colonne.                                                                                    
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                                        
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 62 lines, removed 53 lines
+      661                )                                                                                              
+      662              })}                                                                                       
+      663            </TableBody>                                                                                       
+      664 -          <tfoot className="sticky bottom-0 bg-muted/50 z-10 font-narrow">                                   
+      664 +        </Table>                                                                                      
+      665 +      </div>                                                                                          
+      666 +                                                                                                      
+      667 +      {/* Footer with pagination + totals aligned to columns */}                                      
+      668 +      <div className="border-t bg-muted/50 flex-shrink-0">                                            
+      669 +        <table className="table-fixed font-narrow w-full">                                            
+      670 +          <colgroup>                                                                                  
+      671 +            {table.getVisibleLeafColumns().map(col => (                                               
+      672 +              <col key={col.id} style={{ width: col.getSize() }} />                                   
+      673 +            ))}                                                                                       
+      674 +          </colgroup>                                                                                 
+      675 +          <tbody>                                                                                     
+      676              {totals.selectedCount > 0 && (
+      677 -              <tr className="border-t">                                                               
+      678 -                <td colSpan={6 + (showOwner ? 1 : 0) + (showProject ? 1 : 0                           
+          -)} className="px-2 py-1 text-sm text-right text-muted-foreground">                                    
+      677 +              <tr>                                                                                    
+      678 +                <td colSpan={table.getVisibleLeafColumns().findIndex(col => col.id === 'amount'       
+          +)} className="px-2 py-1 text-sm text-right text-muted-foreground">                                    
+      679                    Sel. ({totals.selectedCount}):
+      680                  </td>
+      681                  <td className="px-2 py-1 text-right text-sm">
+     ...
+      673                  <td className="px-2 py-1 text-right text-sm">
+      674                    <AmountDisplay amount={totals.selectedTotal} className="font-medium" />
+      675                  </td>
+      676 -                <td></td>                                                                             
+      676 +                <td colSpan={table.getVisibleLeafColumns().length -                                   
+          +table.getVisibleLeafColumns().findIndex(col => col.id === 'amount') - 2}></td>                        
+      677                </tr>
+      678              )}
+      679 -            <tr className="border-t">                                                                 
+      680 -              <td colSpan={6 + (showOwner ? 1 : 0) + (showProject ? 1 : 0)} className="px-2 py-1      
+          -text-sm text-right text-muted-foreground">                                                            
+      681 -                {totals.count} record                                                                 
+      679 +            <tr>                                                                                      
+      680 +              <td colSpan={table.getVisibleLeafColumns().findIndex(col => col.id === 'amount')}       
+          +className="px-2 py-1">                                                                                
+      681 +                <div className="flex items-center gap-3 text-sm">                                     
+      682 +                  <select                                                                             
+      683 +                    value={pagination.pageSize}                                                       
+      684 +                    onChange={(e) => {                                                                
+      685 +                      setPagination({ pageIndex: 0, pageSize: Number(e.target.value) })               
+      686 +                    }}                                                                                
+      687 +                    className="h-7 rounded border bg-background text-xs px-1 cursor-pointer"          
+      688 +                  >                                                                                   
+      689 +                    <option value={50}>50</option>                                                    
+      690 +                    <option value={100}>100</option>                                                  
+      691 +                    <option value={500}>500</option>                                                  
+      692 +                    <option value={99999}>Tutti</option>                                              
+      693 +                  </select>                                                                           
+      694 +                  <span className="text-muted-foreground text-sm">                                    
+      695 +                    {totals.count} record                                                             
+      696 +                  </span>                                                                             
+      697 +                  {table.getPageCount() > 1 && (                                                      
+      698 +                    <div className="flex items-center gap-1">                                         
+      699 +                      <Button                                                                         
+      700 +                        variant="outline"                                                             
+      701 +                        size="sm"                                                                     
+      702 +                        className="h-7 w-7 p-0"                                                       
+      703 +                        onClick={() => table.previousPage()}                                          
+      704 +                        disabled={!table.getCanPreviousPage()}                                        
+      705 +                      >                                                                               
+      706 +                        <ChevronLeft className="h-3.5 w-3.5" />                                       
+      707 +                      </Button>                                                                       
+      708 +                      <span className="text-xs text-muted-foreground px-1">                           
+      709 +                        {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}          
+      710 +                      </span>                                                                         
+      711 +                      <Button                                                                         
+      712 +                        variant="outline"                                                             
+      713 +                        size="sm"                                                                     
+      714 +                        className="h-7 w-7 p-0"                                                       
+      715 +                        onClick={() => table.nextPage()}                                              
+      716 +                        disabled={!table.getCanNextPage()}                                            
+      717 +                      >                                                                               
+      718 +                        <ChevronRight className="h-3.5 w-3.5" />                                      
+      719 +                      </Button>                                                                       
+      720 +                    </div>                                                                            
+      721 +                  )}                                                                                  
+      722 +                </div>                                                                                
+      723                </td>
+      724                <td className="px-2 py-1 text-right text-sm">
+      725                  <AmountDisplay amount={totals.allAmount} className="font-semibold" />
+     ...
+      686                <td className="px-2 py-1 text-right text-sm">
+      687                  <AmountDisplay amount={totals.allTotal} className="font-semibold" />
+      688                </td>
+      689 -              <td></td>                                                                               
+      689 +              <td colSpan={table.getVisibleLeafColumns().length -                                     
+          +table.getVisibleLeafColumns().findIndex(col => col.id === 'amount') - 2}></td>                        
+      690              </tr>
+      691 -          </tfoot>                                                                                    
+      692 -        </Table>                                                                                      
+      691 +          </tbody>                                                                                    
+      692 +        </table>                                                                                      
+      693        </div>
+      694 -                                                                                                      
+      695 -      {/* Footer with pagination - always visible */}                                                 
+      696 -      <div className="border-t bg-muted/50 px-4 py-2 flex-shrink-0">                                  
+      697 -        <div className="flex items-center text-sm gap-3">                                             
+      698 -          <select                                                                                     
+      699 -            value={pagination.pageSize}                                                               
+      700 -            onChange={(e) => {                                                                        
+      701 -              setPagination({ pageIndex: 0, pageSize: Number(e.target.value) })                       
+      702 -            }}                                                                                        
+      703 -            className="h-7 rounded border bg-background text-xs px-1 cursor-pointer"                  
+      704 -          >                                                                                           
+      705 -            <option value={50}>50</option>                                                            
+      706 -            <option value={100}>100</option>                                                          
+      707 -            <option value={500}>500</option>                                                          
+      708 -            <option value={99999}>Tutti</option>                                                      
+      709 -          </select>                                                                                   
+      710 -          {table.getPageCount() > 1 && (                                                              
+      711 -            <div className="flex items-center gap-1">                                                 
+      712 -              <Button                                                                                 
+      713 -                variant="outline"                                                                     
+      714 -                size="sm"                                                                             
+      715 -                className="h-7 w-7 p-0"                                                               
+      716 -                onClick={() => table.previousPage()}                                                  
+      717 -                disabled={!table.getCanPreviousPage()}                                                
+      718 -              >                                                                                       
+      719 -                <ChevronLeft className="h-3.5 w-3.5" />                                               
+      720 -              </Button>                                                                               
+      721 -              <span className="text-xs text-muted-foreground px-1">                                   
+      722 -                {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}                  
+      723 -              </span>                                                                                 
+      724 -              <Button                                                                                 
+      725 -                variant="outline"                                                                     
+      726 -                size="sm"                                                                             
+      727 -                className="h-7 w-7 p-0"                                                               
+      728 -                onClick={() => table.nextPage()}                                                      
+      729 -                disabled={!table.getCanNextPage()}                                                    
+      730 -              >                                                                                       
+      731 -                <ChevronRight className="h-3.5 w-3.5" />                                              
+      732 -              </Button>                                                                               
+      733 -            </div>                                                                                    
+      734 -          )}                                                                                          
+      735 -        </div>                                                                                        
+      736 -      </div>                                                                                          
+      694      </div>
+      695    )
+      696  }
+
+⏺ Bash(npx tsc --noEmit 2>&1 | head -20)              
+  ⎿  (No content)
+                                                                                                                        
+⏺ Nessun errore. Ecco cosa è cambiato:                                                                                  
+                                                                                                                        
+  - Rimosso il <tfoot> che si sovrapponeva alle righe                                                                   
+  - Footer unificato — paginazione a sinistra e totali a destra, tutto nella stessa barra
+  - Allineamento con le colonne — il footer usa una <table> speculare con lo stesso <colgroup> (stesse larghezze colonne
+   della tabella principale), così i valori di Imponibile e Totale si allineano perfettamente sotto le rispettive       
+  colonne
+  - ColSpan dinamico — calcolato automaticamente tramite table.getVisibleLeafColumns(), si adatta alla visibilità di
+  Owner/Progetto
+  - Se ci sono record selezionati, appare una riga aggiuntiva sopra con i totali della selezione, anche questi allineati
+
+✻ Crunched for 1m 32s
+
+❯ allarga di poco la colonna stato visto che le icone con le freccie di ordinamento vanno a contatto con la label       
+  della colonna data                                                                                                   
+                                                                                                                        
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                                        
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 1 line, removed 1 line
+      142        },                                                                                                     
+      143        {                                                                                               
+      144          accessorKey: 'stage',                                                                                
+      145 -        size: 12,                                                                                            
+      145 +        size: 30,                                                                                     
+      146          header: ({ column }) => (
+      147            <Button
+      148              variant="ghost"
+
+⏺ Fatto. La colonna Stato è passata da size: 12 a size: 30, così le frecce di ordinamento non vanno più a contatto con
+  l'header "Data" della colonna successiva.
+                                                                                                                        
+❯ Traduciamo owner in responsabile dove necessario                                                                      
+                                                                                                                        
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                                             
+                                                                                    
+⏺ L'unico punto visibile all'utente con "Owner" è il pulsante alla riga 588. I tooltip sono già in italiano.            
+                                                                                                                        
+⏺ Update(src/components/records/RecordGrid.tsx)                                                                         
+  ⎿  Added 1 line, removed 1 line                                                                      
+      585                      onClick={() => handleSetShowOwner(!showOwner)}                                           
+      586                    >                                                                                          
+      587                      {showOwner ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5"           
+           />}                                                                                                   
+      588 -                    Owner                                                                             
+      588 +                    Respons.                                                                          
+      589                    </Button>
+      590                  </TooltipTrigger>
+      591                  <TooltipContent>{showOwner ? 'Nascondi colonna Responsabile' : 'Mostra colonna
+           Responsabile'}</TooltipContent>
+
+⏺ Ora cerco anche nel resto del progetto per eventuali altri "Owner" visibili all'utente.
+
+⏺ Searched for 2 patterns (ctrl+o to expand)                                                                            
+   
+⏺ Ci sono label visibili nei filtri. Sistemo anche RecordFilters.tsx.                                                   
+                                                                                                       
+⏺ Read 1 file (ctrl+o to expand)                                                                                        
+                                                                                                       
+⏺ Update(src/components/records/RecordFilters.tsx)                                                                      
+  ⎿  Added 1 line, removed 1 line                                                                                       
+      287        {/* Owner filter row */}                                                                               
+      288        {(uniqueOwners.length > 0 || hasOwnerFilter) && (                                               
+      289          <div className="flex items-center gap-2 flex-wrap">                                                  
+      290 -          <span className="text-sm text-muted-foreground">Owner:</span>                               
+      290 +          <span className="text-sm text-muted-foreground">Responsabile:</span>                        
+      291            <button
+      292              onClick={() => toggleOwnerFilter('_noowner_')}
+      293              className={cn(
+
+⏺ Update(src/components/records/RecordFilters.tsx)
+  ⎿  Added 1 line, removed 1 line
+      297                  : "bg-background hover:bg-muted"                                                             
+      298              )}                                                                                        
+      299            >                                                                                                  
+      300 -            Senza Owner                                                                               
+      300 +            Senza Respons.                                                                            
+      301            </button>
+      302            {uniqueOwners.map((owner) => (
+      303              <button
+
+⏺ Ora verifico se ci sono altre occorrenze visibili in altri file (form, detail, ecc.).
+
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                                             
+   
+⏺ I riferimenti in MembersDialog.tsx (owner come ruolo workspace) e nei file di dati/logica (r.owner, record.owner) sono
+   campi tecnici e non label utente. Le label visibili all'utente che dicevano "Owner" erano:          
+                                                                                                                        
+  1. RecordGrid.tsx - pulsante toggle colonna — fatto                                                  
+  2. RecordFilters.tsx - etichetta filtro e "Senza Owner" — fatto                                                       
+  3. RecordForm.tsx - già dice "Responsabile" (riga 353)                                                                
+  4. RecordDetail.tsx - verifichiamo l'etichetta.
+
+⏺ Read 1 file (ctrl+o to expand)     
+
+⏺ Tutto a posto. Il RecordDetail già usa "Responsabile".                                                                
+   
+  Riepilogo delle traduzioni fatte:                                                                                     
+  - RecordGrid.tsx — pulsante toggle: "Owner" → "Respons."                                             
+  - RecordFilters.tsx — etichetta filtro: "Owner:" → "Responsabile:", bottone: "Senza Owner" → "Senza Respons."         
+                                                                                                                        
+  Gli altri punti (form, detail) usavano già "Responsabile".
+
+✻ Crunched for 45s
+
+❯ Traduci anche nextaction in prossima azione                                                                           
+                                              
+⏺ Searched for 1 pattern (ctrl+o to expand)                                                                             
+                                                                                                                      
+⏺ Le label visibili all'utente con "NextAction" sono solo nei filtri (riga 264-265).                                    
+                                                                                                       
+⏺ Update(src/components/records/RecordFilters.tsx)                                                                      
+  ⎿  Added 2 lines, removed 2 lines                                                                    
+      261            onChange={(v) => setNextactionFilter(v as 'all' | 'with' | 'without')}                             
+      262            options={[                                                                                  
+      263              { value: 'all', label: 'Tutti' },                                                                
+      264 -            { value: 'with', label: 'Con NextAction' },                                               
+      265 -            { value: 'without', label: 'Senza NextAction' },                                          
+      264 +            { value: 'with', label: 'Con Prossima Azione' },                                          
+      265 +            { value: 'without', label: 'Senza Prossima Azione' },                                     
+      266            ]}
+      267          />
+      268
+
+⏺ Fatto. I filtri ora mostrano "Con Prossima Azione" e "Senza Prossima Azione" invece di "Con NextAction" / "Senza      
+  NextAction". Gli altri punti (form, detail) usavano già "Prossima Azione".
+                                                                                                                        
+❯ eit                                                                                                                   
+                                                                                                                        
+⏺ Non ho capito, potresti chiarire cosa intendi con "eit"? Forse volevi scrivere "edit" o qualcos'altro?                
+                                                                                    
+❯ /exit                                                                                                                 
+  ⎿  See ya!                                                                                           
+                                                                                                                        
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯                                                                                                                       
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ accept edits on (shift+tab to cycle) · 3 files +123 -195 · ctrl+t to hide tasks                                    
+                                                                                                                        
+Resume this session with:
+claude --resume 9dc432be-3b4b-45dd-ba82-edc8dd6b1a0d
+
+Total cost:            $2.90
+Total duration (API):  7m 55s
+Total duration (wall): 29m 25s
+Total code changes:    177 lines added, 249 lines removed
+Usage by model:
+    claude-haiku-4-5:  12.5k input, 5.3k output, 589.5k cache read, 56.5k cache write ($0.1685)
+     claude-opus-4-6:  82 input, 20.7k output, 3.0m cache read, 111.4k cache write ($2.73)
+cashbit@Mac forecasto % 

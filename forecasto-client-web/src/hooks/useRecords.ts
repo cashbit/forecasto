@@ -11,7 +11,7 @@ export function useRecords() {
   const {
     currentArea, dateRange, yearFilter, monthFilter, dayFilter,
     sign, stageFilter, ownerFilter, nextactionFilter, expiredFilter,
-    textFilter, projectCodeFilter, bankAccountFilter
+    textFilter, textFilterField, projectCodeFilter, bankAccountFilter
   } = useFilterStore()
   const reviewMode = useUiStore(state => state.reviewMode)
   const queryClient = useQueryClient()
@@ -22,6 +22,7 @@ export function useRecords() {
     date_end: dateRange?.end,
     sign: sign !== 'all' ? sign : undefined,
     text_filter: textFilter || undefined,
+    text_filter_field: textFilter && textFilterField ? textFilterField : undefined,
     project_code: projectCodeFilter || undefined,
     bank_account_id: bankAccountFilter || undefined,
   }

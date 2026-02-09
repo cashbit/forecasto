@@ -73,6 +73,7 @@ async def list_records(
     date_end: date | None = Query(None),
     sign: str | None = Query(None),
     text_filter: str | None = Query(None),
+    text_filter_field: str | None = Query(None),
     project_code: str | None = Query(None),
     bank_account_id: str | None = Query(None),
 ):
@@ -91,6 +92,7 @@ async def list_records(
         date_end=date_end,
         sign=sign,
         text_filter=text_filter,
+        text_filter_field=text_filter_field,
         project_code=project_code,
         bank_account_id=bank_account_id,
     )

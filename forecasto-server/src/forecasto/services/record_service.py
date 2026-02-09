@@ -156,13 +156,17 @@ class RecordService:
 
         if filters.text_filter:
             search = f"%{filters.text_filter}%"
-            query = query.where(
-                or_(
-                    Record.account.ilike(search),
-                    Record.reference.ilike(search),
-                    Record.note.ilike(search),
+            field = filters.text_filter_field
+            if field and hasattr(Record, field):
+                query = query.where(getattr(Record, field).ilike(search))
+            else:
+                query = query.where(
+                    or_(
+                        Record.account.ilike(search),
+                        Record.reference.ilike(search),
+                        Record.note.ilike(search),
+                    )
                 )
-            )
 
         if filters.project_code:
             query = query.where(Record.project_code == filters.project_code)

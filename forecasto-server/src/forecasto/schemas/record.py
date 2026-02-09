@@ -107,6 +107,7 @@ class RecordFilter(BaseModel):
     date_end: date | None = None
     sign: str | None = None  # in, out, all
     text_filter: str | None = None
+    text_filter_field: str | None = None  # account, reference, note, owner, transaction_id — None = all
     project_code: str | None = None
     bank_account_id: str | None = None
     include_deleted: bool = False

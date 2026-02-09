@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Building2, Plus, Trash, Merge, CheckSquare, Square, Copy } from 'lucide-react'
+import { Building2, Plus, Trash, Merge, CheckSquare, Square, Copy, Crown, ShieldCheck } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
@@ -65,6 +65,16 @@ export function Sidebar() {
     }
     if (selectedWorkspaceIds.length === workspaces.length) {
       toast({ title: 'Non puoi eliminare tutti i workspace', variant: 'destructive' })
+      return
+    }
+    // Check ownership on all selected workspaces
+    const notOwned = workspaces.filter(w => selectedWorkspaceIds.includes(w.id) && w.role !== 'owner')
+    if (notOwned.length > 0) {
+      toast({
+        title: 'Permesso negato',
+        description: `Solo il proprietario può eliminare un workspace. Non sei owner di: ${notOwned.map(w => w.name).join(', ')}`,
+        variant: 'destructive',
+      })
       return
     }
     setWorkspacesToDelete(selectedWorkspaceIds)
@@ -261,12 +271,16 @@ export function Sidebar() {
                       onClick={(e) => e.stopPropagation()}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className={cn(
-                        'text-sm truncate',
-                        isSelected && 'font-medium'
-                      )}>
-                        {ws.name}
-                      </p>
+                      <div className="flex items-center gap-1">
+                        <p className={cn(
+                          'text-sm truncate',
+                          isSelected && 'font-medium'
+                        )}>
+                          {ws.name}
+                        </p>
+                        {ws.role === 'owner' && <Crown className="h-3 w-3 text-amber-500 flex-shrink-0" />}
+                        {ws.role === 'admin' && <ShieldCheck className="h-3 w-3 text-blue-500 flex-shrink-0" />}
+                      </div>
                     </div>
                   </div>
                 )

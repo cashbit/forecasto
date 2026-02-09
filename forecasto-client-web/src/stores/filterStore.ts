@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Area } from '@/types/record'
+import type { Area, TextFilterField } from '@/types/record'
 
 interface FilterState {
   currentArea: Area
@@ -13,6 +13,7 @@ interface FilterState {
   nextactionFilter: 'all' | 'with' | 'without'
   expiredFilter: 'all' | 'yes' | 'no'
   textFilter: string
+  textFilterField: TextFilterField | null
   accountFilter: string[]
   projectCodeFilter: string | null
   bankAccountFilter: string | null
@@ -29,6 +30,7 @@ interface FilterState {
   setNextactionFilter: (filter: 'all' | 'with' | 'without') => void
   setExpiredFilter: (filter: 'all' | 'yes' | 'no') => void
   setTextFilter: (text: string) => void
+  setTextFilterField: (field: TextFilterField | null) => void
   setAccountFilter: (accounts: string[]) => void
   setProjectCodeFilter: (code: string | null) => void
   setBankAccountFilter: (accountId: string | null) => void
@@ -47,6 +49,7 @@ const initialState = {
   nextactionFilter: 'all' as const,
   expiredFilter: 'all' as const,
   textFilter: '',
+  textFilterField: null as TextFilterField | null,
   accountFilter: [],
   projectCodeFilter: null,
   bankAccountFilter: null,
@@ -93,6 +96,8 @@ export const useFilterStore = create<FilterState>()((set) => ({
   setExpiredFilter: (filter) => set({ expiredFilter: filter }),
 
   setTextFilter: (text) => set({ textFilter: text }),
+
+  setTextFilterField: (field) => set({ textFilterField: field }),
 
   setAccountFilter: (accounts) => set({ accountFilter: accounts }),
 
