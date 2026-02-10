@@ -96,7 +96,7 @@ export function BulkEditDialog({
     const a = parseFloat(amount) || 0
     const t = parseFloat(total) || 0
     if (a <= 0) { setField('vat', '0'); return }
-    setField('vat', (((t - a) / a) * 100).toFixed(1))
+    setField('vat', (((t - a) / a) * 100).toFixed(0))
   }
 
   const handleAmountChange = (val: string) => {
@@ -268,7 +268,7 @@ export function BulkEditDialog({
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="bulk-vat">IVA %</Label>
-                  <Input id="bulk-vat" type="number" step="0.1" value={form.vat} onChange={e => handleVatChange(e.target.value)} className="px-1 text-center" />
+                  <Input id="bulk-vat" type="number" step="1" value={form.vat} onChange={e => handleVatChange(e.target.value)} className="px-1 text-center" />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="bulk-total">Totale</Label>

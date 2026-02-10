@@ -144,7 +144,7 @@ export function SdiImportDialog({
             rataTotal: invoice.rate.length,
             dateCashflow: rata.scadenza || invoice.dataEmissione,
             account: mapping?.account || '',
-            vatDeduction: mapping ? String(mapping.vat_deduction) : '100',
+            vatDeduction: mapping ? String(Math.round(mapping.vat_deduction)) : '100',
             isNewCounterpart: isNew,
             isDuplicate: false,
             matchedRecord: null,
@@ -449,6 +449,7 @@ export function SdiImportDialog({
           transaction_id: newTxId,
           date_cashflow: row.dateCashflow,
           vat_deduction: row.vatDeduction,
+          stage: '0',
           classification: { ...matched.classification, source_file: inv.fileName },
         }
         await recordsApi.update(workspaceId, matched.id, updateData)

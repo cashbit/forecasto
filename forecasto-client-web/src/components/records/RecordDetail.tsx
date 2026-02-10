@@ -77,11 +77,11 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">IVA</p>
-            <p className="text-lg font-medium">{record.vat}%</p>
+            <p className="text-lg font-medium">{parseFloat(record.vat || '0').toFixed(0)}%</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Detraz. IVA</p>
-            <p className="text-lg font-medium">{record.vat_deduction || '100'}%</p>
+            <p className="text-lg font-medium">{parseFloat(record.vat_deduction || '100').toFixed(0)}%</p>
           </div>
         </div>
 

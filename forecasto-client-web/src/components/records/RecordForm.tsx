@@ -103,12 +103,12 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
         const a = Math.abs(parseFloat(record.amount))
         const t = Math.abs(parseFloat(record.total))
         if (a <= 0) return '0'
-        return (((t - a) / a) * 100).toFixed(1)
+        return (((t - a) / a) * 100).toFixed(0)
       })(),
       stage: normalizeLegacyStage(record?.stage) || stages[0] || '0',
       nextaction: record?.nextaction || '',
       review_date: record?.review_date?.split('T')[0] || '',
-      vat_deduction: record?.vat_deduction || '100',
+      vat_deduction: record?.vat_deduction ? parseFloat(record.vat_deduction).toFixed(0) : '100',
       project_code: record?.project_code || '',
       sign: record?.amount ? (parseFloat(record.amount) >= 0 ? 'in' : 'out') : undefined,
     },
@@ -144,7 +144,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
     const a = parseFloat(amount) || 0
     const t = parseFloat(total) || 0
     if (a <= 0) { setValue('vat', '0'); return }
-    setValue('vat', (((t - a) / a) * 100).toFixed(1))
+    setValue('vat', (((t - a) / a) * 100).toFixed(0))
   }
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,7 +174,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
   const processFormData = (data: FormData) => {
     const amountNum = parseFloat(data.amount) || 0
     const totalNum = parseFloat(data.total) || 0
-    const vat = data.vat || (amountNum > 0 ? (((totalNum - amountNum) / amountNum) * 100).toFixed(1) : '0')
+    const vat = data.vat || (amountNum > 0 ? (((totalNum - amountNum) / amountNum) * 100).toFixed(0) : '0')
 
     // Apply sign: out = negative
     const signMultiplier = data.sign === 'out' ? -1 : 1
@@ -323,7 +323,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
             </div>
             <div className="space-y-1">
               <Label htmlFor="vat">IVA %</Label>
-              <Input id="vat" type="number" step="0.1" value={watch('vat')} onChange={handleVatChange} className="px-1 text-center" />
+              <Input id="vat" type="number" step="1" value={watch('vat')} onChange={handleVatChange} className="px-1 text-center" />
             </div>
             <div className="space-y-1">
               <Label htmlFor="total">Totale</Label>

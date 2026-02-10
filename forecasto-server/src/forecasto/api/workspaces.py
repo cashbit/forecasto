@@ -63,7 +63,16 @@ async def create_workspace(
     """Create a new workspace."""
     service = WorkspaceService(db)
     workspace = await service.create_workspace(data, current_user)
-    return {"success": True, "workspace": WorkspaceResponse.model_validate(workspace)}
+    return {"success": True, "workspace": WorkspaceWithRole(
+        id=workspace.id,
+        name=workspace.name,
+        description=workspace.description,
+        fiscal_year=workspace.fiscal_year,
+        is_archived=workspace.is_archived,
+        settings=workspace.settings or {},
+        role="owner",
+        area_permissions={"actual": "write", "orders": "write", "prospect": "write", "budget": "write"},
+    )}
 
 @router.get("/{workspace_id}", response_model=dict)
 async def get_workspace(
