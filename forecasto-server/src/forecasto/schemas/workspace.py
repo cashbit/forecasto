@@ -87,6 +87,7 @@ class WorkspaceWithRole(BaseModel):
     description: str | None = None
     fiscal_year: int
     is_archived: bool
+    settings: dict
     role: str
     area_permissions: dict
 

@@ -4,6 +4,7 @@ export interface Classification {
   category: string
   subcategory?: string
   tags?: string[]
+  source_file?: string
 }
 
 export interface TransferEntry {
@@ -27,6 +28,7 @@ export interface Record {
   owner?: string
   amount: string
   vat: string
+  vat_deduction?: string
   total: string
   stage: string
   nextaction?: string
@@ -55,6 +57,7 @@ export interface RecordCreate {
   owner?: string
   amount: string
   vat?: string
+  vat_deduction?: string
   total: string
   stage?: string
   nextaction?: string
@@ -75,6 +78,7 @@ export interface RecordUpdate {
   owner?: string
   amount?: string
   vat?: string
+  vat_deduction?: string
   total?: string
   stage?: string
   nextaction?: string

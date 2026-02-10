@@ -11,6 +11,7 @@ export interface ImportRecord {
   date_offer: string
   amount: string
   vat: string
+  vat_deduction?: string
   total: string
   stage: string
   transaction_id: string

@@ -31,6 +31,7 @@ const schema = z.object({
   review_date: z.string().optional(),
   project_code: z.string().optional(),
   vat: z.string().optional(),
+  vat_deduction: z.string().optional(),
   sign: z.enum(['in', 'out'], { message: 'Seleziona entrata o uscita' }),
 })
 
@@ -107,6 +108,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
       stage: normalizeLegacyStage(record?.stage) || stages[0] || '0',
       nextaction: record?.nextaction || '',
       review_date: record?.review_date?.split('T')[0] || '',
+      vat_deduction: record?.vat_deduction || '100',
       project_code: record?.project_code || '',
       sign: record?.amount ? (parseFloat(record.amount) >= 0 ? 'in' : 'out') : undefined,
     },
@@ -179,35 +181,37 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
     const signedAmount = (amountNum * signMultiplier).toString()
     const signedTotal = (totalNum * signMultiplier).toString()
 
-    // Remove sign and vat from data (UI-only fields)
-    const { sign, vat: _vat, review_date, ...submitData } = data
+    const vatDeduction = data.vat_deduction || '100'
 
-    return { submitData, signedAmount, signedTotal, vat, review_date }
+    // Remove sign and vat from data (UI-only fields)
+    const { sign, vat: _vat, vat_deduction: _vatDed, review_date, ...submitData } = data
+
+    return { submitData, signedAmount, signedTotal, vat, vatDeduction, review_date }
   }
 
   const handleFormSubmit = (data: FormData) => {
-    const { submitData, signedAmount, signedTotal, vat, review_date } = processFormData(data)
+    const { submitData, signedAmount, signedTotal, vat, vatDeduction, review_date } = processFormData(data)
 
     if (record) {
-      onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat, review_date: review_date || undefined } as RecordUpdate)
+      onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, review_date: review_date || undefined } as RecordUpdate)
     } else {
       // Add default type for new records
-      onSubmit({ ...submitData, area, amount: signedAmount, total: signedTotal, vat, review_date: review_date || undefined, type: 'standard' } as RecordCreate)
+      onSubmit({ ...submitData, area, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, review_date: review_date || undefined, type: 'standard' } as RecordCreate)
     }
   }
 
   const handleReviewClick = (days: number) => {
     handleSubmit((data: FormData) => {
-      const { submitData, signedAmount, signedTotal, vat } = processFormData(data)
-      onReview?.(days, { ...submitData, amount: signedAmount, total: signedTotal, vat } as RecordUpdate)
+      const { submitData, signedAmount, signedTotal, vat, vatDeduction } = processFormData(data)
+      onReview?.(days, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction } as RecordUpdate)
     })()
   }
 
   const handlePromoteClick = (toArea: Area) => {
     if (!record) return
     handleSubmit((data: FormData) => {
-      const { submitData, signedAmount, signedTotal, vat } = processFormData(data)
-      onPromote?.(record.id, toArea, { ...submitData, amount: signedAmount, total: signedTotal, vat } as RecordUpdate)
+      const { submitData, signedAmount, signedTotal, vat, vatDeduction } = processFormData(data)
+      onPromote?.(record.id, toArea, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction } as RecordUpdate)
     })()
   }
 
@@ -310,8 +314,8 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
             </div>
           </div>
 
-          {/* Imponibile + IVA% + Totale (una riga) */}
-          <div className="grid grid-cols-[1fr_4rem_1fr] gap-2">
+          {/* Imponibile + IVA% + Totale + Detr.% (una riga) */}
+          <div className="grid grid-cols-[1fr_4rem_1fr_4rem] gap-2">
             <div className="space-y-1">
               <Label htmlFor="amount">Imponibile</Label>
               <Input id="amount" type="number" step="0.01" value={watch('amount')} onChange={handleAmountChange} />
@@ -325,6 +329,10 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
               <Label htmlFor="total">Totale</Label>
               <Input id="total" type="number" step="0.01" value={watch('total')} onChange={handleTotalChange} />
               {errors.total && <p className="text-sm text-destructive">{errors.total.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="vat_deduction">Detr.%</Label>
+              <Input id="vat_deduction" type="number" step="1" min="0" max="100" {...register('vat_deduction')} className="px-1 text-center" />
             </div>
           </div>
 

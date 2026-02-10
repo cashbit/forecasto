@@ -22,12 +22,14 @@ class RecordCreate(BaseModel):
     nextaction: str | None = None
     amount: Decimal
     vat: Decimal = Decimal("0")
+    vat_deduction: Decimal = Decimal("100")
     total: Decimal
     stage: str
     transaction_id: str | None = None
     bank_account_id: str | None = None
     project_code: str | None = None
     review_date: date | None = None
+    classification: dict | None = None
 
     @field_validator("area")
     @classmethod
@@ -50,12 +52,14 @@ class RecordUpdate(BaseModel):
     nextaction: str | None = None
     amount: Decimal | None = None
     vat: Decimal | None = None
+    vat_deduction: Decimal | None = None
     total: Decimal | None = None
     stage: str | None = None
     transaction_id: str | None = None
     bank_account_id: str | None = None
     project_code: str | None = None
     review_date: date | None = None
+    classification: dict | None = None
 
 class TransferHistoryEntry(BaseModel):
     """Entry in transfer history."""
@@ -82,6 +86,7 @@ class RecordResponse(BaseModel):
     nextaction: str | None = None
     amount: Decimal
     vat: Decimal
+    vat_deduction: Decimal
     total: Decimal
     stage: str
     transaction_id: str | None = None

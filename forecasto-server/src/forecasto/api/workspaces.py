@@ -42,8 +42,10 @@ async def list_workspaces(
         WorkspaceWithRole(
             id=ws.id,
             name=ws.name,
+            description=ws.description,
             fiscal_year=ws.fiscal_year,
             is_archived=ws.is_archived,
+            settings=ws.settings or {},
             role=member.role,
             area_permissions=member.area_permissions,
         )

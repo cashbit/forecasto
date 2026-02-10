@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LogOut, Settings, User, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload } from 'lucide-react'
+import { LogOut, Settings, User, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet } from 'lucide-react'
 import logoIcon from '@/assets/logo-icon.png'
 import logoText from '@/assets/logo-text.png'
 import { Link, useLocation } from 'react-router-dom'
@@ -23,6 +23,7 @@ import { recordsApi } from '@/api/records'
 import { toast } from '@/hooks/useToast'
 import { useQueryClient } from '@tanstack/react-query'
 import { ImportDialog } from '@/components/records/ImportDialog'
+import { SdiImportDialog } from '@/components/records/SdiImportDialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { PendingInvitation } from '@/types/workspace'
 import type { Area } from '@/types/record'
@@ -36,6 +37,7 @@ export function Header() {
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
   const [isAccepting, setIsAccepting] = useState<string | null>(null)
   const [showImportDialog, setShowImportDialog] = useState(false)
+  const [showSdiImportDialog, setShowSdiImportDialog] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
   const primaryWorkspace = getPrimaryWorkspace()
@@ -103,6 +105,7 @@ export function Header() {
         date_offer: string
         amount: string
         vat: string
+        vat_deduction: string
         total: string
         stage: string
         transaction_id: string
@@ -130,6 +133,7 @@ export function Header() {
             date_offer: record.date_offer,
             amount: record.amount,
             vat: record.vat,
+            vat_deduction: record.vat_deduction || '100',
             total: record.total,
             stage: record.stage,
             transaction_id: record.transaction_id || '',
@@ -235,6 +239,22 @@ export function Header() {
             </TooltipTrigger>
             <TooltipContent>
               {canImportExport ? `Importa in ${primaryWorkspace?.name}` : 'Seleziona un workspace'}
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowSdiImportDialog(true)}
+                disabled={!canImportExport}
+              >
+                <FileSpreadsheet className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {canImportExport ? 'Importa fatture SDI (XML)' : 'Seleziona un workspace'}
             </TooltipContent>
           </Tooltip>
 
@@ -370,6 +390,21 @@ export function Header() {
           onOpenChange={setShowImportDialog}
           workspaceId={primaryWorkspace.id}
           workspaceName={primaryWorkspace.name}
+          onImportComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ['records'] })
+          }}
+        />
+      )}
+
+      {/* SDI Import Dialog */}
+      {primaryWorkspace && (
+        <SdiImportDialog
+          open={showSdiImportDialog}
+          onOpenChange={setShowSdiImportDialog}
+          workspaceId={primaryWorkspace.id}
+          workspaceName={primaryWorkspace.name}
+          workspaceVatNumber={primaryWorkspace.settings?.vat_number || ''}
+          workspaceSettings={primaryWorkspace.settings as Record<string, unknown> || {}}
           onImportComplete={() => {
             queryClient.invalidateQueries({ queryKey: ['records'] })
           }}

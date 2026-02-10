@@ -36,6 +36,7 @@ export function SettingsPage() {
     defaultValues: {
       name: primaryWorkspace?.name || '',
       description: primaryWorkspace?.description || '',
+      vat_number: primaryWorkspace?.settings?.vat_number || '',
     },
   })
 
@@ -45,9 +46,10 @@ export function SettingsPage() {
       workspaceForm.reset({
         name: primaryWorkspace.name || '',
         description: primaryWorkspace.description || '',
+        vat_number: primaryWorkspace.settings?.vat_number || '',
       })
     }
-  }, [primaryWorkspace?.id, primaryWorkspace?.name, primaryWorkspace?.description])
+  }, [primaryWorkspace?.id, primaryWorkspace?.name, primaryWorkspace?.description, primaryWorkspace?.settings?.vat_number])
 
   const handleProfileSave = async () => {
     setIsLoading(true)
@@ -55,11 +57,18 @@ export function SettingsPage() {
     setIsLoading(false)
   }
 
-  const handleWorkspaceSave = async (data: { name: string; description: string }) => {
+  const handleWorkspaceSave = async (data: { name: string; description: string; vat_number: string }) => {
     if (!primaryWorkspace) return
     setIsLoading(true)
     try {
-      await updateWorkspace(primaryWorkspace.id, data)
+      await updateWorkspace(primaryWorkspace.id, {
+        name: data.name,
+        description: data.description,
+        settings: {
+          ...primaryWorkspace.settings,
+          vat_number: data.vat_number || undefined,
+        },
+      })
       toast({ title: 'Workspace aggiornato', variant: 'success' })
     } catch {
       toast({ title: 'Errore durante il salvataggio', variant: 'destructive' })
@@ -149,6 +158,11 @@ export function SettingsPage() {
                   <div className="space-y-2">
                     <Label htmlFor="ws-description">Descrizione</Label>
                     <Input id="ws-description" {...workspaceForm.register('description')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ws-vat-number">Partita IVA</Label>
+                    <Input id="ws-vat-number" {...workspaceForm.register('vat_number')} placeholder="es. IT01234567890" />
+                    <p className="text-xs text-muted-foreground">Necessaria per l'import fatture SDI (identificazione fatture attive/passive)</p>
                   </div>
                   <Separator />
                   <div className="space-y-2">

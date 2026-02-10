@@ -13,10 +13,18 @@ export interface Workspace {
   area_permissions?: AreaPermissions
 }
 
+export interface SdiSupplierMapping {
+  name: string
+  account: string
+  vat_deduction: number
+}
+
 export interface WorkspaceSettings {
   currency: string
   timezone: string
   fiscal_year_start_month: number
+  vat_number?: string
+  sdi_supplier_mappings?: Record<string, SdiSupplierMapping>
 }
 
 export interface WorkspaceCreate {

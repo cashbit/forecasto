@@ -65,6 +65,7 @@ async def transfer_record(
         nextaction=record.nextaction,
         amount=record.amount,
         vat=record.vat,
+        vat_deduction=record.vat_deduction,
         total=record.total,
         stage=record.stage,
         transaction_id=record.transaction_id,

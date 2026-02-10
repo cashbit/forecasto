@@ -139,6 +139,7 @@ export function ImportDialog({
       owner: item.owner || undefined,
       amount: item.amount,
       vat: item.vat || '22',
+      vat_deduction: item.vat_deduction || '100',
       total: item.total,
       stage: item.stage || '0',
       nextaction: item.nextaction || undefined,

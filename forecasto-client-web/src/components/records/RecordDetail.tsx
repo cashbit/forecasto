@@ -70,7 +70,7 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
 
         <Separator />
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div>
             <p className="text-sm text-muted-foreground">Imponibile</p>
             <AmountDisplay amount={record.amount} className="text-lg" />
@@ -78,6 +78,10 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
           <div>
             <p className="text-sm text-muted-foreground">IVA</p>
             <p className="text-lg font-medium">{record.vat}%</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Detraz. IVA</p>
+            <p className="text-lg font-medium">{record.vat_deduction || '100'}%</p>
           </div>
         </div>
 
@@ -107,6 +111,16 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
             <p className="text-sm">-</p>
           )}
         </div>
+
+        {record.classification?.source_file && (
+          <>
+            <Separator />
+            <div>
+              <p className="text-sm text-muted-foreground">File sorgente</p>
+              <p className="font-mono text-sm">{record.classification.source_file}</p>
+            </div>
+          </>
+        )}
 
         {record.transfer_history && record.transfer_history.length > 0 && (
           <>

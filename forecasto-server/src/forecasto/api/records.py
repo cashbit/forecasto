@@ -44,6 +44,7 @@ def _record_to_response(record, is_draft: bool = False) -> RecordResponse:
         nextaction=record.nextaction,
         amount=record.amount,
         vat=record.vat,
+        vat_deduction=record.vat_deduction,
         total=record.total,
         stage=record.stage,
         transaction_id=record.transaction_id,
