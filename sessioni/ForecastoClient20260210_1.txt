@@ -1,0 +1,418 @@
+
+▗ ▗   ▖ ▖  Claude Code v2.1.37
+           Opus 4.6 · API Usage Billing
+  ▘▘ ▝▝    ~/dev/forecasto
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Plan to implement                                                                                                    │
+│                                                                                                                      │
+│ Piano: Dettaglio match visibile nella preview SDI                                                                    │
+│                                                                                                                      │
+│ Contesto                                                                                                             │
+│                                                                                                                      │
+│ Le righe con match (badge blu "Da Orders/Prospect/Budget") non mostrano i dettagli del record esistente che sarà     │
+│ promosso. L'utente deve poter vedere quale record viene matchato per decidere se confermare o deselezionare la       │
+│ promozione.                                                                                                          │
+│                                                                                                                      │
+│ Modifica                                                                                                             │
+│                                                                                                                      │
+│ src/components/records/SdiImportDialog.tsx                                                                           │
+│                                                                                                                      │
+│ Per le righe con matchedRecord, mostrare sotto il nome controparte una riga di dettaglio del record matchato:        │
+│ - reference + transaction_id + importo del record esistente                                                          │
+│ - Testo piccolo, colore muted, con prefisso tipo icona link                                                          │
+│                                                                                                                      │
+│ Nella cella "Riferimento" (colonna 3), sotto al nome controparte + badge, aggiungere:                                │
+│                                                                                                                      │
+│ {row.matchedRecord && (                                                                                              │
+│   <div className="text-xs text-muted-foreground mt-0.5">                                                             │
+│     ↳ {matchedRecord.reference} | {matchedRecord.transaction_id} | {amount}                                          │
+│   </div>                                                                                                             │
+│ )}                                                                                                                   │
+│                                                                                                                      │
+│ Questo dà all'utente abbastanza info per decidere se il match è corretto e se deselezionare la riga.                 │
+│                                                                                                                      │
+│ Verifica                                                                                                             │
+│                                                                                                                      │
+│ 1. Importare XML che matcha un record in Orders → nella preview, sotto al nome fornitore, vedere "↳ NOME CONTROPARTE │
+│  | TX_ID | -1234.00"                                                                                                 │
+│ 2. Se il match è sbagliato, deselezionare la checkbox → la riga non viene né promossa né creata                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+⏺ Let me first read the SdiImportDialog to understand the current structure.
+
+⏺ Read 1 file (ctrl+o to expand)
+  ⎿  Loaded forecasto-client-web/CLAUDE.md
+
+⏺ I can see the relevant section. I need to add the matched record details below the counterpart name + badges in the
+  "Riferimento" column (around line 673-689). The matched record info should show reference, transaction_id, and amount.
+
+⏺ Update(forecasto-client-web/src/components/records/SdiImportDialog.tsx)
+  ⎿  Added 7 lines
+      687                                    </Badge>
+      688                                  )}
+      689                                </div>
+      690 +                              {row.matchedRecord && (                                                 
+      691 +                                <div className="text-xs text-muted-foreground mt-0.5">                
+      692 +                                  ↳ {row.matchedRecord.reference}                                     
+      693 +                                  {row.matchedRecord.transaction_id && ` |                            
+          +${row.matchedRecord.transaction_id}`}                                                                 
+      694 +                                  {` | ${parseFloat(row.matchedRecord.amount).toFixed(2)}`}           
+      695 +                                </div>                                                                
+      696 +                              )}                                                                      
+      697                              </td>
+      698                              <td className="p-2 font-mono text-xs">{txId}</td>
+      699                              <td className="p-2">
+
+⏺ Done. The change adds a detail line below the counterpart name + badges for matched rows, showing:
+  - ↳ prefix as a visual link indicator
+  - The matched record's reference
+  - The matched record's transaction_id (if present, separated by |)
+  - The matched record's amount (formatted to 2 decimal places)
+
+  The text is styled text-xs text-muted-foreground so it's small and subdued, giving users enough info to verify the
+  match is correct before confirming the import.
+
+❯ come mai mi trova questo accoppiamento ? 
+  ⎿  [Image #1]
+
+⏺ Il problema è nell'algoritmo fuzzyRefMatch. Analizziamo perché matcha:
+
+  rec.reference = "PARODI E PARODI" → words: ["parodi", "e", "parodi"]
+  counterpartName = "Tuttolegno S.A.S. di Bada..." → words: ["tuttolegno", "s.a.s.", "di", "bada..."]
+
+  Il check sw.includes(lw) || lw.includes(sw) causa false positive:
+  1. "parodi" matcha perché contiene "di" (substring!)
+  2. "e" matcha perché "tuttolegno" contiene "e" (1 lettera!)
+  3. "parodi" matcha di nuovo → 3/3 = 100% → match!
+
+  E poi l'importo: |1300 - 1195| / 1300 = 8.1% < 10% → passa anche il check amount.
+
+  Il fix: filtrare le parole troppo corte (< 3 caratteri) che sono articoli/preposizioni italiane ("e", "di", "da",
+  "il", "la").
+
+⏺ Update(forecasto-client-web/src/components/records/SdiImportDialog.tsx)
+  ⎿  Added 4 lines, removed 2 lines
+      189        }
+      190
+      191        // Word-based fuzzy reference matching: >= 2/3 word overlap
+      192 +      // Filter out short words (< 3 chars) to avoid false positives from Italian                     
+          +articles/prepositions                                                                                 
+      193        const toWords = (s: string): string[] =>
+      194 -        s.toLowerCase().split(/\s+/).filter(w => w.length > 0)                                        
+      194 +        s.toLowerCase().split(/[\s.]+/).filter(w => w.length >= 3)                                    
+      195
+      196        const fuzzyRefMatch = (a: string, b: string): boolean => {
+      197          const wordsA = toWords(a)
+     ...
+      198          if (wordsA.length === 0 || wordsB.length === 0) return false
+      199
+      200          const [shorter, longer] = wordsA.length <= wordsB.length ? [wordsA, wordsB] : [wordsB,
+           wordsA]
+      201 -        const matched = shorter.filter(sw => longer.some(lw => lw.includes(sw) || sw.includes(lw)))   
+      201 +        // Only match words of 3+ chars to avoid substring false positives                            
+      202 +        const matched = shorter.filter(sw => longer.some(lw => lw === sw || (sw.length >= 4 &&        
+          +lw.length >= 4 && (lw.includes(sw) || sw.includes(lw)))))                                             
+      203          return matched.length >= Math.ceil(shorter.length * 2 / 3)
+      204        }
+      205
+
+⏺ Le modifiche:
+
+  1. toWords: split anche su . (così "S.A.S." non conta come una parola unica) e filtra parole < 3 caratteri → elimina
+  "e", "di", "da", "il", "la", "s", "a" etc.
+  2. Match rule: parole corte (3 chars) richiedono match esatto (lw === sw). Il match per substring (includes) è ammesso
+   solo se entrambe le parole hanno >= 4 caratteri → "parodi" non matcha più solo perché contiene "di".
+
+  Ora "PARODI E PARODI" → words: ["parodi", "parodi"] e "Tuttolegno S.A.S. di Bada..." → words: ["tuttolegno",
+  "bada..."] → nessun match.
+
+✻ Sautéed for 49s
+
+❯ facciamo un padding a 4 cifre per il numero fattura 
+
+⏺ Searched for 1 pattern (ctrl+o to expand)
+
+⏺ Update(forecasto-client-web/src/components/records/SdiImportDialog.tsx)
+  ⎿  Added 3 lines, removed 3 lines
+      373      const signMultiplier = isExpense ? -1 : 1
+      374
+      375      const anno = inv.dataEmissione.split('-')[0] || new Date().getFullYear().toString()
+      376 -    const numPadded = inv.numero.replace(/^\d+$/, m => m.padStart(3, '0'))                            
+      376 +    const numPadded = inv.numero.replace(/^\d+$/, m => m.padStart(4, '0'))                            
+      377      let transactionId = `${numPadded}/${anno}`
+      378      if (row.rataTotal > 1) {
+      379        transactionId += ` rata ${row.rataIndex + 1}/${row.rataTotal}`
+     ...
+      435          // Build updated transaction_id
+      436          const inv = row.invoice
+      437          const anno = inv.dataEmissione.split('-')[0] || new Date().getFullYear().toString()
+      438 -        const numPadded = inv.numero.replace(/^\d+$/, m => m.padStart(3, '0'))                        
+      438 +        const numPadded = inv.numero.replace(/^\d+$/, m => m.padStart(4, '0'))                        
+      439          let fatturaTxId = `${numPadded}/${anno}`
+      440          if (row.rataTotal > 1) {
+      441            fatturaTxId += ` rata ${row.rataIndex + 1}/${row.rataTotal}`
+     ...
+      639                        {previewRows.map((row) => {
+      640                          const rata = row.invoice.rate[row.rataIndex]
+      641                          const anno = row.invoice.dataEmissione.split('-')[0] || ''
+      642 -                        const numPad = row.invoice.numero.replace(/^\d+$/, m => m.padStart(3, '0'))   
+      642 +                        const numPad = row.invoice.numero.replace(/^\d+$/, m => m.padStart(4, '0'))   
+      643                          let txId = `${numPad}/${anno}`
+      644                          if (row.rataTotal > 1) txId += ` r${row.rataIndex + 1}/${row.rataTotal}`
+      645
+
+⏺ Fatto. Tutte e 3 le occorrenze aggiornate: 006/2026 → 0006/2026.
+
+❯ quando creo un nuovo workspace non viene visto come mio, ma se ricarico la pagina si 
+
+⏺ Let me investigate the workspace creation flow.
+
+⏺ Explore(Explore workspace creation flow)
+  ⎿  Done (31 tool uses · 53.7k tokens · 50s)
+
+⏺ Il problema è chiaro: POST /workspaces restituisce WorkspaceResponse (senza role), ma il client si aspetta
+  WorkspaceWithRole. Il fix è nel server: restituire il workspace con role dopo la creazione.
+
+⏺ Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ WorkspaceWithRole è già importato. Ora basta cambiare la risposta del create:
+
+⏺ Update(forecasto-server/src/forecasto/api/workspaces.py)
+  ⎿  Added 10 lines, removed 1 line
+      63      """Create a new workspace."""
+      64      service = WorkspaceService(db)
+      65      workspace = await service.create_workspace(data, current_user)
+      66 -    return {"success": True, "workspace": WorkspaceResponse.model_validate(workspace)}                 
+      66 +    return {"success": True, "workspace": WorkspaceWithRole(                                           
+      67 +        id=workspace.id,                                                                               
+      68 +        name=workspace.name,                                                                           
+      69 +        description=workspace.description,                                                             
+      70 +        fiscal_year=workspace.fiscal_year,                                                             
+      71 +        is_archived=workspace.is_archived,                                                             
+      72 +        settings=workspace.settings or {},                                                             
+      73 +        role="owner",                                                                                  
+      74 +        area_permissions={"actual": "write", "orders": "write", "prospect": "write", "budget":         
+         +"write"},                                                                                              
+      75 +    )}                                                                                                 
+      76
+      77  @router.get("/{workspace_id}", response_model=dict)
+      78  async def get_workspace(
+
+⏺ Fatto. Ora POST /workspaces restituisce WorkspaceWithRole con role: "owner" e i permessi completi, così il client lo
+  vede subito come tuo senza bisogno di ricaricare la pagina.
+
+✻ Crunched for 1m 28s
+
+❯ i campi iva non devono avere decimali 
+
+⏺ Searched for 1 pattern (ctrl+o to expand)
+
+⏺ I see several places where VAT is calculated with .toFixed(1) (1 decimal). Let me fix them all to use .toFixed(0) (no
+  decimals).
+
+⏺ Read 2 files (ctrl+o to expand)
+
+⏺ Now let me also check the input step attribute for the vat field.
+
+⏺ Searched for 1 pattern (ctrl+o to expand)
+
+⏺ Now I'll fix all occurrences: .toFixed(1) → .toFixed(0) for VAT calculations, and step="0.1" → step="1" for VAT
+  inputs.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 1 line, removed 1 line
+      144      const a = parseFloat(amount) || 0
+      145      const t = parseFloat(total) || 0
+      146      if (a <= 0) { setValue('vat', '0'); return }
+      147 -    setValue('vat', (((t - a) / a) * 100).toFixed(1))                                                 
+      147 +    setValue('vat', (((t - a) / a) * 100).toFixed(0))                                                 
+      148    }
+      149
+      150    const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 1 line, removed 1 line
+      174    const processFormData = (data: FormData) => {
+      175      const amountNum = parseFloat(data.amount) || 0
+      176      const totalNum = parseFloat(data.total) || 0
+      177 -    const vat = data.vat || (amountNum > 0 ? (((totalNum - amountNum) / amountNum) * 100).toFixed(1   
+          -) : '0')                                                                                              
+      177 +    const vat = data.vat || (amountNum > 0 ? (((totalNum - amountNum) / amountNum) * 100).toFixed(0   
+          +) : '0')                                                                                              
+      178
+      179      // Apply sign: out = negative
+      180      const signMultiplier = data.sign === 'out' ? -1 : 1
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 1 line, removed 1 line
+      323              </div>
+      324              <div className="space-y-1">
+      325                <Label htmlFor="vat">IVA %</Label>
+      326 -              <Input id="vat" type="number" step="0.                                                  
+          -1" value={watch('vat')} onChange={handleVatChange} className="px-1 text-center" />                    
+      326 +              <Input id="vat" type="number" step="                                                    
+          +1" value={watch('vat')} onChange={handleVatChange} className="px-1 text-center" />                    
+      327              </div>
+      328              <div className="space-y-1">
+      329                <Label htmlFor="total">Totale</Label>
+
+⏺ Update(forecasto-client-web/src/components/records/BulkEditDialog.tsx)
+  ⎿  Added 1 line, removed 1 line
+       96      const a = parseFloat(amount) || 0
+       97      const t = parseFloat(total) || 0
+       98      if (a <= 0) { setField('vat', '0'); return }
+       99 -    setField('vat', (((t - a) / a) * 100).toFixed(1))                                                 
+       99 +    setField('vat', (((t - a) / a) * 100).toFixed(0))                                                 
+      100    }
+      101
+      102    const handleAmountChange = (val: string) => {
+
+⏺ Update(forecasto-client-web/src/components/records/BulkEditDialog.tsx)
+  ⎿  Added 1 line, removed 1 line
+      268                  </div>
+      269                  <div className="space-y-1">
+      270                    <Label htmlFor="bulk-vat">IVA %</Label>
+      271 -                  <Input id="bulk-vat" type="number" step="0.                                         
+          -1" value={form.vat} onChange={e => handleVatChange(e.target.value)} className="px-1 text-center" />   
+      271 +                  <Input id="bulk-vat" type="number" step="                                           
+          +1" value={form.vat} onChange={e => handleVatChange(e.target.value)} className="px-1 text-center" />   
+      272                  </div>
+      273                  <div className="space-y-1">
+      274                    <Label htmlFor="bulk-total">Totale</Label>
+
+⏺ Fatto. Modifiche applicate in 3 file:
+
+  - RecordForm.tsx: calcolo IVA → .toFixed(0), input step 1
+  - BulkEditDialog.tsx: calcolo IVA → .toFixed(0), input step 1
+  - processFormData fallback → .toFixed(0)
+
+  Ora i campi IVA mostrano solo numeri interi (es. 22 invece di 22.0).
+
+✻ Crunched for 32s
+
+❯ anche nelle visualizzazioni di dettaglio niente decimali e anche nei campi di input del record 
+
+⏺ Searched for 3 patterns, read 2 files (ctrl+o to expand)
+
+⏺ Now I see all the spots. Let me fix them:
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 1 line, removed 1 line
+      103          const a = Math.abs(parseFloat(record.amount))
+      104          const t = Math.abs(parseFloat(record.total))
+      105          if (a <= 0) return '0'
+      106 -        return (((t - a) / a) * 100).toFixed(1)                                                       
+      106 +        return (((t - a) / a) * 100).toFixed(0)                                                       
+      107        })(),
+      108        stage: normalizeLegacyStage(record?.stage) || stages[0] || '0',
+      109        nextaction: record?.nextaction || '',
+
+⏺ Update(forecasto-client-web/src/components/records/RecordDetail.tsx)
+  ⎿  Added 2 lines, removed 2 lines
+      77            </div>
+      78            <div>
+      79              <p className="text-sm text-muted-foreground">IVA</p>
+      80 -            <p className="text-lg font-medium">{record.vat}%</p>                                       
+      80 +            <p className="text-lg font-medium">{parseFloat(record.vat || '0').toFixed(0)}%</p>         
+      81            </div>
+      82            <div>
+      83              <p className="text-sm text-muted-foreground">Detraz. IVA</p>
+      84 -            <p className="text-lg font-medium">{record.vat_deduction || '100'}%</p>                    
+      84 +            <p className="text-lg font-medium">{parseFloat(record.vat_deduction || '100').toFixed(0)   
+         +}%</p>                                                                                                 
+      85            </div>
+      86          </div>
+      87
+
+⏺ Fatto:
+
+  - RecordDetail.tsx: IVA e Detraz. IVA mostrati con .toFixed(0) (es. 22% invece di 22.0%)
+  - RecordForm.tsx: valore iniziale IVA calcolato con .toFixed(0) quando si apre il form in edit
+
+❯ stesso dicasi per la detrazione 
+
+⏺ Searched for 3 patterns (ctrl+o to expand)
+
+⏺ Il campo vat_deduction nel RecordForm ha già step="1", e il defaultValue è stringa '100' senza decimali. Il dettaglio
+  l'abbiamo già fixato. L'unico posto rimasto è l'SDI import dove il valore potrebbe arrivare con decimali dal mapping.
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Update(forecasto-client-web/src/components/records/SdiImportDialog.tsx)
+  ⎿  Added 1 line, removed 1 line
+      144              rataTotal: invoice.rate.length,
+      145              dateCashflow: rata.scadenza || invoice.dataEmissione,
+      146              account: mapping?.account || '',
+      147 -            vatDeduction: mapping ? String(mapping.vat_deduction) : '100',                            
+      147 +            vatDeduction: mapping ? String(Math.round(mapping.vat_deduction)) : '100',                
+      148              isNewCounterpart: isNew,
+      149              isDuplicate: false,
+      150              matchedRecord: null,
+
+⏺ Fatto. Ora anche la detrazione IVA nell'SDI import viene arrotondata a intero. Tutti i campi IVA e detrazione sono
+  senza decimali ovunque: form, dettaglio, bulk edit e import SDI.
+
+❯ nel form di editing vedo ancora il decimale 
+
+⏺ Read 1 file (ctrl+o to expand)
+
+⏺ Il problema è alla riga 111: vat_deduction arriva dal server come stringa con decimali (es. "100.0") e viene usata
+  così com'è.
+
+⏺ Update(forecasto-client-web/src/components/records/RecordForm.tsx)
+  ⎿  Added 1 line, removed 1 line
+      108        stage: normalizeLegacyStage(record?.stage) || stages[0] || '0',
+      109        nextaction: record?.nextaction || '',
+      110        review_date: record?.review_date?.split('T')[0] || '',
+      111 -      vat_deduction: record?.vat_deduction || '100',                                                  
+      111 +      vat_deduction: record?.vat_deduction ? parseFloat(record.vat_deduction).toFixed(0) : '100',     
+      112        project_code: record?.project_code || '',
+      113        sign: record?.amount ? (parseFloat(record.amount) >= 0 ? 'in' : 'out') : undefined,
+      114      },
+
+⏺ Fatto. Ora il defaultValue di vat_deduction viene arrotondato a intero quando si apre il form in edit (es. "100.0" →
+  "100").
+
+❯ ricordiamoci quando convertiamo da order, prospect, budget in importazione xml, stage deve sempre andare a 0 
+
+⏺ Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+⏺ Manca stage: '0' nell'update dopo il transfer.
+
+⏺ Update(forecasto-client-web/src/components/records/SdiImportDialog.tsx)
+  ⎿  Added 1 line
+      449            transaction_id: newTxId,
+      450            date_cashflow: row.dateCashflow,
+      451            vat_deduction: row.vatDeduction,
+      452 +          stage: '0',                                                                                 
+      453            classification: { ...matched.classification, source_file: inv.fileName },
+      454          }
+      455          await recordsApi.update(workspaceId, matched.id, updateData)
+
+⏺ Fatto. Ora quando un record viene promosso da Orders/Prospect/Budget ad Actual via import SDI, lo stage viene
+  resettato a 0.
+
+❯ /exit      
+  ⎿  Goodbye!
+                                                                                                                        
+⏺ Background command "Start server with autoreload" was stopped
+                                                                                                                        
+✶ Scurrying…                                                                       
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯  
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ accept edits on (shift+tab to cycle) · esc to interrupt · ctrl+t to hide tasks
+
+Resume this session with:
+claude --resume 2e4ec850-1126-460b-b31b-5e0032988d54
+
+Total cost:            $23.62
+Total duration (API):  41m 11s
+Total duration (wall): 3h 37m 41s
+Total code changes:    2055 lines added, 624 lines removed
+Usage by model:
+    claude-haiku-4-5:  65.7k input, 28.8k output, 1.9m cache read, 254.6k cache write ($0.72)
+     claude-opus-4-6:  11.2k input, 101.5k output, 25.0m cache read, 1.2m cache write ($22.90)
+cashbit@Mac forecasto % 

@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forecasto — Workflow Onboarding & Ciclo di Vita</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+  .header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-bottom: 1px solid #334155; padding: 24px 40px; }
+  .header h1 { font-size: 24px; font-weight: 700; color: #f8fafc; }
+  .header p { font-size: 14px; color: #94a3b8; margin-top: 4px; }
+
+  .tabs { display: flex; gap: 0; background: #1e293b; border-bottom: 1px solid #334155; padding: 0 40px; }
+  .tab { padding: 14px 28px; cursor: pointer; font-size: 14px; font-weight: 500; color: #94a3b8; border-bottom: 2px solid transparent; transition: all 0.2s; user-select: none; }
+  .tab:hover { color: #cbd5e1; background: #334155; }
+  .tab.active { color: #38bdf8; border-bottom-color: #38bdf8; }
+  .tab .badge { display: inline-block; background: #334155; color: #94a3b8; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-left: 8px; }
+  .tab.active .badge { background: #0c4a6e; color: #38bdf8; }
+
+  .content { padding: 32px 40px; }
+  .flow-panel { display: none; }
+  .flow-panel.active { display: block; }
+
+  .flow-description { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px 24px; margin-bottom: 28px; }
+  .flow-description h2 { font-size: 18px; color: #f8fafc; margin-bottom: 8px; }
+  .flow-description p { font-size: 14px; color: #94a3b8; line-height: 1.6; }
+
+  .diagram-container { position: relative; overflow-x: auto; padding: 20px 0; }
+
+  /* Flow nodes */
+  .flow { display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 800px; }
+
+  .flow-row { display: flex; align-items: flex-start; justify-content: center; gap: 24px; width: 100%; position: relative; }
+
+  .node { position: relative; border-radius: 12px; padding: 16px 20px; min-width: 220px; max-width: 320px; text-align: center; transition: transform 0.15s, box-shadow 0.15s; cursor: default; }
+  .node:hover { transform: translateY(-2px); }
+
+  .node-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .node-body { font-size: 12px; line-height: 1.5; opacity: 0.85; }
+  .node-endpoint { font-size: 11px; font-family: 'SF Mono', 'Fira Code', monospace; background: rgba(0,0,0,0.25); padding: 3px 8px; border-radius: 4px; margin-top: 8px; display: inline-block; word-break: break-all; }
+  .node-role { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; position: absolute; top: -10px; left: 16px; padding: 2px 8px; border-radius: 4px; }
+
+  /* Node types */
+  .node-start { background: linear-gradient(135deg, #065f46, #047857); border: 1px solid #10b981; box-shadow: 0 4px 16px rgba(16,185,129,0.15); }
+  .node-start .node-title { color: #6ee7b7; }
+  .node-start .node-body { color: #a7f3d0; }
+
+  .node-action { background: linear-gradient(135deg, #1e3a5f, #1e40af); border: 1px solid #3b82f6; box-shadow: 0 4px 16px rgba(59,130,246,0.15); }
+  .node-action .node-title { color: #93c5fd; }
+  .node-action .node-body { color: #bfdbfe; }
+
+  .node-decision { background: linear-gradient(135deg, #713f12, #92400e); border: 1px solid #f59e0b; box-shadow: 0 4px 16px rgba(245,158,11,0.12); transform: rotate(0deg); }
+  .node-decision .node-title { color: #fcd34d; }
+  .node-decision .node-body { color: #fde68a; }
+
+  .node-success { background: linear-gradient(135deg, #14532d, #166534); border: 1px solid #22c55e; box-shadow: 0 4px 16px rgba(34,197,94,0.15); }
+  .node-success .node-title { color: #86efac; }
+  .node-success .node-body { color: #bbf7d0; }
+
+  .node-error { background: linear-gradient(135deg, #7f1d1d, #991b1b); border: 1px solid #ef4444; box-shadow: 0 4px 16px rgba(239,68,68,0.15); }
+  .node-error .node-title { color: #fca5a5; }
+  .node-error .node-body { color: #fecaca; }
+
+  .node-system { background: linear-gradient(135deg, #312e81, #4338ca); border: 1px solid #818cf8; box-shadow: 0 4px 16px rgba(129,140,248,0.12); }
+  .node-system .node-title { color: #c7d2fe; }
+  .node-system .node-body { color: #e0e7ff; }
+
+  .node-partner { background: linear-gradient(135deg, #581c87, #7e22ce); border: 1px solid #a855f7; box-shadow: 0 4px 16px rgba(168,85,247,0.15); }
+  .node-partner .node-title { color: #d8b4fe; }
+  .node-partner .node-body { color: #e9d5ff; }
+
+  .node-end { background: linear-gradient(135deg, #1c1917, #292524); border: 1px solid #78716c; box-shadow: 0 4px 16px rgba(120,113,108,0.12); }
+  .node-end .node-title { color: #d6d3d1; }
+  .node-end .node-body { color: #a8a29e; }
+
+  /* Role badges */
+  .role-admin { background: #dc2626; color: #fff; }
+  .role-user { background: #2563eb; color: #fff; }
+  .role-system { background: #7c3aed; color: #fff; }
+  .role-partner { background: #9333ea; color: #fff; }
+  .role-owner { background: #ea580c; color: #fff; }
+
+  /* Arrows */
+  .arrow { display: flex; flex-direction: column; align-items: center; padding: 4px 0; }
+  .arrow-line { width: 2px; height: 28px; background: #475569; }
+  .arrow-head { width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid #475569; }
+  .arrow-label { font-size: 11px; color: #64748b; margin-bottom: 4px; font-weight: 500; }
+  .arrow-yes .arrow-line, .arrow-yes .arrow-head { background: #22c55e; border-top-color: #22c55e; }
+  .arrow-yes .arrow-label { color: #4ade80; }
+  .arrow-no .arrow-line, .arrow-no .arrow-head { background: #ef4444; border-top-color: #ef4444; }
+  .arrow-no .arrow-label { color: #f87171; }
+
+  /* Horizontal connector */
+  .h-connector { display: flex; align-items: center; gap: 0; }
+  .h-line { height: 2px; width: 40px; background: #475569; }
+  .h-arrow { width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-left: 8px solid #475569; }
+
+  /* Branch container */
+  .branch { display: flex; gap: 32px; justify-content: center; align-items: flex-start; }
+  .branch-col { display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .branch-label { font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 6px; margin-bottom: 8px; }
+  .branch-label.yes { background: #14532d; color: #4ade80; border: 1px solid #22c55e; }
+  .branch-label.no { background: #7f1d1d; color: #f87171; border: 1px solid #ef4444; }
+  .branch-label.expire { background: #713f12; color: #fbbf24; border: 1px solid #f59e0b; }
+
+  /* Separator */
+  .phase-separator { display: flex; align-items: center; gap: 16px; margin: 32px 0; width: 100%; }
+  .phase-separator .line { flex: 1; height: 1px; background: #334155; }
+  .phase-separator .label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 1.5px; white-space: nowrap; }
+
+  /* Legend */
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 32px; padding: 16px 20px; background: #1e293b; border: 1px solid #334155; border-radius: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+  /* State table */
+  .state-table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+  .state-table th { text-align: left; padding: 10px 16px; font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #334155; background: #1e293b; }
+  .state-table td { padding: 10px 16px; font-size: 13px; color: #cbd5e1; border-bottom: 1px solid #1e293b; }
+  .state-table tr:hover td { background: #1e293b; }
+  .state-table .mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: #38bdf8; }
+
+  .status-badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .status-active { background: #14532d; color: #4ade80; }
+  .status-pending { background: #713f12; color: #fbbf24; }
+  .status-blocked { background: #7f1d1d; color: #f87171; }
+  .status-expired { background: #44403c; color: #a8a29e; }
+
+  @media (max-width: 900px) {
+    .content { padding: 16px; }
+    .tabs { padding: 0 16px; overflow-x: auto; }
+    .tab { padding: 12px 16px; white-space: nowrap; }
+    .branch { flex-direction: column; align-items: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Forecasto — Workflow Onboarding & Ciclo di Vita</h1>
+  <p>Tre flussi: Partner, Utente autonomo, Utente invitato — basati sull'analisi del codice sorgente</p>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="partner">Partner <span class="badge">9 step</span></div>
+  <div class="tab" data-tab="user">Utente Autonomo <span class="badge">7 step</span></div>
+  <div class="tab" data-tab="invited">Utente Invitato <span class="badge">8 step</span></div>
+  <div class="tab" data-tab="states">Tabella Stati</div>
+</div>
+
+<div class="content">
+
+<!-- ==================== PARTNER ==================== -->
+<div class="flow-panel active" id="panel-partner">
+  <div class="flow-description">
+    <h2>Workflow Partner</h2>
+    <p>Il Partner è un utente designato dall'Admin che riceve batch di codici di registrazione da distribuire/rivendere. Ha accesso a una dashboard dedicata per monitorare l'utilizzo dei codici e il tracking della fatturazione.</p>
+  </div>
+
+  <div class="diagram-container">
+    <div class="flow">
+
+      <!-- Phase 1: Admin Setup -->
+      <div class="phase-separator">
+        <div class="line"></div>
+        <div class="label">Fase 1 — Setup da parte dell'Admin</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="node node-start">
+        <span class="node-role role-admin">Admin</span>
+        <div class="node-title">Crea Batch Codici</div>
+        <div class="node-body">L'admin genera un lotto di codici di registrazione (1-100 codici, formato XXXX-XXXX-XXXX) con scadenza opzionale</div>
+        <div class="node-endpoint">POST /api/admin/registration-codes</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="node node-action">
+        <span class="node-role role-admin">Admin</span>
+        <div class="node-title">Designa Utente come Partner</div>
+        <div class="node-body">L'admin imposta is_partner=true su un utente esistente e sceglie il tipo di fatturazione (billing_to_client o billing_to_partner)</div>
+        <div class="node-endpoint">PATCH /api/admin/users/{id}/partner</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="node node-action">
+        <span class="node-role role-admin">Admin</span>
+        <div class="node-title">Assegna Batch al Partner</div>
+        <div class="node-body">Il batch di codici viene associato al partner, che potrà vederli nella sua dashboard dedicata</div>
+        <div class="node-endpoint">PATCH /api/admin/.../assign-partner</div>
+      </div>
+
+      <!-- Phase 2: Partner Operations -->
+      <div class="phase-separator">
+        <div class="line"></div>
+        <div class="label">Fase 2 — Operazioni del Partner</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="node node-partner">
+        <span class="node-role role-partner">Partner</span>
+        <div class="node-title">Visualizza Batch Assegnati</div>
+        <div class="node-body">Il partner accede alla dashboard per vedere i codici disponibili, usati, scaduti e le statistiche di utilizzo</div>
+        <div class="node-endpoint">GET /api/partner/batches</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="node node-partner">
+        <span class="node-role role-partner">Partner</span>
+        <div class="node-title">Distribuisce i Codici</div>
+        <div class="node-body">Il partner condivide i codici di registrazione con i suoi clienti (fuori dal sistema — email, telefono, ecc.)</div>
+      </div>
+
+      <!-- Phase 3: Code Usage -->
+      <div class="phase-separator">
+        <div class="line"></div>
+        <div class="label">Fase 3 — Utilizzo dei Codici</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="node node-system">
+        <span class="node-role role-user">Utente Finale</span>
+        <div class="node-title">Registrazione con Codice</div>
+        <div class="node-body">L'utente finale si registra usando uno dei codici del partner. Il codice viene marcato come usato (used_at, used_by_id)</div>
+        <div class="node-endpoint">POST /api/users/register</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="node node-partner">
+        <span class="node-role role-partner">Partner</span>
+        <div class="node-title">Monitora Attivazioni</div>
+        <div class="node-body">Il partner vede in tempo reale quanti codici sono stati usati, da chi (nome + email), e quanti restano disponibili</div>
+        <div class="node-endpoint">GET /api/partner/batches/{id}</div>
+      </div>
+
+      <!-- Phase 4: Billing -->
+      <div class="phase-separator">
+        <div class="line"></div>
+        <div class="label">Fase 4 — Fatturazione</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="branch">
+        <div class="branch-col">
+          <div class="branch-label yes">billing_to_client</div>
+          <div class="node node-action" style="min-width:240px">
+            <span class="node-role role-admin">Admin</span>
+            <div class="node-title">Fattura al Cliente</div>
+            <div class="node-body">L'admin marca i codici come fatturati al cliente finale. Poi riconosce il compenso al partner.</div>
+            <div class="node-endpoint">POST .../invoice + .../recognize-fee</div>
+          </div>
+        </div>
+        <div class="branch-col">
+          <div class="branch-label no">billing_to_partner</div>
+          <div class="node node-action" style="min-width:240px">
+            <span class="node-role role-admin">Admin</span>
+            <div class="node-title">Fattura al Partner</div>
+            <div class="node-body">L'admin marca i codici come fatturati direttamente al partner, che a sua volta fatturerà ai propri clienti.</div>
+            <div class="node-endpoint">POST .../invoice</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="node node-success">
+        <div class="node-title">Ciclo Completato</div>
+        <div class="node-body">Codici usati, utenti registrati, fatturazione tracciata. Il partner può ricevere nuovi batch per continuare.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ==================== USER ==================== -->
+<div class="flow-panel" id="panel-user">
+  <div class="flow-description">
+    <h2>Workflow Utente Autonomo</h2>
+    <p>L'utente si registra autonomamente con un codice di registrazione valido. Alla registrazione riceve automaticamente un workspace personale di cui è owner, con permessi completi su tutte le aree.</p>
+  </div>
+
+  <div class="diagram-container">
+    <div class="flow">
+
+      <div class="phase-separator">
+        <div class="line"></div>
+        <div class="label">Fase 1 — Registrazione</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="node node-start">
+        <span class="node-role role-user">Utente</span>
+        <div class="node-title">Valida Codice (opzionale)</div>
+        <div class="node-body">L'utente può verificare la validità del codice prima di registrarsi. Il codice viene normalizzato (uppercase, formato XXXX-XXXX-XXXX)</div>
+        <div class="node-endpoint">POST /api/admin/registration-codes/validate</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="node node-decision">
+        <div class="node-title">Codice Valido?</div>
+        <div class="node-body">Verifica: esiste, non usato, non revocato, non scaduto</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="branch">
+        <div class="branch-col">
+          <div class="branch-label yes">Valido</div>
+          <div class="node node-action">
+            <span class="node-role role-user">Utente</span>
+            <div class="node-title">Registrazione</div>
+            <div class="node-body">Fornisce email, password, nome e codice di registrazione. Il sistema verifica unicità email e validità codice.</div>
+            <div class="node-endpoint">POST /api/users/register</div>
+          </div>
+        </div>
+        <div class="branch-col">
+          <div class="branch-label no">Non valido</div>
+          <div class="node node-error">
+            <div class="node-title">Errore</div>
+            <div class="node-body">Codice inesistente, già usato, revocato o scaduto. L'utente deve procurarsi un codice valido.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auto-provisioning -->
+      <div class="phase-separator">
+        <div class="line"></div>
+        <div class="label">Fase 2 — Provisioning Automatico</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="node node-system">
+        <span class="node-role role-system">Sistema</span>
+        <div class="node-title">Creazione Account</div>
+        <div class="node-body">Genera UUID, hash password (bcrypt), assegna invite_code personale (XXX-XXX-XXX), marca codice registrazione come usato</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="node node-system">
+        <span class="node-role role-system">Sistema</span>
+        <div class="node-title">Crea Workspace Default</div>
+        <div class="node-body">"Workspace di {nome}" — anno fiscale corrente, utente come owner con write su tutte le aree (actual, orders, prospect, budget)</div>
+      </div>
+
+      <!-- Daily use -->
+      <div class="phase-separator">
+        <div class="line"></div>
+        <div class="label">Fase 3 — Utilizzo Quotidiano</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="node node-action">
+        <span class="node-role role-user">Utente</span>
+        <div class="node-title">Login</div>
+        <div class="node-body">Email + password → access token JWT (24h) + refresh token (30gg). Aggiorna last_login_at. Salva IP e User-Agent.</div>
+        <div class="node-endpoint">POST /api/auth/login</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="node node-success">
+        <span class="node-role role-owner">Owner</span>
+        <div class="node-title">Operazioni nel Workspace</div>
+        <div class="node-body">Crea sessioni di lavoro, gestisce record finanziari (CRUD), invita altri utenti con il proprio invite_code, crea progetti, gestisce conti bancari</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <!-- Lifecycle states -->
+      <div class="branch">
+        <div class="branch-col">
+          <div class="branch-label yes">Attivo</div>
+          <div class="node node-action" style="min-width: 200px">
+            <div class="node-title">Refresh Token</div>
+            <div class="node-body">Token rinnovato ogni 24h automaticamente. Il vecchio viene revocato.</div>
+            <div class="node-endpoint">POST /api/auth/refresh</div>
+          </div>
+        </div>
+        <div class="branch-col">
+          <div class="branch-label no">Bloccato</div>
+          <div class="node node-error" style="min-width: 200px">
+            <div class="node-title">Account Bloccato</div>
+            <div class="node-body">Admin blocca l'utente. Login negato, API inaccessibile. Messaggio: "Account bloccato"</div>
+            <div class="node-endpoint">PATCH .../block</div>
+          </div>
+        </div>
+        <div class="branch-col">
+          <div class="branch-label expire">Logout</div>
+          <div class="node node-end" style="min-width: 200px">
+            <div class="node-title">Logout</div>
+            <div class="node-body">Refresh token revocato. L'utente dovrà rifare il login.</div>
+            <div class="node-endpoint">POST /api/auth/logout</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ==================== INVITED ==================== -->
+<div class="flow-panel" id="panel-invited">
+  <div class="flow-description">
+    <h2>Workflow Utente Invitato</h2>
+    <p>Un utente già registrato viene invitato a unirsi a un workspace esistente tramite il suo invite_code personale. L'owner o admin del workspace configura ruolo e permessi prima dell'invio. L'invitato ha 7 giorni per accettare.</p>
+  </div>
+
+  <div class="diagram-container">
+    <div class="flow">
+
+      <div class="phase-separator">
+        <div class="line"></div>
+        <div class="label">Fase 1 — Creazione Invito (lato Owner/Admin)</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="node node-start">
+        <span class="node-role role-owner">Owner/Admin</span>
+        <div class="node-title">Cerca Utente per Invite Code</div>
+        <div class="node-body">L'owner inserisce l'invite_code dell'utente da invitare (formato XXX-XXX-XXX). Il sistema restituisce solo il nome (privacy).</div>
+        <div class="node-endpoint">GET /api/users/lookup/{invite_code}</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="node node-decision">
+        <div class="node-title">Utente Trovato?</div>
+        <div class="node-body">Verifica: codice valido, utente esistente, non già membro, nessun invito pendente</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="node node-action">
+        <span class="node-role role-owner">Owner/Admin</span>
+        <div class="node-title">Configura e Invia Invito</div>
+        <div class="node-body">Sceglie ruolo (member/admin/viewer), permessi per area (actual, orders, prospect, budget) e permessi granulari (read/create/edit/delete others). Scadenza: 7 giorni.</div>
+        <div class="node-endpoint">POST /api/workspaces/{id}/invitations</div>
+      </div>
+
+      <!-- Phase 2: Invited user -->
+      <div class="phase-separator">
+        <div class="line"></div>
+        <div class="label">Fase 2 — Ricezione e Accettazione (lato Invitato)</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="node node-system">
+        <span class="node-role role-user">Invitato</span>
+        <div class="node-title">Vede Inviti Pendenti</div>
+        <div class="node-body">Al login, l'utente invitato vede la lista degli inviti pendenti con nome del workspace, ruolo offerto e data di scadenza.</div>
+        <div class="node-endpoint">GET /api/workspaces/invitations/pending</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="node node-decision">
+        <div class="node-title">Decisione dell'Invitato</div>
+        <div class="node-body">L'utente sceglie se accettare, ignorare (scade in 7gg) o l'owner lo cancella</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="branch">
+        <div class="branch-col">
+          <div class="branch-label yes">Accetta</div>
+          <div class="node node-success">
+            <span class="node-role role-user">Invitato</span>
+            <div class="node-title">Accetta Invito</div>
+            <div class="node-body">Crea WorkspaceMember con ruolo e permessi pre-configurati. L'invitation viene marcata con accepted_at.</div>
+            <div class="node-endpoint">POST .../invitations/{id}/accept</div>
+          </div>
+        </div>
+        <div class="branch-col">
+          <div class="branch-label expire">Scade / Ignora</div>
+          <div class="node node-end">
+            <div class="node-title">Invito Scaduto</div>
+            <div class="node-body">Dopo 7 giorni senza accettazione, l'invito scade automaticamente. Nessun cleanup automatico nel DB.</div>
+          </div>
+        </div>
+        <div class="branch-col">
+          <div class="branch-label no">Cancellato</div>
+          <div class="node node-error">
+            <span class="node-role role-owner">Owner</span>
+            <div class="node-title">Invito Annullato</div>
+            <div class="node-body">L'owner o admin cancella l'invito prima che venga accettato. Record eliminato dal DB.</div>
+            <div class="node-endpoint">DELETE .../invitations/{id}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 3: Life in workspace -->
+      <div class="phase-separator">
+        <div class="line"></div>
+        <div class="label">Fase 3 — Ciclo di Vita nel Workspace</div>
+        <div class="line"></div>
+      </div>
+
+      <div class="node node-action">
+        <span class="node-role role-user">Membro</span>
+        <div class="node-title">Opera nel Workspace</div>
+        <div class="node-body">Accede ai record secondo i propri permessi. Può creare sessioni, modificare record (se autorizzato), visualizzare dati finanziari.</div>
+      </div>
+
+      <div class="arrow"><div class="arrow-line"></div><div class="arrow-head"></div></div>
+
+      <div class="branch">
+        <div class="branch-col">
+          <div class="branch-label yes">Promosso</div>
+          <div class="node node-action" style="min-width:200px">
+            <span class="node-role role-owner">Owner</span>
+            <div class="node-title">Modifica Ruolo</div>
+            <div class="node-body">L'owner può promuovere a admin o cambiare i permessi granulari del membro.</div>
+            <div class="node-endpoint">PATCH .../members/{id}</div>
+          </div>
+        </div>
+        <div class="branch-col">
+          <div class="branch-label no">Rimosso</div>
+          <div class="node node-error" style="min-width:200px">
+            <div class="node-title">Rimosso dal Workspace</div>
+            <div class="node-body">L'owner/admin rimuove il membro. Il record WorkspaceMember viene eliminato. L'utente mantiene il suo account.</div>
+          </div>
+        </div>
+        <div class="branch-col">
+          <div class="branch-label expire">Ridotto</div>
+          <div class="node node-end" style="min-width:200px">
+            <div class="node-title">Permessi Ridotti</div>
+            <div class="node-body">L'owner può ridurre i permessi: da write a read, rimuovere accesso ad aree specifiche, degradare da admin a viewer.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ==================== STATES ==================== -->
+<div class="flow-panel" id="panel-states">
+  <div class="flow-description">
+    <h2>Tabella degli Stati — Tutte le Entità</h2>
+    <p>Riepilogo di tutti gli stati possibili per ogni entità nel sistema, con le transizioni consentite e gli endpoint API coinvolti.</p>
+  </div>
+
+  <h3 style="color:#f8fafc; margin-bottom: 12px; font-size: 15px;">Utente</h3>
+  <table class="state-table">
+    <thead><tr><th>Stato</th><th>Condizione</th><th>Può fare login?</th><th>Transizioni possibili</th></tr></thead>
+    <tbody>
+      <tr><td><span class="status-badge status-active">Registrato</span></td><td>Account creato, email non verificata</td><td>Sì</td><td>→ Attivo, → Bloccato</td></tr>
+      <tr><td><span class="status-badge status-active">Attivo</span></td><td>Login effettuato, token validi</td><td>Sì</td><td>→ Bloccato, → Logout, → Partner</td></tr>
+      <tr><td><span class="status-badge status-blocked">Bloccato</span></td><td>is_blocked=true, blocked_reason valorizzato</td><td>No</td><td>→ Sbloccato (Admin)</td></tr>
+      <tr><td><span class="status-badge status-active">Partner</span></td><td>is_partner=true, ha dashboard partner</td><td>Sì</td><td>→ Non-partner, → Bloccato</td></tr>
+      <tr><td><span class="status-badge status-active">Admin</span></td><td>is_admin=true, accesso completo</td><td>Sì</td><td>Non può essere bloccato</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="color:#f8fafc; margin: 24px 0 12px; font-size: 15px;">Codice di Registrazione</h3>
+  <table class="state-table">
+    <thead><tr><th>Stato</th><th>Condizione</th><th>Utilizzabile?</th><th>Transizioni possibili</th></tr></thead>
+    <tbody>
+      <tr><td><span class="status-badge status-active">Disponibile</span></td><td>used_at=null, revoked_at=null, non scaduto</td><td>Sì</td><td>→ Usato, → Revocato, → Scaduto</td></tr>
+      <tr><td><span class="status-badge status-pending">Usato</span></td><td>used_at valorizzato, used_by_id collegato</td><td>No</td><td>→ Fatturato</td></tr>
+      <tr><td><span class="status-badge status-blocked">Revocato</span></td><td>revoked_at valorizzato</td><td>No</td><td>Stato finale</td></tr>
+      <tr><td><span class="status-badge status-expired">Scaduto</span></td><td>expires_at < now</td><td>No</td><td>Stato finale</td></tr>
+      <tr><td><span class="status-badge status-active">Fatturato</span></td><td>invoiced=true, invoiced_to valorizzato</td><td>No</td><td>→ Fee riconosciuta (se billing_to_client)</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="color:#f8fafc; margin: 24px 0 12px; font-size: 15px;">Invito a Workspace</h3>
+  <table class="state-table">
+    <thead><tr><th>Stato</th><th>Condizione</th><th>Accettabile?</th><th>Transizioni possibili</th></tr></thead>
+    <tbody>
+      <tr><td><span class="status-badge status-pending">Pendente</span></td><td>accepted_at=null, expires_at > now</td><td>Sì</td><td>→ Accettato, → Scaduto, → Cancellato</td></tr>
+      <tr><td><span class="status-badge status-active">Accettato</span></td><td>accepted_at valorizzato</td><td>No</td><td>Stato finale</td></tr>
+      <tr><td><span class="status-badge status-expired">Scaduto</span></td><td>expires_at < now, accepted_at=null</td><td>No</td><td>Stato finale (resta nel DB)</td></tr>
+      <tr><td><span class="status-badge status-blocked">Cancellato</span></td><td>Record eliminato dal DB</td><td>—</td><td>Stato finale</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="color:#f8fafc; margin: 24px 0 12px; font-size: 15px;">Sessione di Lavoro</h3>
+  <table class="state-table">
+    <thead><tr><th>Stato</th><th>Condizione</th><th>Modificabile?</th><th>Transizioni possibili</th></tr></thead>
+    <tbody>
+      <tr><td><span class="status-badge status-active">Attiva</span></td><td>status="active"</td><td>Sì</td><td>→ Committed, → Discarded, → Expired (idle timeout)</td></tr>
+      <tr><td><span class="status-badge status-active">Committed</span></td><td>status="committed", committed_at valorizzato</td><td>No</td><td>Stato finale — modifiche salvate</td></tr>
+      <tr><td><span class="status-badge status-blocked">Discarded</span></td><td>status="discarded", discarded_at valorizzato</td><td>No</td><td>Stato finale — modifiche annullate</td></tr>
+      <tr><td><span class="status-badge status-expired">Expired</span></td><td>status="expired" (idle > 30min o totale > 4h)</td><td>No</td><td>Stato finale</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="color:#f8fafc; margin: 24px 0 12px; font-size: 15px;">Membro Workspace</h3>
+  <table class="state-table">
+    <thead><tr><th>Ruolo</th><th>Aree accessibili</th><th>Può invitare?</th><th>Può modificare membri?</th></tr></thead>
+    <tbody>
+      <tr><td><span class="status-badge" style="background:#7c2d12;color:#fed7aa">Owner</span></td><td>Tutte (write)</td><td>Sì</td><td>Sì — tutti i ruoli</td></tr>
+      <tr><td><span class="status-badge" style="background:#7f1d1d;color:#fecaca">Admin</span></td><td>Configurabili</td><td>Sì</td><td>Sì — member e viewer</td></tr>
+      <tr><td><span class="status-badge" style="background:#1e3a5f;color:#93c5fd">Member</span></td><td>Configurabili (read/write per area)</td><td>No</td><td>No</td></tr>
+      <tr><td><span class="status-badge" style="background:#44403c;color:#a8a29e">Viewer</span></td><td>Solo lettura</td><td>No</td><td>No</td></tr>
+    </tbody>
+  </table>
+
+  <div class="legend" style="margin-top: 32px;">
+    <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div> Inizio / Creazione</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div> Azione utente</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Decisione / Verifica</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#818cf8"></div> Operazione di sistema</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div> Azione partner</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div> Successo</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Errore / Blocco</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#78716c"></div> Fine / Stato finale</div>
+  </div>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.flow-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+</script>
+
+</body>
+</html>
