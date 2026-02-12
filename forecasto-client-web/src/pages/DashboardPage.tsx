@@ -62,6 +62,7 @@ export function DashboardPage() {
 
   const [transferRecord_, setTransferRecord] = useState<Record | null>(null)
   const [splitRecord_, setSplitRecord] = useState<Record | null>(null)
+  const [cloneRecord_, setCloneRecord] = useState<Record | null>(null)
 
   // Bulk operations state
   const [bulkRecords, setBulkRecords] = useState<Record[] | null>(null)
@@ -202,6 +203,27 @@ export function DashboardPage() {
     } catch (error) {
       const axiosError = error as AxiosError<{ error?: string; message?: string }>
       const message = axiosError.response?.data?.error || 'Errore durante la divisione.'
+      toast({ title: 'Errore', description: message, variant: 'destructive' })
+    }
+  }
+
+  const handleClone = async (newRecords: RecordCreate[]) => {
+    try {
+      if (cloneRecord_) {
+        await deleteRecord(cloneRecord_.id)
+      }
+      for (const recordData of newRecords) {
+        await createRecord(recordData)
+      }
+      setCloneRecord(null)
+      toast({
+        title: 'Record clonato',
+        description: `Creati ${newRecords.length} record`,
+        variant: 'success'
+      })
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error?: string; message?: string }>
+      const message = axiosError.response?.data?.error || 'Errore durante la clonazione.'
       toast({ title: 'Errore', description: message, variant: 'destructive' })
     }
   }
@@ -470,6 +492,7 @@ export function DashboardPage() {
             isLoading={isLoading}
             onSelectRecord={setSelectedRecord}
             onSplitRecord={setSplitRecord}
+            onCloneRecord={setCloneRecord}
             onBulkDelete={handleBulkDelete}
             onBulkMerge={(recs) => { setBulkRecords(recs); setShowBulkMerge(true) }}
             onBulkMoveDates={(recs) => { setBulkRecords(recs); setShowBulkMoveDates(true) }}
@@ -530,6 +553,15 @@ export function DashboardPage() {
         open={!!splitRecord_}
         onOpenChange={(open) => !open && setSplitRecord(null)}
         onSplit={handleSplit}
+      />
+
+      {/* Clone Dialog */}
+      <SplitDialog
+        record={cloneRecord_}
+        open={!!cloneRecord_}
+        onOpenChange={(open) => !open && setCloneRecord(null)}
+        onSplit={handleClone}
+        mode="clone"
       />
 
       {/* Bulk Operation Dialogs */}

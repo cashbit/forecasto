@@ -67,7 +67,8 @@ const NEXT_AREA: Partial<Record<string, Area>> = {
 }
 
 export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoading, reviewMode, onReview, onPromote }: RecordFormProps) {
-  const nextArea = NEXT_AREA[area]
+  const recordArea = record?.area || area
+  const nextArea = NEXT_AREA[recordArea]
   const stages = STAGES[area] || []
   const { checkPermission } = useWorkspaceStore()
   const { user } = useAuthStore()

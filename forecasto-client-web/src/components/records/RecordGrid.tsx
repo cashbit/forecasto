@@ -12,7 +12,7 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table'
 import { useState } from 'react'
-import { ArrowUpDown, ArrowUp, ArrowDown, Trash, ArrowRight, Split, Merge, Calendar, Download, Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus, FolderOutput, Pencil } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown, Trash, ArrowRight, Split, Copy, Merge, Calendar, Download, Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus, FolderOutput, Pencil } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -49,6 +49,7 @@ interface RecordGridProps {
   isLoading?: boolean
   onSelectRecord?: (record: Record) => void
   onSplitRecord?: (record: Record) => void
+  onCloneRecord?: (record: Record) => void
   onBulkDelete?: (records: Record[]) => void
   onBulkMerge?: (records: Record[]) => void
   onBulkMoveDates?: (records: Record[]) => void
@@ -67,6 +68,7 @@ export function RecordGrid({
   isLoading,
   onSelectRecord,
   onSplitRecord,
+  onCloneRecord,
   onBulkDelete,
   onBulkMerge,
   onBulkMoveDates,
@@ -498,6 +500,22 @@ export function RecordGrid({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Dividi in Rate</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => selectedRecords.length === 1 && onCloneRecord?.(selectedRecords[0])}
+                  disabled={selectedRecords.length !== 1}
+                  className="h-8 w-8 p-0"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Clona</TooltipContent>
             </Tooltip>
           </TooltipProvider>
           <div className="w-px h-4 bg-border mx-2" />

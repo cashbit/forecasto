@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Split, Plus, Minus, AlertCircle } from 'lucide-react'
+import { Split, Copy, Plus, Minus, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,11 +33,13 @@ interface SplitDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSplit: (records: RecordCreate[]) => Promise<void>
+  mode?: 'split' | 'clone'
 }
 
 type IntervalUnit = 'days' | 'weeks' | 'months'
 
-export function SplitDialog({ record, open, onOpenChange, onSplit }: SplitDialogProps) {
+export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split' }: SplitDialogProps) {
+  const isClone = mode === 'clone'
   const [numInstallments, setNumInstallments] = useState(2)
   const [intervalValue, setIntervalValue] = useState(1)
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('months')
@@ -49,8 +51,8 @@ export function SplitDialog({ record, open, onOpenChange, onSplit }: SplitDialog
     if (!record) return
 
     const baseDate = new Date(record.date_cashflow)
-    const baseAmount = Number(record.amount) / numInstallments
-    const baseTotal = Number(record.total) / numInstallments
+    const baseAmount = isClone ? Number(record.amount) : Number(record.amount) / numInstallments
+    const baseTotal = isClone ? Number(record.total) : Number(record.total) / numInstallments
 
     const newInstallments: Installment[] = []
     for (let i = 0; i < numInstallments; i++) {
@@ -72,7 +74,7 @@ export function SplitDialog({ record, open, onOpenChange, onSplit }: SplitDialog
     }
 
     setInstallments(newInstallments)
-  }, [record, numInstallments, intervalValue, intervalUnit])
+  }, [record, numInstallments, intervalValue, intervalUnit, isClone])
 
   // Calculate totals and delta
   const { totalAmount, totalTotal, deltaAmount, deltaTotal } = useMemo(() => {
@@ -115,7 +117,7 @@ export function SplitDialog({ record, open, onOpenChange, onSplit }: SplitDialog
         vat: record.vat,
         total: inst.total.toString(),
         stage: record.stage,
-        transaction_id: record.transaction_id ? `${record.transaction_id}-${index + 1}` : `SPLIT-${Date.now()}-${index + 1}`,
+        transaction_id: record.transaction_id ? `${record.transaction_id}-${index + 1}` : `${isClone ? 'CLONE' : 'SPLIT'}-${Date.now()}-${index + 1}`,
         bank_account_id: record.bank_account_id,
         project_code: record.project_code,
       }))
@@ -134,11 +136,13 @@ export function SplitDialog({ record, open, onOpenChange, onSplit }: SplitDialog
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Split className="h-5 w-5" />
-            Dividi Record in Rate
+            {isClone ? <Copy className="h-5 w-5" /> : <Split className="h-5 w-5" />}
+            {isClone ? 'Clona Record' : 'Dividi Record in Rate'}
           </DialogTitle>
           <DialogDescription>
-            Dividi "{record.reference}" in più rate con date e importi personalizzabili.
+            {isClone
+              ? `Clona "${record.reference}" in più copie con lo stesso importo e date personalizzabili.`
+              : `Dividi "${record.reference}" in più rate con date e importi personalizzabili.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -146,7 +150,7 @@ export function SplitDialog({ record, open, onOpenChange, onSplit }: SplitDialog
           {/* Configuration */}
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <Label>Numero Rate</Label>
+              <Label>{isClone ? 'Numero Copie' : 'Numero Rate'}</Label>
               <div className="flex items-center gap-2 mt-1">
                 <Button
                   type="button"
@@ -264,7 +268,7 @@ export function SplitDialog({ record, open, onOpenChange, onSplit }: SplitDialog
               </tbody>
               <tfoot className="bg-muted/50 border-t">
                 <tr>
-                  <td className="p-3 text-sm font-medium" colSpan={2}>Totale Rate</td>
+                  <td className="p-3 text-sm font-medium" colSpan={2}>{isClone ? 'Totale Copie' : 'Totale Rate'}</td>
                   <td className="p-3 text-right">
                     <AmountDisplay amount={totalAmount} className="font-medium" />
                   </td>
@@ -308,7 +312,9 @@ export function SplitDialog({ record, open, onOpenChange, onSplit }: SplitDialog
             Annulla
           </Button>
           <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? 'Divisione in corso...' : `Crea ${installments.length} Rate`}
+            {isSubmitting
+              ? (isClone ? 'Clonazione in corso...' : 'Divisione in corso...')
+              : (isClone ? `Crea ${installments.length} Copie` : `Crea ${installments.length} Rate`)}
           </Button>
         </DialogFooter>
       </DialogContent>
