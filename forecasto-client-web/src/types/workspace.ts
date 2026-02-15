@@ -90,6 +90,9 @@ export interface WorkspaceMember {
   area_permissions?: AreaPermissions
   granular_permissions?: GranularAreaPermissions | null
   can_view_in_consolidated_cashflow?: boolean
+  can_import: boolean
+  can_import_sdi: boolean
+  can_export: boolean
   user: {
     id: string
     email: string
@@ -103,6 +106,9 @@ export interface MemberUpdate {
   area_permissions?: AreaPermissions
   granular_permissions?: GranularAreaPermissions
   can_view_in_consolidated_cashflow?: boolean
+  can_import?: boolean
+  can_import_sdi?: boolean
+  can_export?: boolean
 }
 
 export interface PendingInvitation {
@@ -112,6 +118,9 @@ export interface PendingInvitation {
   role: string
   area_permissions: AreaPermissions
   granular_permissions: GranularAreaPermissions | null
+  can_import: boolean
+  can_import_sdi: boolean
+  can_export: boolean
   created_at: string
   expires_at: string
 }
@@ -123,6 +132,9 @@ export interface WorkspaceInvitation {
   role: string
   area_permissions: AreaPermissions
   granular_permissions: GranularAreaPermissions | null
+  can_import: boolean
+  can_import_sdi: boolean
+  can_export: boolean
   created_at: string
   expires_at: string
 }

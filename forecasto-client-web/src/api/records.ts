@@ -46,6 +46,16 @@ export const recordsApi = {
     return response.data
   },
 
+  bulkImport: async (workspaceId: string, records: RecordCreate[]): Promise<Record[]> => {
+    const response = await apiClient.post<{ success: boolean; records: Record[]; total: number }>(`/workspaces/${workspaceId}/records/bulk-import`, records)
+    return response.data.records
+  },
+
+  bulkImportSdi: async (workspaceId: string, records: RecordCreate[]): Promise<Record[]> => {
+    const response = await apiClient.post<{ success: boolean; records: Record[]; total: number }>(`/workspaces/${workspaceId}/records/bulk-import-sdi`, records)
+    return response.data.records
+  },
+
   bulkUpdate: async (workspaceId: string, updates: Array<{ id: string } & RecordUpdate>): Promise<Record[]> => {
     const response = await apiClient.patch<Record[]>(`/workspaces/${workspaceId}/records/bulk`, { updates })
     return response.data

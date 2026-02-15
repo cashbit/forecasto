@@ -139,6 +139,79 @@ async def create_record(
         "record": _record_to_response(record),
     }
 
+
+@router.post("/{workspace_id}/records/bulk-import", response_model=dict, status_code=201)
+async def bulk_import_records(
+    workspace_id: str,
+    records: list[RecordCreate],
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Bulk import records from JSON with import permission checks."""
+    workspace, member = workspace_data
+
+    from forecasto.dependencies import check_import_permission
+
+    # Check import permission once (workspace-level)
+    check_import_permission(member)
+
+    # Validate area write permissions for all records
+    for data in records:
+        check_area_permission(member, data.area, "write")
+
+    # Import all records
+    service = RecordService(db)
+    created = []
+    for data in records:
+        record = await service.create_record(workspace_id, data, current_user, member=member)
+        created.append(record)
+
+    return {
+        "success": True,
+        "records": [_record_to_response(r) for r in created],
+        "total": len(created)
+    }
+
+
+@router.post("/{workspace_id}/records/bulk-import-sdi", response_model=dict, status_code=201)
+async def bulk_import_sdi_records(
+    workspace_id: str,
+    records: list[RecordCreate],
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Bulk import SDI invoices with SDI-specific permission checks."""
+    workspace, member = workspace_data
+
+    from forecasto.dependencies import check_import_sdi_permission
+
+    # Check SDI import permission once (workspace-level)
+    check_import_sdi_permission(member)
+
+    # Validate area write permissions for all records
+    for data in records:
+        check_area_permission(member, data.area, "write")
+
+    # Import all records
+    service = RecordService(db)
+    created = []
+    for data in records:
+        record = await service.create_record(workspace_id, data, current_user, member=member)
+        created.append(record)
+
+    return {
+        "success": True,
+        "records": [_record_to_response(r) for r in created],
+        "total": len(created)
+    }
+
+
 @router.get("/{workspace_id}/records/{record_id}", response_model=dict)
 async def get_record(
     workspace_id: str,
@@ -204,3 +277,54 @@ async def delete_record(
     await service.delete_record(record, current_user, member=member)
 
     return {"success": True, "message": "Record deleted"}
+
+
+@router.get("/{workspace_id}/records/export", response_model=dict)
+async def export_records(
+    workspace_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    area: str | None = Query(None),
+    date_start: date | None = Query(None),
+    date_end: date | None = Query(None),
+):
+    """Export records with export permission checks."""
+    workspace, member = workspace_data
+
+    from forecasto.dependencies import check_export_permission
+
+    # Check export permission once (workspace-level)
+    check_export_permission(member)
+
+    # Determine areas to export
+    if area:
+        areas_to_export = [area]
+    else:
+        # Export all readable areas
+        areas_to_export = [
+            a for a, perm in member.area_permissions.items() if perm != "none"
+        ]
+
+    # Fetch records
+    service = RecordService(db)
+    filters = RecordFilter(
+        area=area,
+        date_start=date_start,
+        date_end=date_end,
+    )
+
+    records = await service.list_records(
+        workspace_id, filters, member=member, current_user_id=current_user.id
+    )
+
+    # Filter by exportable areas
+    exportable_records = [r for r in records if r.area in areas_to_export]
+
+    return {
+        "success": True,
+        "records": [_record_to_response(r) for r in exportable_records],
+        "total": len(exportable_records),
+    }

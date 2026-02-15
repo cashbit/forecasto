@@ -36,6 +36,8 @@ import type { SdiSupplierMapping } from '@/types/workspace'
 import { recordsApi } from '@/api/records'
 import { workspacesApi } from '@/api/workspaces'
 import { Link } from 'react-router-dom'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { canImportSdi } from '@/lib/permissions'
 
 interface SdiImportDialogProps {
   open: boolean
@@ -81,6 +83,8 @@ export function SdiImportDialog({
   workspaceSettings,
   onImportComplete,
 }: SdiImportDialogProps) {
+  const { workspaces } = useWorkspaceStore()
+  const currentMember = workspaces.find(w => w.id === workspaceId)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragActive, setDragActive] = useState(false)
   const [previewRows, setPreviewRows] = useState<SdiPreviewRow[] | null>(null)
@@ -409,6 +413,14 @@ export function SdiImportDialog({
     const missingAccount = selectedRows.filter(r => !r.account.trim())
     if (missingAccount.length > 0) {
       setParseErrors(['Tutte le righe selezionate devono avere un Conto compilato'])
+      return
+    }
+
+    // Pre-validate SDI import permission (workspace-level)
+    if (!canImportSdi(currentMember)) {
+      setParseErrors([
+        'Non hai il permesso di importare fatture elettroniche. Contatta l\'amministratore del workspace.'
+      ])
       return
     }
 

@@ -109,6 +109,9 @@ class MemberResponse(BaseModel):
     area_permissions: dict
     granular_permissions: dict | None = None
     can_view_in_consolidated_cashflow: bool
+    can_import: bool
+    can_import_sdi: bool
+    can_export: bool
     joined_at: datetime
 
     model_config = {"from_attributes": True}
@@ -120,6 +123,9 @@ class MemberUpdate(BaseModel):
     area_permissions: AreaPermissions | None = None
     granular_permissions: GranularAreaPermissions | None = None
     can_view_in_consolidated_cashflow: bool | None = None
+    can_import: bool | None = None
+    can_import_sdi: bool | None = None
+    can_export: bool | None = None
 
 class InvitationCreate(BaseModel):
     """Invitation creation request."""
@@ -128,6 +134,9 @@ class InvitationCreate(BaseModel):
     role: str = "member"
     area_permissions: AreaPermissions | None = None
     granular_permissions: GranularAreaPermissions | None = None
+    can_import: bool = True
+    can_import_sdi: bool = True
+    can_export: bool = True
 
     @field_validator('invite_code')
     @classmethod
@@ -149,6 +158,9 @@ class InvitationResponse(BaseModel):
     role: str
     area_permissions: dict
     granular_permissions: dict | None = None
+    can_import: bool
+    can_import_sdi: bool
+    can_export: bool
     created_at: datetime
     expires_at: datetime
     accepted_at: datetime | None = None

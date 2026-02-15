@@ -141,6 +141,42 @@ def check_area_permission(member: WorkspaceMember, area: str, required: str = "r
         raise AreaPermissionDeniedException(area, "read")
 
 
+def check_import_permission(member: WorkspaceMember) -> None:
+    """Check if member has import permission."""
+    # Owner and admin always have permissions
+    if member.role in ("owner", "admin"):
+        return
+
+    if not member.can_import:
+        raise ForbiddenException(
+            "Non hai il permesso di importare record JSON"
+        )
+
+
+def check_import_sdi_permission(member: WorkspaceMember) -> None:
+    """Check if member has SDI import permission."""
+    # Owner and admin always have permissions
+    if member.role in ("owner", "admin"):
+        return
+
+    if not member.can_import_sdi:
+        raise ForbiddenException(
+            "Non hai il permesso di importare fatture elettroniche"
+        )
+
+
+def check_export_permission(member: WorkspaceMember) -> None:
+    """Check if member has export permission."""
+    # Owner and admin always have permissions
+    if member.role in ("owner", "admin"):
+        return
+
+    if not member.can_export:
+        raise ForbiddenException(
+            "Non hai il permesso di esportare record"
+        )
+
+
 async def require_admin(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:

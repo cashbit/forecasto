@@ -151,6 +151,9 @@ async def list_members(
                 area_permissions=m.area_permissions,
                 granular_permissions=m.granular_permissions,
                 can_view_in_consolidated_cashflow=m.can_view_in_consolidated_cashflow,
+                can_import=m.can_import,
+                can_import_sdi=m.can_import_sdi,
+                can_export=m.can_export,
                 joined_at=m.joined_at,
             )
         )
@@ -271,6 +274,9 @@ async def accept_invitation(
             area_permissions=member.area_permissions,
             granular_permissions=member.granular_permissions,
             can_view_in_consolidated_cashflow=member.can_view_in_consolidated_cashflow,
+            can_import=member.can_import,
+            can_import_sdi=member.can_import_sdi,
+            can_export=member.can_export,
             joined_at=member.joined_at,
         ),
     }
@@ -300,6 +306,9 @@ async def update_member(
             area_permissions=member.area_permissions,
             granular_permissions=member.granular_permissions,
             can_view_in_consolidated_cashflow=member.can_view_in_consolidated_cashflow,
+            can_import=member.can_import,
+            can_import_sdi=member.can_import_sdi,
+            can_export=member.can_export,
             joined_at=member.joined_at,
         ),
     }

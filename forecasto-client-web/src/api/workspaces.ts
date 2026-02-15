@@ -53,11 +53,22 @@ export const workspacesApi = {
     await apiClient.delete(`/workspaces/${workspaceId}/invitations/${invitationId}`)
   },
 
-  inviteMember: async (workspaceId: string, inviteCode: string, role: string, granularPermissions?: GranularAreaPermissions): Promise<void> => {
+  inviteMember: async (
+    workspaceId: string,
+    inviteCode: string,
+    role: string,
+    granularPermissions?: GranularAreaPermissions,
+    canImport?: boolean,
+    canImportSdi?: boolean,
+    canExport?: boolean
+  ): Promise<void> => {
     await apiClient.post(`/workspaces/${workspaceId}/invitations`, {
       invite_code: inviteCode,
       role,
       granular_permissions: granularPermissions,
+      can_import: canImport,
+      can_import_sdi: canImportSdi,
+      can_export: canExport,
     })
   },
 

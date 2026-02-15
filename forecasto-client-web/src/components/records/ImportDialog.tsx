@@ -16,6 +16,8 @@ import type { ImportRecord, ImportResult } from '@/types/import'
 import { LEGACY_TYPE_TO_AREA } from '@/types/import'
 import type { RecordCreate, Area } from '@/types/record'
 import { recordsApi } from '@/api/records'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { canImport } from '@/lib/permissions'
 
 interface ImportDialogProps {
   open: boolean
@@ -32,6 +34,8 @@ export function ImportDialog({
   workspaceName,
   onImportComplete,
 }: ImportDialogProps) {
+  const { workspaces } = useWorkspaceStore()
+  const currentMember = workspaces.find(w => w.id === workspaceId)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragActive, setDragActive] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -155,6 +159,14 @@ export function ImportDialog({
 
   const handleImport = async () => {
     if (!parsedRecords || parsedRecords.length === 0) return
+
+    // Pre-validate import permission (workspace-level)
+    if (!canImport(currentMember)) {
+      setParseError(
+        'Non hai il permesso di importare record JSON. Contatta l\'amministratore del workspace.'
+      )
+      return
+    }
 
     setIsImporting(true)
     setImportProgress(0)

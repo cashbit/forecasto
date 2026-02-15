@@ -25,8 +25,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ImportDialog } from '@/components/records/ImportDialog'
 import { SdiImportDialog } from '@/components/records/SdiImportDialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import type { PendingInvitation } from '@/types/workspace'
+import type { PendingInvitation, WorkspaceMember } from '@/types/workspace'
 import type { Area } from '@/types/record'
+import { canImport, canImportSdi, canExport } from '@/lib/permissions'
 
 export function Header() {
   const location = useLocation()
@@ -42,6 +43,7 @@ export function Header() {
 
   const primaryWorkspace = getPrimaryWorkspace()
   const canImportExport = selectedWorkspaceIds.length === 1 && primaryWorkspace
+  const currentMember = workspaces.find(w => w.id === primaryWorkspace?.id) as WorkspaceMember | undefined
 
   useEffect(() => {
     loadInvitations()
@@ -232,13 +234,18 @@ export function Header() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowImportDialog(true)}
-                disabled={!canImportExport}
+                disabled={!canImportExport || !canImport(currentMember)}
               >
                 <Download className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {canImportExport ? `Importa in ${primaryWorkspace?.name}` : 'Seleziona un workspace'}
+              {!canImportExport
+                ? 'Seleziona un workspace'
+                : !canImport(currentMember)
+                  ? 'Non hai permessi di importazione JSON'
+                  : `Importa JSON in ${primaryWorkspace?.name}`
+              }
             </TooltipContent>
           </Tooltip>
 
@@ -248,13 +255,18 @@ export function Header() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowSdiImportDialog(true)}
-                disabled={!canImportExport}
+                disabled={!canImportExport || !canImportSdi(currentMember)}
               >
                 <FileSpreadsheet className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {canImportExport ? 'Importa fatture SDI (XML)' : 'Seleziona un workspace'}
+              {!canImportExport
+                ? 'Seleziona un workspace'
+                : !canImportSdi(currentMember)
+                  ? 'Non hai permessi di importazione fatture'
+                  : 'Importa fatture SDI (XML)'
+              }
             </TooltipContent>
           </Tooltip>
 
@@ -264,13 +276,18 @@ export function Header() {
                 variant="ghost"
                 size="icon"
                 onClick={handleExport}
-                disabled={!canImportExport || isExporting}
+                disabled={!canImportExport || isExporting || !canExport(currentMember)}
               >
                 <Upload className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              {canImportExport ? `Esporta da ${primaryWorkspace?.name}` : 'Seleziona un workspace'}
+              {!canImportExport
+                ? 'Seleziona un workspace'
+                : !canExport(currentMember)
+                  ? 'Non hai permessi di esportazione'
+                  : `Esporta da ${primaryWorkspace?.name}`
+              }
             </TooltipContent>
           </Tooltip>
         </div>

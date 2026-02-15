@@ -117,6 +117,9 @@ class WorkspaceMember(Base, UUIDMixin):
         default=_default_granular_permissions,
     )
     can_view_in_consolidated_cashflow: Mapped[bool] = mapped_column(Boolean, default=True)
+    can_import: Mapped[bool] = mapped_column(Boolean, default=True)
+    can_import_sdi: Mapped[bool] = mapped_column(Boolean, default=True)
+    can_export: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="members")
@@ -147,6 +150,9 @@ class Invitation(Base, UUIDMixin):
         JSON,
         default=_default_granular_permissions,
     )
+    can_import: Mapped[bool] = mapped_column(Boolean, default=True)
+    can_import_sdi: Mapped[bool] = mapped_column(Boolean, default=True)
+    can_export: Mapped[bool] = mapped_column(Boolean, default=True)
     token_hash: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Users, UserPlus, Trash, ChevronDown, ChevronRight, Shield, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -86,6 +87,8 @@ function formatInviteCode(value: string): string {
 
 export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialogProps) {
   const { user: currentUser } = useAuthStore()
+  const { workspaces } = useWorkspaceStore()
+  const currentWorkspace = workspaces.find(w => w.id === workspaceId)
   const [members, setMembers] = useState<WorkspaceMember[]>([])
   const [pendingInvitations, setPendingInvitations] = useState<WorkspaceInvitation[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -95,9 +98,15 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
   const [inviteCode, setInviteCode] = useState('')
   const [inviteRole, setInviteRole] = useState<string>('member')
   const [invitePermissions, setInvitePermissions] = useState<GranularAreaPermissions>(getDefaultGranularPermissions())
+  const [inviteCanImport, setInviteCanImport] = useState(true)
+  const [inviteCanImportSdi, setInviteCanImportSdi] = useState(true)
+  const [inviteCanExport, setInviteCanExport] = useState(true)
   const [isInviting, setIsInviting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [editedPermissions, setEditedPermissions] = useState<GranularAreaPermissions | null>(null)
+  const [editedCanImport, setEditedCanImport] = useState(true)
+  const [editedCanImportSdi, setEditedCanImportSdi] = useState(true)
+  const [editedCanExport, setEditedCanExport] = useState(true)
   const [lookupResult, setLookupResult] = useState<{ name: string } | null>(null)
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [isLookingUp, setIsLookingUp] = useState(false)
@@ -143,8 +152,14 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
     if (selectedMember) {
       // Handle case where granular_permissions might be null/undefined or missing fields
       setEditedPermissions(mergeWithDefaults(selectedMember.granular_permissions))
+      setEditedCanImport(selectedMember.can_import ?? true)
+      setEditedCanImportSdi(selectedMember.can_import_sdi ?? true)
+      setEditedCanExport(selectedMember.can_export ?? true)
     } else {
       setEditedPermissions(null)
+      setEditedCanImport(true)
+      setEditedCanImportSdi(true)
+      setEditedCanExport(true)
     }
   }, [selectedMember])
 
@@ -201,6 +216,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
     setSelectedMember(null)
     // Set edited permissions from invitation, merged with defaults
     setEditedPermissions(mergeWithDefaults(invitation.granular_permissions))
+    setEditedCanImport(invitation.can_import ?? true)
+    setEditedCanImportSdi(invitation.can_import_sdi ?? true)
+    setEditedCanExport(invitation.can_export ?? true)
     // Clear invite code
     setInviteCode('')
     setLookupResult(null)
@@ -240,11 +258,22 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
     if (cleaned.length !== 9 || !lookupResult) return
     setIsInviting(true)
     try {
-      await workspacesApi.inviteMember(workspaceId, inviteCode, inviteRole, invitePermissions)
+      await workspacesApi.inviteMember(
+        workspaceId,
+        inviteCode,
+        inviteRole,
+        invitePermissions,
+        inviteCanImport,
+        inviteCanImportSdi,
+        inviteCanExport
+      )
       toast({ title: 'Invito inviato', variant: 'success' })
       setInviteCode('')
       setLookupResult(null)
       setInvitePermissions(getDefaultGranularPermissions())
+      setInviteCanImport(true)
+      setInviteCanImportSdi(true)
+      setInviteCanExport(true)
       loadMembers()
     } catch (error: unknown) {
       // Extract error message from axios response
@@ -317,6 +346,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
     try {
       const update: MemberUpdate = {
         granular_permissions: editedPermissions,
+        can_import: editedCanImport,
+        can_import_sdi: editedCanImportSdi,
+        can_export: editedCanExport,
       }
       await workspacesApi.updateMember(workspaceId, selectedMember.user.id, update)
       toast({ title: 'Permessi aggiornati', variant: 'success' })
@@ -334,6 +366,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
     try {
       const update: MemberUpdate = {
         granular_permissions: editedPermissions,
+        can_import: editedCanImport,
+        can_import_sdi: editedCanImportSdi,
+        can_export: editedCanExport,
       }
       await workspacesApi.updateInvitation(workspaceId, selectedInvitation.id, update)
       toast({ title: 'Permessi invito aggiornati', variant: 'success' })
@@ -363,6 +398,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
       }
     }
     setEditedPermissions(newPermissions)
+    setEditedCanImport(value)
+    setEditedCanImportSdi(value)
+    setEditedCanExport(value)
   }
 
   const canEditMember = (member: WorkspaceMember) => {
@@ -371,14 +409,14 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh]">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Gestione Membri
           </DialogTitle>
           <DialogDescription>
-            Gestisci i membri del workspace e i loro permessi
+            Gestisci i membri e i permessi del workspace <strong className="text-foreground">{currentWorkspace?.name || 'Workspace'}</strong>
           </DialogDescription>
         </DialogHeader>
 
@@ -571,9 +609,50 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
                     <p className="text-sm">Gli admin hanno tutti i permessi</p>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[300px] pr-4">
-                    <div className="space-y-2">
-                      {AREAS.map((area) => (
+                  <>
+                    {/* Workspace-level permissions for invite */}
+                    <div className="space-y-2 pb-3 border-b">
+                      <Label className="text-sm font-medium">Permessi Workspace</Label>
+                      <div className="grid grid-cols-1 gap-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="invite-can-import"
+                            checked={inviteCanImport}
+                            onCheckedChange={(checked) => setInviteCanImport(!!checked)}
+                          />
+                          <Label htmlFor="invite-can-import" className="text-xs cursor-pointer">
+                            Importa JSON
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="invite-can-import-sdi"
+                            checked={inviteCanImportSdi}
+                            onCheckedChange={(checked) => setInviteCanImportSdi(!!checked)}
+                          />
+                          <Label htmlFor="invite-can-import-sdi" className="text-xs cursor-pointer">
+                            Importa SDI (Fatture Elettroniche)
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="invite-can-export"
+                            checked={inviteCanExport}
+                            onCheckedChange={(checked) => setInviteCanExport(!!checked)}
+                          />
+                          <Label htmlFor="invite-can-export" className="text-xs cursor-pointer">
+                            Esporta JSON
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Granular permissions */}
+                    <div className="pt-3">
+                      <Label className="text-sm font-medium mb-2 block">Permessi per Area</Label>
+                      <ScrollArea className="h-[240px] pr-4">
+                        <div className="space-y-2">
+                          {AREAS.map((area) => (
                         <Collapsible
                           key={area}
                           open={expandedAreas.has(area)}
@@ -621,9 +700,11 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
                             <Separator className="my-2" />
                           </CollapsibleContent>
                         </Collapsible>
-                      ))}
+                          ))}
+                        </div>
+                      </ScrollArea>
                     </div>
-                  </ScrollArea>
+                  </>
                 )}
               </div>
             ) : selectedInvitation ? (
@@ -657,9 +738,50 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
                     <p className="text-sm">Gli admin hanno tutti i permessi</p>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[300px] pr-4">
-                    <div className="space-y-2">
-                      {AREAS.map((area) => (
+                  <>
+                    {/* Workspace-level permissions for editing invitation */}
+                    <div className="space-y-2 pb-3 border-b">
+                      <Label className="text-sm font-medium">Permessi Workspace</Label>
+                      <div className="grid grid-cols-1 gap-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="inv-edit-can-import"
+                            checked={editedCanImport}
+                            onCheckedChange={(checked) => setEditedCanImport(!!checked)}
+                          />
+                          <Label htmlFor="inv-edit-can-import" className="text-xs cursor-pointer">
+                            Importa JSON
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="inv-edit-can-import-sdi"
+                            checked={editedCanImportSdi}
+                            onCheckedChange={(checked) => setEditedCanImportSdi(!!checked)}
+                          />
+                          <Label htmlFor="inv-edit-can-import-sdi" className="text-xs cursor-pointer">
+                            Importa SDI (Fatture Elettroniche)
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="inv-edit-can-export"
+                            checked={editedCanExport}
+                            onCheckedChange={(checked) => setEditedCanExport(!!checked)}
+                          />
+                          <Label htmlFor="inv-edit-can-export" className="text-xs cursor-pointer">
+                            Esporta JSON
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Granular permissions */}
+                    <div className="pt-3">
+                      <Label className="text-sm font-medium mb-2 block">Permessi per Area</Label>
+                      <ScrollArea className="h-[240px] pr-4">
+                        <div className="space-y-2">
+                          {AREAS.map((area) => (
                         <Collapsible
                           key={area}
                           open={expandedAreas.has(area)}
@@ -710,9 +832,11 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
                             <Separator className="my-2" />
                           </CollapsibleContent>
                         </Collapsible>
-                      ))}
+                          ))}
+                        </div>
+                      </ScrollArea>
                     </div>
-                  </ScrollArea>
+                  </>
                 )}
 
                 {selectedInvitation.role !== 'admin' && (
@@ -756,9 +880,50 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
                     </p>
                   </div>
                 ) : (
-                  <ScrollArea className="h-[300px] pr-4">
-                    <div className="space-y-2">
-                      {AREAS.map((area) => (
+                  <>
+                    {/* Workspace-level permissions */}
+                    <div className="space-y-2 pb-3 border-b">
+                      <Label className="text-sm font-medium">Permessi Workspace</Label>
+                      <div className="grid grid-cols-1 gap-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="member-can-import"
+                            checked={editedCanImport}
+                            onCheckedChange={(checked) => setEditedCanImport(!!checked)}
+                          />
+                          <Label htmlFor="member-can-import" className="text-xs cursor-pointer">
+                            Importa JSON
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="member-can-import-sdi"
+                            checked={editedCanImportSdi}
+                            onCheckedChange={(checked) => setEditedCanImportSdi(!!checked)}
+                          />
+                          <Label htmlFor="member-can-import-sdi" className="text-xs cursor-pointer">
+                            Importa SDI (Fatture Elettroniche)
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="member-can-export"
+                            checked={editedCanExport}
+                            onCheckedChange={(checked) => setEditedCanExport(!!checked)}
+                          />
+                          <Label htmlFor="member-can-export" className="text-xs cursor-pointer">
+                            Esporta JSON
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Granular permissions */}
+                    <div className="pt-3">
+                      <Label className="text-sm font-medium mb-2 block">Permessi per Area</Label>
+                      <ScrollArea className="h-[240px] pr-4">
+                        <div className="space-y-2">
+                          {AREAS.map((area) => (
                         <Collapsible
                           key={area}
                           open={expandedAreas.has(area)}
@@ -810,13 +975,15 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
                             <Separator className="my-2" />
                           </CollapsibleContent>
                         </Collapsible>
-                      ))}
+                          ))}
+                        </div>
+                      </ScrollArea>
                     </div>
-                  </ScrollArea>
+                  </>
                 )}
 
                 {canEditMember(selectedMember) && selectedMember.role !== 'admin' && (
-                  <div className="pt-4 border-t">
+                  <div className="pt-4">
                     <Button onClick={handleSavePermissions} disabled={isSaving}>
                       {isSaving ? 'Salvataggio...' : 'Salva Permessi'}
                     </Button>
@@ -834,11 +1001,6 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Chiudi
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
