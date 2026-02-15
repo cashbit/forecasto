@@ -11,6 +11,9 @@ export interface Workspace {
   // From list endpoint (WorkspaceWithRole)
   role?: 'owner' | 'admin' | 'member' | 'viewer'
   area_permissions?: AreaPermissions
+  can_import?: boolean
+  can_import_sdi?: boolean
+  can_export?: boolean
 }
 
 export interface SdiSupplierMapping {

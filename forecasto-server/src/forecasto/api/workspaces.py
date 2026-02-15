@@ -47,6 +47,9 @@ async def list_workspaces(
             settings=ws.settings or {},
             role=member.role,
             area_permissions=member.area_permissions,
+            can_import=member.can_import,
+            can_import_sdi=member.can_import_sdi,
+            can_export=member.can_export,
         )
         for ws, member in results
     ]
@@ -71,6 +74,9 @@ async def create_workspace(
         settings=workspace.settings or {},
         role="owner",
         area_permissions={"actual": "write", "orders": "write", "prospect": "write", "budget": "write"},
+        can_import=True,
+        can_import_sdi=True,
+        can_export=True,
     )}
 
 @router.get("/{workspace_id}", response_model=dict)

@@ -90,6 +90,9 @@ class WorkspaceWithRole(BaseModel):
     settings: dict
     role: str
     area_permissions: dict
+    can_import: bool = True
+    can_import_sdi: bool = True
+    can_export: bool = True
 
     model_config = {"from_attributes": True}
 
