@@ -23,7 +23,6 @@ from forecasto.schemas.session import (
     ResolveConflictsRequest,
     SessionCreate,
     SessionResponse,
-    SessionUser,
     UndoResponse,
 )
 from forecasto.services.session_service import SessionService
@@ -45,23 +44,8 @@ async def list_sessions(
     service = SessionService(db)
     sessions = await service.list_sessions(workspace_id, status, user_id)
 
-    session_responses = []
-    for s in sessions:
-        session_responses.append(
-            SessionResponse(
-                id=s.id,
-                title=s.title,
-                user=SessionUser(id=s.user_id, name=s.user.name if s.user else ""),
-                status=s.status,
-                created_at=s.created_at,
-                last_activity=s.last_activity,
-                committed_at=s.committed_at,
-                discarded_at=s.discarded_at,
-                commit_message=s.commit_message,
-                changes_count=s.changes_count,
-                changes_summary=s.changes_summary,
-            )
-        )
+    # User relationship is eagerly loaded by service, use Pydantic auto-mapping
+    session_responses = [SessionResponse.model_validate(s) for s in sessions]
 
     return {"success": True, "sessions": session_responses}
 
@@ -81,15 +65,7 @@ async def create_session(
 
     return {
         "success": True,
-        "session": SessionResponse(
-            id=session.id,
-            title=session.title,
-            status=session.status,
-            created_at=session.created_at,
-            last_activity=session.last_activity,
-            changes_count=session.changes_count,
-            changes_summary=session.changes_summary,
-        ),
+        "session": SessionResponse.model_validate(session),
     }
 
 @router.get("/{workspace_id}/sessions/{session_id}", response_model=dict)
@@ -107,19 +83,7 @@ async def get_session(
 
     return {
         "success": True,
-        "session": SessionResponse(
-            id=session.id,
-            title=session.title,
-            user=SessionUser(id=session.user_id, name=session.user.name if session.user else ""),
-            status=session.status,
-            created_at=session.created_at,
-            last_activity=session.last_activity,
-            committed_at=session.committed_at,
-            discarded_at=session.discarded_at,
-            commit_message=session.commit_message,
-            changes_count=session.changes_count,
-            changes_summary=session.changes_summary,
-        ),
+        "session": SessionResponse.model_validate(session),
     }
 
 @router.get("/{workspace_id}/sessions/{session_id}/messages", response_model=dict)

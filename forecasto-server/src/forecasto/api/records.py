@@ -28,38 +28,11 @@ from forecasto.services.record_service import RecordService
 router = APIRouter()
 
 def _record_to_response(record, is_draft: bool = False) -> RecordResponse:
-    """Convert record model to response schema."""
-
-    return RecordResponse(
-        id=record.id,
-        workspace_id=record.workspace_id,
-        area=record.area,
-        type=record.type,
-        account=record.account,
-        reference=record.reference,
-        note=record.note,
-        date_cashflow=record.date_cashflow,
-        date_offer=record.date_offer,
-        owner=record.owner,
-        nextaction=record.nextaction,
-        amount=record.amount,
-        vat=record.vat,
-        vat_deduction=record.vat_deduction,
-        total=record.total,
-        stage=record.stage,
-        transaction_id=record.transaction_id,
-        bank_account_id=record.bank_account_id,
-        project_code=record.project_code,
-        review_date=record.review_date,
-        classification=record.classification,
-        transfer_history=record.transfer_history,
-        version=record.version,
-        is_draft=is_draft,
-        created_by=record.created_by,
-        updated_by=record.updated_by,
-        created_at=record.created_at,
-        updated_at=record.updated_at,
-    )
+    """Convert record model to response schema using Pydantic auto-mapping."""
+    # Use .model_validate() with override for is_draft (computed field)
+    response = RecordResponse.model_validate(record)
+    response.is_draft = is_draft
+    return response
 
 @router.get("/{workspace_id}/records", response_model=dict)
 async def list_records(

@@ -51,33 +51,8 @@ async def transfer_record(
 
     from forecasto.schemas.record import RecordResponse
 
-    record_response = RecordResponse(
-        id=record.id,
-        workspace_id=record.workspace_id,
-        area=record.area,
-        type=record.type,
-        account=record.account,
-        reference=record.reference,
-        note=record.note,
-        date_cashflow=record.date_cashflow,
-        date_offer=record.date_offer,
-        owner=record.owner,
-        nextaction=record.nextaction,
-        amount=record.amount,
-        vat=record.vat,
-        vat_deduction=record.vat_deduction,
-        total=record.total,
-        stage=record.stage,
-        transaction_id=record.transaction_id,
-        bank_account_id=record.bank_account_id,
-        project_code=record.project_code,
-        classification=record.classification,
-        transfer_history=record.transfer_history,
-        version=record.version,
-        is_draft=False,
-        created_at=record.created_at,
-        updated_at=record.updated_at,
-    )
+    # Use Pydantic auto-mapping
+    record_response = RecordResponse.model_validate(record)
 
     return TransferResponse(
         record=record_response,

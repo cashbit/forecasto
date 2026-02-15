@@ -19,6 +19,8 @@ class SessionUser(BaseModel):
     id: str
     name: str
 
+    model_config = {"from_attributes": True}
+
 class ChangesSummary(BaseModel):
     """Summary of changes in a session."""
 
