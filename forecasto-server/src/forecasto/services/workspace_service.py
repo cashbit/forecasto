@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from forecasto.exceptions import ForbiddenException, NotFoundException, ValidationException
 from forecasto.models.user import User
@@ -97,9 +98,10 @@ class WorkspaceService:
         return workspace
 
     async def get_members(self, workspace_id: str) -> list[WorkspaceMember]:
-        """Get all members of a workspace."""
+        """Get all members of a workspace with user relationship eagerly loaded."""
         result = await self.db.execute(
             select(WorkspaceMember)
+            .options(selectinload(WorkspaceMember.user))
             .where(WorkspaceMember.workspace_id == workspace_id)
             .order_by(WorkspaceMember.joined_at)
         )

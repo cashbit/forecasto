@@ -18,7 +18,6 @@ from forecasto.schemas.workspace import (
     InvitationResponse,
     MemberResponse,
     MemberUpdate,
-    MemberUser,
     WorkspaceCreate,
     WorkspaceResponse,
     WorkspaceUpdate,
@@ -139,24 +138,8 @@ async def list_members(
     service = WorkspaceService(db)
     members = await service.get_members(workspace_id)
 
-    # Eagerly load user data
-    member_responses = []
-    for m in members:
-        await db.refresh(m, ["user"])
-        member_responses.append(
-            MemberResponse(
-                id=m.id,
-                user=MemberUser(id=m.user.id, email=m.user.email, name=m.user.name),
-                role=m.role,
-                area_permissions=m.area_permissions,
-                granular_permissions=m.granular_permissions,
-                can_view_in_consolidated_cashflow=m.can_view_in_consolidated_cashflow,
-                can_import=m.can_import,
-                can_import_sdi=m.can_import_sdi,
-                can_export=m.can_export,
-                joined_at=m.joined_at,
-            )
-        )
+    # User relationship is eagerly loaded by service, use Pydantic auto-mapping
+    member_responses = [MemberResponse.model_validate(m) for m in members]
 
     return {"success": True, "members": member_responses}
 
@@ -267,18 +250,7 @@ async def accept_invitation(
     return {
         "success": True,
         "message": "Invitation accepted",
-        "member": MemberResponse(
-            id=member.id,
-            user=MemberUser(id=member.user.id, email=member.user.email, name=member.user.name),
-            role=member.role,
-            area_permissions=member.area_permissions,
-            granular_permissions=member.granular_permissions,
-            can_view_in_consolidated_cashflow=member.can_view_in_consolidated_cashflow,
-            can_import=member.can_import,
-            can_import_sdi=member.can_import_sdi,
-            can_export=member.can_export,
-            joined_at=member.joined_at,
-        ),
+        "member": MemberResponse.model_validate(member),
     }
 
 @router.patch("/{workspace_id}/members/{user_id}", response_model=dict)
@@ -299,16 +271,5 @@ async def update_member(
 
     return {
         "success": True,
-        "member": MemberResponse(
-            id=member.id,
-            user=MemberUser(id=member.user.id, email=member.user.email, name=member.user.name),
-            role=member.role,
-            area_permissions=member.area_permissions,
-            granular_permissions=member.granular_permissions,
-            can_view_in_consolidated_cashflow=member.can_view_in_consolidated_cashflow,
-            can_import=member.can_import,
-            can_import_sdi=member.can_import_sdi,
-            can_export=member.can_export,
-            joined_at=member.joined_at,
-        ),
+        "member": MemberResponse.model_validate(member),
     }

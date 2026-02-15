@@ -100,6 +100,8 @@ class MemberUser(BaseModel):
     email: str
     name: str
 
+    model_config = {"from_attributes": True}
+
 class MemberResponse(BaseModel):
     """Workspace member response."""
 
