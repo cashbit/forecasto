@@ -1,0 +1,15 @@
+[Unit]
+Description=Forecasto API Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/vhosts/app.forecasto.it/app/forecasto-server
+ExecStart=/var/www/vhosts/app.forecasto.it/app/forecasto-server/.venv/bin/python -m uvicorn forecasto.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+Environment=PYTHONPATH=/var/www/vhosts/app.forecasto.it/app/forecasto-server/src
+
+[Install]
+WantedBy=multi-user.target

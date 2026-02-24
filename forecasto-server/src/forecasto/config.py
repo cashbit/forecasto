@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24  # 24 hours
     refresh_token_expire_days: int = 30
 
+    # CORS
+    cors_origins: str = "*"  # Comma-separated origins, or "*" for all
+
     # Sessions
     session_idle_timeout_minutes: int = 30
     session_expire_timeout_hours: int = 4

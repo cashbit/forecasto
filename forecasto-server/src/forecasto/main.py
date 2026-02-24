@@ -24,6 +24,7 @@ from forecasto.api import (
     users,
     workspaces,
 )
+from forecasto.config import settings
 from forecasto.database import async_session_maker, init_db
 from forecasto.exceptions import ForecastoException
 from forecasto.models.user import User
@@ -68,9 +69,13 @@ app = FastAPI(
 )
 
 # CORS middleware
+_origins = (
+    ["*"] if settings.cors_origins == "*"
+    else [o.strip() for o in settings.cors_origins.split(",")]
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production: specify allowed domains
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

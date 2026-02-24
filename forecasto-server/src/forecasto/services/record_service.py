@@ -180,6 +180,7 @@ class RecordService:
                         Record.account.ilike(search),
                         Record.reference.ilike(search),
                         Record.note.ilike(search),
+                        Record.transaction_id.ilike(search),
                     )
                 )
 
