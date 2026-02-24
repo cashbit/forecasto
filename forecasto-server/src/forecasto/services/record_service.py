@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from forecasto.exceptions import ForbiddenException, NotFoundException
 from forecasto.models.record import Record
 from forecasto.models.user import User
-from forecasto.models.workspace import WorkspaceMember
+from forecasto.models.workspace import Workspace, WorkspaceMember
 from forecasto.schemas.record import RecordCreate, RecordFilter, RecordUpdate
 
 
@@ -90,6 +90,18 @@ class RecordService:
 
         review_date = data.review_date or (data.date_offer + timedelta(days=7))
 
+        # Get workspace owner and assign sequential number
+        ws_result = await self.db.execute(
+            select(Workspace.owner_id).where(Workspace.id == workspace_id)
+        )
+        owner_id = ws_result.scalar_one()
+        owner_result = await self.db.execute(
+            select(User).where(User.id == owner_id).with_for_update()
+        )
+        owner_user = owner_result.scalar_one()
+        seq_num = owner_user.next_seq_num
+        owner_user.next_seq_num = seq_num + 1
+
         record = Record(
             workspace_id=workspace_id,
             area=data.area,
@@ -110,6 +122,7 @@ class RecordService:
             bank_account_id=data.bank_account_id,
             project_code=data.project_code,
             review_date=review_date,
+            seq_num=seq_num,
             classification=data.classification or {},
             created_by=user.id,
             updated_by=user.id,
@@ -171,7 +184,7 @@ class RecordService:
                 )
 
         if filters.project_code:
-            query = query.where(Record.project_code == filters.project_code)
+            query = query.where(Record.project_code.ilike(f"%{filters.project_code}%"))
 
         if filters.bank_account_id:
             query = query.where(Record.bank_account_id == filters.bank_account_id)

@@ -94,6 +94,7 @@ class RecordResponse(BaseModel):
     project_code: str | None = None
     review_date: date | None = None
     classification: dict
+    seq_num: int | None = None
     transfer_history: list[TransferHistoryEntry]
     version: int
     is_draft: bool = False

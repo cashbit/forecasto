@@ -61,6 +61,9 @@ class Record(Base, UUIDMixin, TimestampMixin):
     # Transfer history
     transfer_history: Mapped[list] = mapped_column(JSON, default=list)
 
+    # Sequential number per owner
+    seq_num: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
     # Versioning for optimistic locking
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 

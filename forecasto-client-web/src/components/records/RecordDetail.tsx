@@ -19,7 +19,9 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
   return (
     <Card className="h-full border-0 rounded-none flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 flex-shrink-0">
-        <CardTitle className="text-lg">Dettaglio Record</CardTitle>
+        <CardTitle className="text-lg">
+          {record.seq_num ? `Dettaglio Record #${record.seq_num}` : 'Dettaglio Record'}
+        </CardTitle>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-4 w-4" />
         </Button>

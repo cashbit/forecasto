@@ -38,6 +38,7 @@ export interface Record {
   project_code?: string
   classification?: Classification
   transfer_history?: TransferEntry[]
+  seq_num?: number
   version: number
   is_draft?: boolean
   created_by?: string

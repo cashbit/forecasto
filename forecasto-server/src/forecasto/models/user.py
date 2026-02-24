@@ -7,7 +7,7 @@ import secrets
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -61,6 +61,9 @@ class User(Base, UUIDMixin, TimestampMixin):
         String(36), ForeignKey("registration_codes.id", ondelete="SET NULL"), nullable=True
     )
     must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Sequential record counter (used for all workspaces owned by this user)
+    next_seq_num: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
     # Relationships
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(

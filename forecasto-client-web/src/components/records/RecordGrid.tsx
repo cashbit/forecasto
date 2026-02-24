@@ -94,6 +94,10 @@ export function RecordGrid({
     const stored = localStorage.getItem('forecasto_showOwner')
     return stored !== null ? stored === 'true' : true
   })
+  const [showSeqNum, setShowSeqNum] = useState(() => {
+    const stored = localStorage.getItem('forecasto_showSeqNum')
+    return stored !== null ? stored === 'true' : true
+  })
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 100 })
   const { selectedWorkspaceIds } = useWorkspaceStore()
   const { user } = useAuthStore()
@@ -111,8 +115,12 @@ export function RecordGrid({
     setShowOwner(show)
     localStorage.setItem('forecasto_showOwner', String(show))
   }
+  const handleSetShowSeqNum = (show: boolean) => {
+    setShowSeqNum(show)
+    localStorage.setItem('forecasto_showSeqNum', String(show))
+  }
 
-  const columnVisibility: VisibilityState = { project_code: showProject, owner: showOwner }
+  const columnVisibility: VisibilityState = { seq_num: showSeqNum, project_code: showProject, owner: showOwner }
   const textCellClass = viewMode === 'compact' ? 'truncate' : 'whitespace-normal break-words'
 
   const SortIcon = ({ column }: { column: { getIsSorted: () => false | 'asc' | 'desc' } }) => {
@@ -143,6 +151,26 @@ export function RecordGrid({
           />
         ),
         enableSorting: false,
+      },
+      {
+        accessorKey: 'seq_num',
+        size: 45,
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-1 h-8 justify-end w-full"
+          >
+            N.
+            <SortIcon column={column} />
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <span className="block font-mono text-xs text-right text-muted-foreground">
+            {row.original.seq_num ?? ''}
+          </span>
+        ),
       },
       {
         accessorKey: 'stage',
@@ -618,6 +646,22 @@ export function RecordGrid({
               </Tooltip>
             </TooltipProvider>
             <div className="w-px h-4 bg-border mx-1" />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={showSeqNum ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 px-2 text-xs gap-1"
+                    onClick={() => handleSetShowSeqNum(!showSeqNum)}
+                  >
+                    {showSeqNum ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                    N.
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{showSeqNum ? 'Nascondi colonna N.' : 'Mostra colonna N.'}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
