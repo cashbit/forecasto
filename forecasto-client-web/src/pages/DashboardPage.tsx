@@ -475,7 +475,7 @@ export function DashboardPage() {
                 <TabsTrigger
                   key={area}
                   value={area}
-                  className="flex-1 rounded-none border-b-2 border-border py-2.5 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:font-semibold data-[state=active]:shadow-none"
+                  className="flex-1 rounded-none border-b-2 border-border py-2.5 data-[state=active]:border-primary data-[state=active]:border-b-[3px] data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-none"
                 >
                   {AREA_LABELS[area]}
                 </TabsTrigger>
