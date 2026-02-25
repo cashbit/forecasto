@@ -1,0 +1,384 @@
+
+▗ ▗   ▖ ▖  Claude Code v2.1.39
+           Opus 4.6 · API Usage Billing
+  ▘▘ ▝▝    ~/dev/forecasto
+
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Plan to implement                                                                                                    │
+│                                                                                                                      │
+│ Piano: ID numerico sequenziale per owner (seq_num)                                                                   │
+│                                                                                                                      │
+│ Contesto                                                                                                             │
+│                                                                                                                      │
+│ Nel vecchio Forecasto ogni riga aveva un ID numerico univoco visibile. Attualmente i record usano UUID. L'utente     │
+│ vuole un contatore sequenziale legato all'owner del workspace (non al workspace stesso), così che i record spostati  │
+│ tra workspace dello stesso owner mantengano numerazione coerente. Qualsiasi utente che crea un record in un          │
+│ workspace usa il contatore dell'owner di quel workspace.                                                             │
+│                                                                                                                      │
+│ Modifiche                                                                                                            │
+│                                                                                                                      │
+│ 1. Alembic migration (013_add_seq_num.py)                                                                            │
+│                                                                                                                      │
+│ - Aggiunge colonna seq_num (Integer, nullable=True) alla tabella records                                             │
+│ - Aggiunge colonna next_seq_num (Integer, default=1) alla tabella users                                              │
+│ - Popola i record esistenti con numeri sequenziali per owner del workspace, ordinati per created_at                  │
+│ - Aggiorna next_seq_num di ogni user-owner al valore max+1                                                           │
+│ - down_revision = '476938b88143'                                                                                     │
+│                                                                                                                      │
+│ 2. SQLAlchemy model - User (forecasto-server/src/forecasto/models/user.py)                                           │
+│                                                                                                                      │
+│ - Aggiunge next_seq_num: Mapped[int] = mapped_column(Integer, default=1, nullable=False)                             │
+│                                                                                                                      │
+│ 3. SQLAlchemy model - Record (forecasto-server/src/forecasto/models/record.py)                                       │
+│                                                                                                                      │
+│ - Aggiunge seq_num: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)                                    │
+│                                                                                                                      │
+│ 4. Pydantic schemas (forecasto-server/src/forecasto/schemas/record.py)                                               │
+│                                                                                                                      │
+│ - RecordResponse: aggiunge seq_num: int | None = None                                                                │
+│ - RecordCreate/RecordUpdate: non modificati (seq_num assegnato solo dal server)                                      │
+│                                                                                                                      │
+│ 5. Record service (forecasto-server/src/forecasto/services/record_service.py)                                        │
+│                                                                                                                      │
+│ - In create_record(), dopo aver ricevuto workspace_id:                                                               │
+│   a. Query per trovare l'owner del workspace: SELECT owner_id FROM workspaces WHERE id = workspace_id                │
+│   b. Legge e incrementa atomicamente users.next_seq_num dell'owner                                                   │
+│   c. Assegna record.seq_num = valore letto                                                                           │
+│ - Import aggiuntivi: from forecasto.models.workspace import Workspace e from forecasto.models.user import User (se   │
+│ non già presente)                                                                                                    │
+│                                                                                                                      │
+│ 6. TypeScript types (forecasto-client-web/src/types/record.ts)                                                       │
+│                                                                                                                      │
+│ - Record: aggiunge seq_num?: number                                                                                  │
+│                                                                                                                      │
+│ 7. RecordGrid (forecasto-client-web/src/components/records/RecordGrid.tsx)                                           │
+│                                                                                                                      │
+│ - Nuovo stato toggle: showSeqNum + localStorage forecasto_showSeqNum (default: true)                                 │
+│ - Nuova colonna seq_num dopo select, prima di stage:                                                                 │
+│   - size: 45px, header "N.", font-mono text-xs, right-aligned, sortabile                                             │
+│ - columnVisibility: { seq_num: showSeqNum, project_code: showProject, owner: showOwner }                             │
+│ - Nuovo bottone toggle nella toolbar: Eye/EyeOff + "N."                                                              │
+│                                                                                                                      │
+│ 8. RecordDetail (forecasto-client-web/src/components/records/RecordDetail.tsx)                                       │
+│                                                                                                                      │
+│ - Mostra seq_num nel header (es. "Dettaglio Record #42")                                                             │
+│                                                                                                                      │
+│ File coinvolti                                                                                                       │
+│                                                                                                                      │
+│ 1. forecasto-server/alembic/versions/013_add_seq_num.py (nuovo)                                                      │
+│ 2. forecasto-server/src/forecasto/models/user.py                                                                     │
+│ 3. forecasto-server/src/forecasto/models/record.py                                                                   │
+│ 4. forecasto-server/src/forecasto/schemas/record.py                                                                  │
+│ 5. forecasto-server/src/forecasto/services/record_service.py                                                         │
+│ 6. forecasto-client-web/src/types/record.ts                                                                          │
+│ 7. forecasto-client-web/src/components/records/RecordGrid.tsx                                                        │
+│ 8. forecasto-client-web/src/components/records/RecordDetail.tsx                                                      │
+│                                                                                                                      │
+│ Verifica                                                                                                             │
+│                                                                                                                      │
+│ 1. cd forecasto-server && .venv/bin/python -m alembic upgrade head                                                   │
+│ 2. Avviare server e client                                                                                           │
+│ 3. Verificare che i record esistenti abbiano seq_num popolato (ordinati per created_at per owner)                    │
+│ 4. Creare un nuovo record → deve avere seq_num = next per l'owner del workspace                                      │
+│ 5. Creare record come utente non-owner in un workspace altrui → usa il contatore dell'owner del workspace            │
+│ 6. Verificare toggle "N." nella toolbar griglia                                                                      │
+│ 7. Verificare che nel dettaglio record appaia il numero                                                              │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+⏺ I'll implement this plan step by step. Let me start by reading all the relevant files in parallel.
+
+⏺ Searched for 1 pattern, read 7 files (ctrl+o to expand)                                                               
+  ⎿  Loaded forecasto-client-web/CLAUDE.md
+                                                                                                                        
+⏺ Now let me check the latest migration for its revision ID, and the workspace model for the owner_id field.          
+                                                                                                                        
+⏺ Searched for 1 pattern, read 1 file (ctrl+o to expand)                                                                
+                                                                                                                        
+⏺ Good, I have all the context. Let me now create all the tasks and start implementing.                                 
+                                                            
+⏺ Now let me implement everything. Starting with the migration file.                                                    
+                                                            
+⏺ Write(forecasto-server/alembic/versions/013_add_seq_num.py)                                                           
+  ⎿  Wrote 66 lines to forecasto-server/alembic/versions/013_add_seq_num.py                                             
+     """add seq_num to records and next_seq_num to users                                                                
+                                                                                                                        
+     Revision ID: 013_add_seq_num                                                                                       
+     Revises: 476938b88143                                                                                              
+     Create Date: 2026-02-24                                                       
+                                                                                                                        
+     """                                                                                           
+     from typing import Sequence, Union
+
+     from alembic import op
+     … +56 lines (ctrl+o to expand)
+
+⏺ Now update both SQLAlchemy models in parallel.              
+                                               
+⏺ Update(forecasto-server/src/forecasto/models/user.py)       
+  ⎿  Added 1 line, removed 1 line                             
+       7  from datetime import datetime                                                                          
+       8  from typing import TYPE_CHECKING, Optional                                                                    
+       9                                                                                                         
+      10 -from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text                                            
+      10 +from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text                            
+      11  from sqlalchemy.dialects.sqlite import JSON                                                                   
+      12  from sqlalchemy.orm import Mapped, mapped_column, relationship                                         
+      13  
+
+⏺ Update(forecasto-server/src/forecasto/models/record.py)       
+  ⎿  Added 3 lines                             
+      61      # Transfer history                                                                                 
+      62      transfer_history: Mapped[list] = mapped_column(JSON, default=list)                                 
+      63                                                                                                         
+      64 +    # Sequential number per owner                                                                             
+      65 +    seq_num: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)                             
+      66 +                                                                                                              
+      67      # Versioning for optimistic locking                                                                
+      68      version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+      69  
+
+⏺ Update(forecasto-server/src/forecasto/models/user.py)         
+  ⎿  Added 3 lines                             
+      62      )                                                                                                  
+      63      must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)         
+      64                                                                                                         
+      65 +    # Sequential record counter (used for all workspaces owned by this user)                                  
+      66 +    next_seq_num: Mapped[int] = mapped_column(Integer, default=1, nullable=False)                      
+      67 +                                                                                                              
+      68      # Relationships                                                                                    
+      69      refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+      70          "RefreshToken", back_populates="user", cascade="all, delete-orphan"
+
+⏺ Now update the Pydantic schema, service, TypeScript types, grid, and detail all in parallel where possible.
+                                               
+⏺ Update(forecasto-server/src/forecasto/schemas/record.py)                    
+  ⎿  Added 1 line                                             
+       94      project_code: str | None = None                                                                   
+       95      review_date: date | None = None                                                                          
+       96      classification: dict                                                                              
+       97 +    seq_num: int | None = None                                                                               
+       98      transfer_history: list[TransferHistoryEntry]                                                      
+       99      version: int                                                                                             
+      100      is_draft: bool = False                                                                            
+
+⏺ Update(forecasto-server/src/forecasto/services/record_service.py)           
+  ⎿  Added 1 line, removed 1 line              
+      11  from forecasto.exceptions import ForbiddenException, NotFoundException                                 
+      12  from forecasto.models.record import Record                                                             
+      13  from forecasto.models.user import User                                                                 
+      14 -from forecasto.models.workspace import WorkspaceMember                                                        
+      14 +from forecasto.models.workspace import Workspace, WorkspaceMember                                      
+      15  from forecasto.schemas.record import RecordCreate, RecordFilter, RecordUpdate                                 
+      16                                                                                                         
+      17  
+
+⏺ Update(forecasto-client-web/src/types/record.ts)                            
+  ⎿  Added 1 line                              
+      38    project_code?: string                                                                                
+      39    classification?: Classification                                                                      
+      40    transfer_history?: TransferEntry[]                                                                   
+      41 +  seq_num?: number                                                                                            
+      42    version: number                                                                                      
+      43    is_draft?: boolean                                                                                          
+      44    created_by?: string                                                                                  
+
+⏺ Now update create_record in the service to assign seq_num atomically.       
+                                               
+⏺ Update(forecasto-server/src/forecasto/services/record_service.py)           
+  ⎿  Added 12 lines                                           
+       90                                                                                                        
+       91          review_date = data.review_date or (data.date_offer + timedelta(days=7))                              
+       92                                                                                                        
+       93 +        # Get workspace owner and assign sequential number                                                   
+       94 +        ws_result = await self.db.execute(                                                            
+       95 +            select(Workspace.owner_id).where(Workspace.id == workspace_id)                                   
+       96 +        )                                                                                             
+       97 +        owner_id = ws_result.scalar_one()                                                             
+       98 +        owner_result = await self.db.execute(                                                         
+       99 +            select(User).where(User.id == owner_id).with_for_update()                                 
+      100 +        )                                                                                             
+      101 +        owner_user = owner_result.scalar_one()                                                        
+      102 +        seq_num = owner_user.next_seq_num                                                             
+      103 +        owner_user.next_seq_num = seq_num + 1                                                         
+      104 +                                                                                                      
+      105          record = Record(
+      106              workspace_id=workspace_id,
+      107              area=data.area,
+
+⏺ Update(forecasto-server/src/forecasto/services/record_service.py)           
+  ⎿  Added 1 line                              
+      122              bank_account_id=data.bank_account_id,                                                     
+      123              project_code=data.project_code,                                                           
+      124              review_date=review_date,                                                                  
+      125 +            seq_num=seq_num,                                                                                 
+      126              classification=data.classification or {},                                                 
+      127              created_by=user.id,                                                                              
+      128              updated_by=user.id,                                                                       
+
+⏺ Now update the RecordGrid — add the showSeqNum toggle and the seq_num column.
+                                               
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)          
+  ⎿  Added 4 lines                             
+       94      const stored = localStorage.getItem('forecasto_showOwner')                                        
+       95      return stored !== null ? stored === 'true' : true                                                        
+       96    })                                                                                                  
+       97 +  const [showSeqNum, setShowSeqNum] = useState(() => {                                                       
+       98 +    const stored = localStorage.getItem('forecasto_showSeqNum')                                       
+       99 +    return stored !== null ? stored === 'true' : true                                                        
+      100 +  })                                                                                                  
+      101    const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 100 })
+      102    const { selectedWorkspaceIds } = useWorkspaceStore()
+      103    const { user } = useAuthStore()
+
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)          
+  ⎿  Added 4 lines                                            
+      115      setShowOwner(show)                                                                                
+      116      localStorage.setItem('forecasto_showOwner', String(show))                                         
+      117    }                                                                                                   
+      118 +  const handleSetShowSeqNum = (show: boolean) => {                                                           
+      119 +    setShowSeqNum(show)                                                                               
+      120 +    localStorage.setItem('forecasto_showSeqNum', String(show))                                               
+      121 +  }                                                                                                   
+      122  
+      123    const columnVisibility: VisibilityState = { project_code: showProject, owner: showOwner }
+      124    const textCellClass = viewMode === 'compact' ? 'truncate' : 'whitespace-normal break-words'
+
+⏺ Now update columnVisibility to include seq_num.                             
+                                                              
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)          
+  ⎿  Added 1 line, removed 1 line                             
+      120      localStorage.setItem('forecasto_showSeqNum', String(show))                                        
+      121    }                                                                                                          
+      122                                                                                                        
+      123 -  const columnVisibility: VisibilityState = { project_code: showProject, owner: showOwner }                  
+      123 +  const columnVisibility: VisibilityState = { seq_num: showSeqNum,                                    
+          +project_code: showProject, owner: showOwner }                                                                
+      124    const textCellClass = viewMode === 'compact' ? 'truncate' : 'whitespace-normal break-words'         
+      125  
+      126    const SortIcon = ({ column }: { column: { getIsSorted: () => false | 'asc' | 'desc' } }) => {
+
+⏺ Now add the seq_num column after select and before stage.                   
+                                                              
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)          
+  ⎿  Added 20 lines                                           
+      153          enableSorting: false,                                                                         
+      154        },                                                                                                     
+      155        {                                                                                               
+      156 +        accessorKey: 'seq_num',                                                                              
+      157 +        size: 45,                                                                                     
+      158 +        header: ({ column }) => (                                                                            
+      159 +          <Button                                                                                     
+      160 +            variant="ghost"                                                                           
+      161 +            size="sm"                                                                                 
+      162 +            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}                      
+      163 +            className="px-1 h-8 justify-end w-full"                                                   
+      164 +          >                                                                                           
+      165 +            N.                                                                                        
+      166 +            <SortIcon column={column} />                                                              
+      167 +          </Button>                                                                                   
+      168 +        ),                                                                                            
+      169 +        cell: ({ row }) => (                                                                          
+      170 +          <span className="block font-mono text-xs text-right text-muted-foreground">                 
+      171 +            {row.original.seq_num ?? ''}                                                              
+      172 +          </span>                                                                                     
+      173 +        ),                                                                                            
+      174 +      },                                                                                              
+      175 +      {                                                                                               
+      176          accessorKey: 'stage',
+      177          size: 30,
+      178          header: ({ column }) => (
+
+⏺ Now add the toggle button for "N." in the toolbar, alongside the other view controls.
+                                                              
+⏺ Update(forecasto-client-web/src/components/records/RecordGrid.tsx)          
+  ⎿  Added 16 lines                                           
+      650                <Tooltip>                                                                               
+      651                  <TooltipTrigger asChild>                                                                     
+      652                    <Button                                                                             
+      653 +                    variant={showSeqNum ? 'default' : 'outline'}                                             
+      654 +                    size="sm"                                                                         
+      655 +                    className="h-7 px-2 text-xs gap-1"                                                       
+      656 +                    onClick={() => handleSetShowSeqNum(!showSeqNum)}                                  
+      657 +                  >                                                                                   
+      658 +                    {showSeqNum ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5"   
+          +/>}                                                                                                   
+      659 +                    N.                                                                                
+      660 +                  </Button>                                                                           
+      661 +                </TooltipTrigger>                                                                     
+      662 +                <TooltipContent>{showSeqNum ? 'Nascondi colonna N.' : 'Mostra colonna                 
+          +N.'}</TooltipContent>                                                                                 
+      663 +              </Tooltip>                                                                              
+      664 +            </TooltipProvider>                                                                        
+      665 +            <TooltipProvider>                                                                         
+      666 +              <Tooltip>                                                                               
+      667 +                <TooltipTrigger asChild>                                                              
+      668 +                  <Button                                                                             
+      669                      variant={showOwner ? 'default' : 'outline'}
+      670                      size="sm"
+      671                      className="h-7 px-2 text-xs gap-1"
+
+⏺ Now update RecordDetail to show seq_num in the header.                      
+                                                              
+⏺ Update(forecasto-client-web/src/components/records/RecordDetail.tsx)        
+  ⎿  Added 3 lines, removed 1 line                            
+      19    return (                                                                                             
+      20      <Card className="h-full border-0 rounded-none flex flex-col">                                             
+      21        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 flex-shrink-0"> 
+      22 -        <CardTitle className="text-lg">Dettaglio Record</CardTitle>                                           
+      22 +        <CardTitle className="text-lg">                                                                
+      23 +          {record.seq_num ? `Dettaglio Record #${record.seq_num}` : 'Dettaglio Record'}                       
+      24 +        </CardTitle>                                                                                   
+      25          <Button variant="ghost" size="icon" onClick={onClose}>
+      26            <X className="h-4 w-4" />
+      27          </Button>
+
+⏺ Now let me run the migration and TypeScript check to verify everything works.
+                                                              
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-server && .venv/bin/python -m alembic upgrade head)
+  ⎿  INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+     INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+     INFO  [alembic.runtime.migration] Running upgrade 476938b88143 -> 013_add_seq_num, add seq_num to records and      
+     next_seq_num to users                                    
+                                                                                                                        
+⏺ Bash(cd /Users/cashbit/dev/forecasto/forecasto-client-web && npx tsc --noEmit 2>&1 | head -30)    
+  ⎿  (No output)                                                                                                        
+                                                                                                                        
+⏺ Both the migration and TypeScript check pass (tsc returned no errors). Let me mark the task complete.
+                                                                                                                        
+⏺ All done. Here's a summary of what was implemented:                                               
+                                                              
+  Backend (8 files touched):                                                                                            
+  1. Migration 013_add_seq_num.py — adds seq_num (Integer, nullable) to records, next_seq_num (Integer, default=1) to   
+  users, populates existing records sequentially per workspace owner ordered by created_at                              
+  2. User model — added next_seq_num field                                                                              
+  3. Record model — added seq_num field                                                                                 
+  4. RecordResponse schema — added seq_num: int | None = None                                                           
+  5. RecordService.create_record() — fetches workspace owner, reads+increments next_seq_num atomically with             
+  with_for_update(), assigns seq_num to new record
+
+  Frontend (3 files touched):
+  6. TypeScript Record type — added seq_num?: number
+  7. RecordGrid — new seq_num column (45px, "N.", font-mono, right-aligned, sortable), showSeqNum toggle with
+  localStorage persistence (forecasto_showSeqNum, default true), toggle button in toolbar
+  8. RecordDetail — header shows Dettaglio Record #42 when seq_num is present
+
+✻ Churned for 2m 41s
+
+❯ Exit                                                                                                                  
+                                   
+⏺ Bye!                                                                                                                  
+                                                                                                                      
+❯ /cost                                                                                                                 
+  ⎿  Total cost:            $2.68                           
+     Total duration (API):  7m 22s                                                                                      
+     Total duration (wall): 13h 3m 25s                                                                                
+     Total code changes:    233 lines added, 37 lines removed                                                           
+     Usage by model:                                                                                                    
+         claude-haiku-4-5:  11.6k input, 3.8k output, 297.8k cache read, 36.7k cache write ($0.1065)                    
+          claude-opus-4-6:  74 input, 14.1k output, 2.1m cache read, 184.2k cache write ($2.57)                         
+                                                                                                                        
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯  
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ accept edits on (shift+tab to cycle)                                                                             
+
