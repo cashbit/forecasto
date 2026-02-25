@@ -1,0 +1,20 @@
+[Unit]
+Description=Forecasto MCP Server
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=forecasto
+WorkingDirectory=/opt/forecasto-mcp
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=/opt/forecasto-mcp/.env
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
