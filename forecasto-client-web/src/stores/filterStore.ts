@@ -105,5 +105,5 @@ export const useFilterStore = create<FilterState>()((set) => ({
 
   setBankAccountFilter: (accountId) => set({ bankAccountFilter: accountId }),
 
-  resetFilters: () => set(initialState),
+  resetFilters: () => set((state) => ({ ...initialState, currentArea: state.currentArea })),
 }))
