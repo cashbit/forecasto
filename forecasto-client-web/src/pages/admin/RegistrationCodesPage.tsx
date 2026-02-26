@@ -329,18 +329,19 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
                   </Button>
                 </div>
               </div>
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[130px]">Codice</TableHead>
-                    <TableHead className="w-[85px]">Stato</TableHead>
+                    <TableHead className="w-[80px]">Stato</TableHead>
                     <TableHead>Destinatario</TableHead>
                     <TableHead>Usato da</TableHead>
-                    <TableHead className="w-[95px]">Data uso</TableHead>
-                    <TableHead className="w-[80px]">Fatt.</TableHead>
-                    <TableHead className="w-[70px]">Fatt. a</TableHead>
-                    <TableHead className="w-[75px]">Fee</TableHead>
-                    <TableHead className="w-[130px]">Azioni</TableHead>
+                    <TableHead className="w-[90px] whitespace-nowrap">Data uso</TableHead>
+                    <TableHead className="w-[60px]">Fatt.</TableHead>
+                    <TableHead className="w-[65px] whitespace-nowrap">Fatt. a</TableHead>
+                    <TableHead className="w-[55px]">Fee</TableHead>
+                    <TableHead className="w-[155px] whitespace-nowrap">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -391,42 +392,46 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-0.5">
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-7 w-7"
                               onClick={() => copyCode(code.code)}
                               title="Copia codice"
                             >
-                              <Copy className="h-4 w-4" />
+                              <Copy className="h-3.5 w-3.5" />
                             </Button>
                             {!code.used_at && !code.revoked_at && (
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-7 w-7"
                                 onClick={(e) => openRecipientDialog(code, e)}
                                 title="Imposta destinatario"
                               >
-                                <Pencil className="h-4 w-4" />
+                                <Pencil className="h-3.5 w-3.5" />
                               </Button>
                             )}
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-7 w-7"
                               disabled={!code.recipient_email}
                               onClick={() => window.open(buildMailto(code), '_blank')}
                               title={code.recipient_email ? 'Invia per email (client predefinito)' : 'Aggiungi email destinatario prima'}
                             >
-                              <Mail className="h-4 w-4" />
+                              <Mail className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-7 w-7"
                               disabled={!code.recipient_email}
                               onClick={() => window.open(buildGmailUrl(code), '_blank')}
                               title={code.recipient_email ? 'Apri in Gmail' : 'Aggiungi email destinatario prima'}
                             >
-                              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                              <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.910 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/>
                               </svg>
                             </Button>
@@ -434,10 +439,11 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                className="h-7 w-7"
                                 onClick={() => revokeCode(code.id)}
                                 title="Revoca codice"
                               >
-                                <X className="h-4 w-4 text-destructive" />
+                                <X className="h-3.5 w-3.5 text-destructive" />
                               </Button>
                             )}
                           </div>
@@ -447,6 +453,7 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
                   })}
                 </TableBody>
               </Table>
+              </div>
             </div>
           ) : null}
         </div>

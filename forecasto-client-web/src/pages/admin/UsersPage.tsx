@@ -39,14 +39,12 @@ function formatDate(date: string | null): string {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   })
 }
 
 function partnerTypeLabel(type: string | null): string {
-  if (type === 'billing_to_client') return 'Fatt. Cliente'
-  if (type === 'billing_to_partner') return 'Fatt. Partner'
+  if (type === 'billing_to_client') return '→ Cli.'
+  if (type === 'billing_to_partner') return '→ Part.'
   return ''
 }
 
@@ -54,8 +52,9 @@ function getUserStatus(user: AdminUser): { label: string; variant: 'default' | '
   const badges: { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }[] = []
   if (user.is_admin) badges.push({ label: 'Admin', variant: 'default' })
   if (user.is_partner) {
+    badges.push({ label: 'Partner', variant: 'outline' })
     const ptLabel = partnerTypeLabel(user.partner_type)
-    badges.push({ label: ptLabel ? `Partner - ${ptLabel}` : 'Partner', variant: 'outline' })
+    if (ptLabel) badges.push({ label: ptLabel, variant: 'outline' })
   }
   if (user.is_blocked) badges.push({ label: 'Bloccato', variant: 'destructive' })
   if (badges.length === 0) badges.push({ label: 'Attivo', variant: 'secondary' })
@@ -269,15 +268,16 @@ export function UsersPage() {
               Nessun utente trovato
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Stato</TableHead>
-                  <TableHead>Registrato il</TableHead>
-                  <TableHead>Ultimo accesso</TableHead>
-                  <TableHead className="w-[100px]">Azioni</TableHead>
+                  <TableHead className="min-w-[130px]">Nome</TableHead>
+                  <TableHead className="min-w-[160px]">Email</TableHead>
+                  <TableHead className="w-[130px]">Stato</TableHead>
+                  <TableHead className="w-[105px] whitespace-nowrap">Registrato il</TableHead>
+                  <TableHead className="w-[105px] whitespace-nowrap">Ultimo accesso</TableHead>
+                  <TableHead className="w-[150px] whitespace-nowrap">Azioni</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -309,49 +309,51 @@ export function UsersPage() {
                       <TableCell>{formatDate(user.last_login_at)}</TableCell>
                       <TableCell>
                         {!user.is_admin && (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-0.5">
                             {user.is_blocked ? (
                               <Button
                                 variant="ghost"
-                                size="sm"
+                                size="icon"
+                                className="h-7 w-7"
                                 onClick={() => handleUnblock(user)}
                                 disabled={processing}
+                                title="Sblocca utente"
                               >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Sblocca
+                                <CheckCircle className="h-3.5 w-3.5" />
                               </Button>
                             ) : (
                               <>
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-7 w-7"
                                   onClick={() => handleTogglePartner(user)}
                                   disabled={processing}
                                   title={user.is_partner ? 'Rimuovi Partner' : 'Promuovi a Partner'}
                                 >
-                                  <Handshake className="h-4 w-4 mr-1" />
-                                  {user.is_partner ? 'Rimuovi Partner' : 'Partner'}
+                                  <Handshake className="h-3.5 w-3.5" />
                                 </Button>
                                 {user.is_partner && (
                                   <Button
                                     variant="ghost"
-                                    size="sm"
+                                    size="icon"
+                                    className="h-7 w-7"
                                     onClick={() => openPartnerTypeDialog(user)}
                                     disabled={processing}
                                     title="Modifica tipo partner"
                                   >
-                                    <Settings className="h-4 w-4 mr-1" />
-                                    Tipo
+                                    <Settings className="h-3.5 w-3.5" />
                                   </Button>
                                 )}
                                 <Button
                                   variant="ghost"
-                                  size="sm"
+                                  size="icon"
+                                  className="h-7 w-7"
                                   onClick={() => openBlockDialog(user)}
                                   disabled={processing}
+                                  title="Blocca utente"
                                 >
-                                  <Ban className="h-4 w-4 mr-1" />
-                                  Blocca
+                                  <Ban className="h-3.5 w-3.5" />
                                 </Button>
                               </>
                             )}
@@ -363,6 +365,7 @@ export function UsersPage() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
