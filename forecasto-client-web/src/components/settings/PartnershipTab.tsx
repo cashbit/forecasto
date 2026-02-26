@@ -170,14 +170,14 @@ function PartnerBatchRow({ batch }: { batch: PartnerBatch }) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Codice</TableHead>
-                    <TableHead>Stato</TableHead>
+                    <TableHead className="w-[130px]">Codice</TableHead>
+                    <TableHead className="w-[85px]">Stato</TableHead>
                     <TableHead>Destinatario</TableHead>
                     <TableHead>Usato da</TableHead>
-                    <TableHead>Data uso</TableHead>
-                    <TableHead>Fatturato</TableHead>
-                    <TableHead>Fatt. a</TableHead>
-                    <TableHead className="w-[100px]">Azioni</TableHead>
+                    <TableHead className="w-[95px]">Data uso</TableHead>
+                    <TableHead className="w-[70px]">Fatt.</TableHead>
+                    <TableHead className="w-[70px]">Fatt. a</TableHead>
+                    <TableHead className="w-[115px]">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -185,30 +185,37 @@ function PartnerBatchRow({ batch }: { batch: PartnerBatch }) {
                     const status = getCodeStatus(code)
                     return (
                       <TableRow key={code.id}>
-                        <TableCell className="font-mono">{code.code}</TableCell>
+                        <TableCell className="font-mono text-xs whitespace-nowrap">{code.code}</TableCell>
                         <TableCell>
                           <Badge variant={status.variant}>{status.label}</Badge>
                         </TableCell>
                         <TableCell className="text-sm">
                           {code.recipient_name || code.recipient_email ? (
                             <div>
-                              {code.recipient_name && <div className="font-medium">{code.recipient_name}</div>}
+                              {code.recipient_name && <div className="font-medium text-sm">{code.recipient_name}</div>}
                               {code.recipient_email && <div className="text-muted-foreground text-xs">{code.recipient_email}</div>}
                             </div>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
-                        <TableCell>{code.used_by_name || '-'}</TableCell>
-                        <TableCell>{formatDate(code.used_at)}</TableCell>
+                        <TableCell className="text-sm">
+                          {code.used_by_name || code.used_by_email ? (
+                            <div>
+                              {code.used_by_name && <div>{code.used_by_name}</div>}
+                              {code.used_by_email && <div className="text-muted-foreground text-xs">{code.used_by_email}</div>}
+                            </div>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell className="text-sm">{formatDate(code.used_at)}</TableCell>
                         <TableCell>
                           {code.invoiced ? (
-                            <Badge variant="default">Si</Badge>
+                            <Badge variant="default">Sì</Badge>
                           ) : (
                             <Badge variant="outline">No</Badge>
                           )}
                         </TableCell>
-                        <TableCell>{code.invoiced_to || '-'}</TableCell>
+                        <TableCell className="text-sm">{code.invoiced_to === 'client' ? 'Cliente' : code.invoiced_to === 'partner' ? 'Partner' : '-'}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
                             {!code.used_at && !code.revoked_at && (
