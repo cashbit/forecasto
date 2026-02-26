@@ -18,7 +18,6 @@ from forecasto.api import (
     cashflow,
     oauth,
     partner,
-    projects,
     records,
     sessions,
     transfers,
@@ -103,7 +102,6 @@ app.include_router(workspaces.router, prefix="/api/v1/workspaces", tags=["Worksp
 app.include_router(sessions.router, prefix="/api/v1/workspaces", tags=["Sessions"])
 app.include_router(records.router, prefix="/api/v1/workspaces", tags=["Records"])
 app.include_router(transfers.router, prefix="/api/v1/workspaces", tags=["Transfers"])
-app.include_router(projects.router, prefix="/api/v1/workspaces", tags=["Projects"])
 app.include_router(
     bank_accounts.user_router, prefix="/api/v1/bank-accounts", tags=["Bank Accounts"]
 )

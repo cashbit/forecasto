@@ -3,7 +3,6 @@ import type { ForecastoClient } from "../api/client.js";
 import { registerWorkspaceTools } from "./workspaces.js";
 import { registerRecordTools } from "./records.js";
 import { registerCashflowTools } from "./cashflow.js";
-import { registerProjectTools } from "./projects.js";
 import { registerBankAccountTools } from "./bank_accounts.js";
 
 export function registerAllTools(
@@ -13,6 +12,5 @@ export function registerAllTools(
   registerWorkspaceTools(server, getClient);
   registerRecordTools(server, getClient);
   registerCashflowTools(server, getClient);
-  registerProjectTools(server, getClient);
   registerBankAccountTools(server, getClient);
 }

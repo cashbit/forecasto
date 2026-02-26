@@ -13,13 +13,6 @@ from forecasto.schemas.bank_account import (
 )
 from forecasto.schemas.cashflow import CashflowEntry, CashflowRequest, CashflowResponse
 from forecasto.schemas.common import ErrorResponse, PaginatedResponse, SuccessResponse
-from forecasto.schemas.project import (
-    PhaseCreate,
-    PhaseResponse,
-    ProjectCreate,
-    ProjectResponse,
-    ProjectUpdate,
-)
 from forecasto.schemas.record import (
     RecordCreate,
     RecordFilter,
@@ -69,11 +62,6 @@ __all__ = [
     "RecordUpdate",
     "RecordResponse",
     "RecordFilter",
-    "ProjectCreate",
-    "ProjectUpdate",
-    "ProjectResponse",
-    "PhaseCreate",
-    "PhaseResponse",
     "BankAccountCreate",
     "BankAccountUpdate",
     "BankAccountResponse",

@@ -14,7 +14,6 @@ from forecasto.models.base import Base, TimestampMixin, UUIDMixin, generate_uuid
 
 if TYPE_CHECKING:
     from forecasto.models.bank_account import BankAccount
-    from forecasto.models.project import Project
     from forecasto.models.record import Record
     from forecasto.models.session import Session
     from forecasto.models.user import User
@@ -56,9 +55,6 @@ class Workspace(Base, UUIDMixin, TimestampMixin):
     )
     records: Mapped[list["Record"]] = relationship(
         "Record", back_populates="workspace", cascade="all, delete-orphan"
-    )
-    projects: Mapped[list["Project"]] = relationship(
-        "Project", back_populates="workspace", cascade="all, delete-orphan"
     )
     invitations: Mapped[list["Invitation"]] = relationship(
         "Invitation", back_populates="workspace", cascade="all, delete-orphan"

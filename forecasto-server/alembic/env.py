@@ -16,8 +16,6 @@ from forecasto.models import (
     Base,
     EmailVerificationToken,
     Invitation,
-    Project,
-    ProjectPhase,
     Record,
     RefreshToken,
     RegistrationCode,

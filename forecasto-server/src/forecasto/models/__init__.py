@@ -6,7 +6,6 @@ from __future__ import annotations
 from forecasto.models.audit import AuditLog
 from forecasto.models.bank_account import BankAccount, BankAccountBalance
 from forecasto.models.base import Base
-from forecasto.models.project import Project, ProjectPhase
 from forecasto.models.record import Record
 from forecasto.models.registration_code import RegistrationCode, RegistrationCodeBatch
 from forecasto.models.session import (
@@ -32,8 +31,6 @@ __all__ = [
     "SessionOperation",
     "SessionRecordLock",
     "Record",
-    "Project",
-    "ProjectPhase",
     "BankAccount",
     "BankAccountBalance",
     "AuditLog",
