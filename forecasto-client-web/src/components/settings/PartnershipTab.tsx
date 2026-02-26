@@ -2,6 +2,16 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Collapsible,
   CollapsibleContent,
@@ -17,7 +27,7 @@ import {
 } from '@/components/ui/table'
 import { partnerApi } from '@/api/partner'
 import type { PartnerBatch, PartnerCode } from '@/api/partner'
-import { ChevronDown, ChevronRight, Download } from 'lucide-react'
+import { ChevronDown, ChevronRight, Download, Pencil, Mail } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 function formatDate(date: string | null): string {
@@ -38,12 +48,53 @@ function getCodeStatus(code: PartnerCode): { label: string; variant: 'default' |
 
 function PartnerBatchRow({ batch }: { batch: PartnerBatch }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [codes, setCodes] = useState<PartnerCode[]>(batch.codes)
+  const [recipientDialogCode, setRecipientDialogCode] = useState<PartnerCode | null>(null)
+  const [recipientName, setRecipientName] = useState('')
+  const [recipientEmail, setRecipientEmail] = useState('')
+  const [savingRecipient, setSavingRecipient] = useState(false)
+
+  const openRecipientDialog = (code: PartnerCode, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setRecipientDialogCode(code)
+    setRecipientName(code.recipient_name || '')
+    setRecipientEmail(code.recipient_email || '')
+  }
+
+  const handleSaveRecipient = async () => {
+    if (!recipientDialogCode) return
+    setSavingRecipient(true)
+    try {
+      const updated = await partnerApi.updateCodeRecipient(
+        batch.id,
+        recipientDialogCode.id,
+        recipientName.trim() || null,
+        recipientEmail.trim() || null,
+      )
+      setCodes((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+      setRecipientDialogCode(null)
+      toast({ title: 'Destinatario aggiornato' })
+    } catch {
+      toast({ title: 'Errore durante il salvataggio', variant: 'destructive' })
+    } finally {
+      setSavingRecipient(false)
+    }
+  }
+
+  const buildMailto = (code: PartnerCode): string => {
+    const email = code.recipient_email || ''
+    const subject = encodeURIComponent('Il tuo codice invito Forecasto')
+    const name = code.recipient_name ? `Ciao ${code.recipient_name},` : 'Ciao,'
+    const expires = code.expires_at ? `%0AScadenza: ${formatDate(code.expires_at)}.` : ''
+    const body = `${encodeURIComponent(name)}%0A%0ATi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.%0A%0ACodice: ${code.code}%0ALink di registrazione: https://app.forecasto.it/register${expires}`
+    return `mailto:${email}?subject=${subject}&body=${body}`
+  }
 
   const exportCSV = () => {
-    const header = 'Codice,Stato,Usato da,Email,Data uso\n'
-    const rows = batch.codes.map((code) => {
+    const header = 'Codice,Stato,Destinatario,Email Destinatario,Usato da,Email,Data uso\n'
+    const rows = codes.map((code) => {
       const status = getCodeStatus(code)
-      return `${code.code},${status.label},${code.used_by_name || '-'},${code.used_by_email || '-'},${formatDate(code.used_at)}`
+      return `${code.code},${status.label},${code.recipient_name || '-'},${code.recipient_email || '-'},${code.used_by_name || '-'},${code.used_by_email || '-'},${formatDate(code.used_at)}`
     }).join('\n')
 
     const blob = new Blob([header + rows], { type: 'text/csv' })
@@ -66,83 +117,160 @@ function PartnerBatchRow({ batch }: { batch: PartnerBatch }) {
     : 'Mai'
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger asChild>
-        <div className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer border-b">
-          <div className="flex items-center gap-3">
-            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            <div>
-              <p className="font-medium">{batch.name}</p>
-              <p className="text-xs text-muted-foreground">
-                Creato il {formatDate(batch.created_at)}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-6 text-sm">
-            <div>
-              <span className="text-muted-foreground">Codici:</span>{' '}
-              <span className="font-medium">{batch.used_codes}/{batch.total_codes} usati</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Scadenza:</span>{' '}
-              <span className="font-medium">{expiresLabel}</span>
-            </div>
-          </div>
-        </div>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="bg-muted/30 p-4">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm">
-                {batch.note && (
-                  <p className="text-muted-foreground">Nota: {batch.note}</p>
-                )}
+    <>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <div className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer border-b">
+            <div className="flex items-center gap-3">
+              {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              <div>
+                <p className="font-medium">{batch.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  Creato il {formatDate(batch.created_at)}
+                </p>
               </div>
-              <Button variant="outline" size="sm" onClick={exportCSV}>
-                <Download className="h-4 w-4 mr-2" />
-                Esporta CSV
-              </Button>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Codice</TableHead>
-                  <TableHead>Stato</TableHead>
-                  <TableHead>Usato da</TableHead>
-                  <TableHead>Data uso</TableHead>
-                  <TableHead>Fatturato</TableHead>
-                  <TableHead>Fatt. a</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {batch.codes.map((code) => {
-                  const status = getCodeStatus(code)
-                  return (
-                    <TableRow key={code.id}>
-                      <TableCell className="font-mono">{code.code}</TableCell>
-                      <TableCell>
-                        <Badge variant={status.variant}>{status.label}</Badge>
-                      </TableCell>
-                      <TableCell>{code.used_by_name || '-'}</TableCell>
-                      <TableCell>{formatDate(code.used_at)}</TableCell>
-                      <TableCell>
-                        {code.invoiced ? (
-                          <Badge variant="default">Si</Badge>
-                        ) : (
-                          <Badge variant="outline">No</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{code.invoiced_to || '-'}</TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
+            <div className="flex items-center gap-6 text-sm">
+              <div>
+                <span className="text-muted-foreground">Codici:</span>{' '}
+                <span className="font-medium">{batch.used_codes}/{batch.total_codes} usati</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Scadenza:</span>{' '}
+                <span className="font-medium">{expiresLabel}</span>
+              </div>
+            </div>
           </div>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="bg-muted/30 p-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm">
+                  {batch.note && (
+                    <p className="text-muted-foreground">Nota: {batch.note}</p>
+                  )}
+                </div>
+                <Button variant="outline" size="sm" onClick={exportCSV}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Esporta CSV
+                </Button>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Codice</TableHead>
+                    <TableHead>Stato</TableHead>
+                    <TableHead>Destinatario</TableHead>
+                    <TableHead>Usato da</TableHead>
+                    <TableHead>Data uso</TableHead>
+                    <TableHead>Fatturato</TableHead>
+                    <TableHead>Fatt. a</TableHead>
+                    <TableHead className="w-[100px]">Azioni</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {codes.map((code) => {
+                    const status = getCodeStatus(code)
+                    return (
+                      <TableRow key={code.id}>
+                        <TableCell className="font-mono">{code.code}</TableCell>
+                        <TableCell>
+                          <Badge variant={status.variant}>{status.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {code.recipient_name || code.recipient_email ? (
+                            <div>
+                              {code.recipient_name && <div className="font-medium">{code.recipient_name}</div>}
+                              {code.recipient_email && <div className="text-muted-foreground text-xs">{code.recipient_email}</div>}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{code.used_by_name || '-'}</TableCell>
+                        <TableCell>{formatDate(code.used_at)}</TableCell>
+                        <TableCell>
+                          {code.invoiced ? (
+                            <Badge variant="default">Si</Badge>
+                          ) : (
+                            <Badge variant="outline">No</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{code.invoiced_to || '-'}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            {!code.used_at && !code.revoked_at && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => openRecipientDialog(code, e)}
+                                title="Imposta destinatario"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={!code.recipient_email}
+                              onClick={() => window.open(buildMailto(code), '_blank')}
+                              title={code.recipient_email ? 'Invia per email' : 'Aggiungi email destinatario prima'}
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Dialog destinatario */}
+      <Dialog open={!!recipientDialogCode} onOpenChange={(open) => { if (!open) setRecipientDialogCode(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Imposta Destinatario</DialogTitle>
+            <DialogDescription>
+              Associa un nome e un'email al codice <span className="font-mono">{recipientDialogCode?.code}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="p-recipient-name">Nome</Label>
+              <Input
+                id="p-recipient-name"
+                placeholder="es. Mario Rossi"
+                value={recipientName}
+                onChange={(e) => setRecipientName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="p-recipient-email">Email</Label>
+              <Input
+                id="p-recipient-email"
+                type="email"
+                placeholder="es. mario@esempio.it"
+                value={recipientEmail}
+                onChange={(e) => setRecipientEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveRecipient() }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRecipientDialogCode(null)}>Annulla</Button>
+            <Button onClick={handleSaveRecipient} disabled={savingRecipient}>
+              {savingRecipient ? 'Salvataggio...' : 'Salva'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 

@@ -10,6 +10,8 @@ export interface RegistrationCode {
   used_by_email: string | null
   used_by_name: string | null
   revoked_at: string | null
+  recipient_name: string | null
+  recipient_email: string | null
   invoiced: boolean
   invoiced_at: string | null
   invoiced_to: string | null

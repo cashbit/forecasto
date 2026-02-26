@@ -18,6 +18,8 @@ class PartnerCodeResponse(BaseModel):
     used_by_name: str | None = None
     used_by_email: str | None = None
     revoked_at: datetime | None = None
+    recipient_name: str | None = None
+    recipient_email: str | None = None
     invoiced: bool = False
     invoiced_to: str | None = None
 

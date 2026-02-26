@@ -68,6 +68,10 @@ class RegistrationCode(Base, UUIDMixin):
     )
     revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    # Recipient fields
+    recipient_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    recipient_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
     # Billing fields
     invoiced: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     invoiced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

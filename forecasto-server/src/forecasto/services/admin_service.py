@@ -189,6 +189,8 @@ class AdminService:
                     used_by_email=used_by_email,
                     used_by_name=used_by_name,
                     revoked_at=code.revoked_at,
+                    recipient_name=code.recipient_name,
+                    recipient_email=code.recipient_email,
                     invoiced=code.invoiced,
                     invoiced_at=code.invoiced_at,
                     invoiced_to=code.invoiced_to,
@@ -284,6 +286,8 @@ class AdminService:
                     used_by_email=used_by_email,
                     used_by_name=used_by_name,
                     revoked_at=code.revoked_at,
+                    recipient_name=code.recipient_name,
+                    recipient_email=code.recipient_email,
                     invoiced=code.invoiced,
                     invoiced_at=code.invoiced_at,
                     invoiced_to=code.invoiced_to,
@@ -325,6 +329,8 @@ class AdminService:
             used_by_email=used_by_email,
             used_by_name=used_by_name,
             revoked_at=code.revoked_at,
+            recipient_name=code.recipient_name,
+            recipient_email=code.recipient_email,
             invoiced=code.invoiced,
             invoiced_at=code.invoiced_at,
             invoiced_to=code.invoiced_to,
@@ -356,6 +362,39 @@ class AdminService:
             used_at=code.used_at,
             used_by_id=code.used_by_id,
             revoked_at=code.revoked_at,
+        )
+
+    async def update_code_recipient(
+        self, code_id: str, recipient_name: str | None, recipient_email: str | None
+    ) -> RegistrationCodeResponse:
+        """Update recipient name and email for a registration code."""
+        result = await self.db.execute(
+            select(RegistrationCode).where(RegistrationCode.id == code_id)
+        )
+        code = result.scalar_one_or_none()
+        if not code:
+            raise NotFoundException(f"Code {code_id} not found")
+
+        code.recipient_name = recipient_name
+        code.recipient_email = recipient_email
+        await self.db.flush()
+
+        return RegistrationCodeResponse(
+            id=code.id,
+            code=code.code,
+            created_at=code.created_at,
+            expires_at=code.expires_at,
+            used_at=code.used_at,
+            used_by_id=code.used_by_id,
+            revoked_at=code.revoked_at,
+            recipient_name=code.recipient_name,
+            recipient_email=code.recipient_email,
+            invoiced=code.invoiced,
+            invoiced_at=code.invoiced_at,
+            invoiced_to=code.invoiced_to,
+            invoice_note=code.invoice_note,
+            partner_fee_recognized=code.partner_fee_recognized,
+            partner_fee_recognized_at=code.partner_fee_recognized_at,
         )
 
     async def validate_registration_code(self, code_str: str) -> RegistrationCode:

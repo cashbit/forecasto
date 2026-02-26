@@ -36,6 +36,8 @@ class RegistrationCodeResponse(BaseModel):
     used_by_email: str | None = None
     used_by_name: str | None = None
     revoked_at: datetime | None = None
+    recipient_name: str | None = None
+    recipient_email: str | None = None
     invoiced: bool = False
     invoiced_at: datetime | None = None
     invoiced_to: str | None = None
@@ -44,6 +46,13 @@ class RegistrationCodeResponse(BaseModel):
     partner_fee_recognized_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+class UpdateCodeRecipientRequest(BaseModel):
+    """Request to update recipient info on a registration code."""
+
+    recipient_name: str | None = None
+    recipient_email: str | None = None
 
 
 class BatchResponse(BaseModel):

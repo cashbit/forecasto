@@ -28,6 +28,7 @@ from forecasto.schemas.admin import (
     SetPartnerRequest,
     SetPartnerTypeRequest,
     UpdateBatchRequest,
+    UpdateCodeRecipientRequest,
     UserFilter,
     ValidateCodeRequest,
     ValidateCodeResponse,
@@ -120,6 +121,19 @@ async def revoke_code(
     """Revoke a registration code."""
     service = AdminService(db)
     code = await service.revoke_code(code_id)
+    return {"success": True, "code": code}
+
+
+@router.patch("/registration-codes/{code_id}/recipient", response_model=dict)
+async def update_code_recipient(
+    code_id: str,
+    data: UpdateCodeRecipientRequest,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Update recipient name and email for a registration code."""
+    service = AdminService(db)
+    code = await service.update_code_recipient(code_id, data.recipient_name, data.recipient_email)
     return {"success": True, "code": code}
 
 

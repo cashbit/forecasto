@@ -40,7 +40,7 @@ import {
 import { adminApi } from '@/api/admin'
 import { PartnerCombobox } from '@/components/admin/PartnerCombobox'
 import type { AdminUser, RegistrationCode, RegistrationCodeBatch, RegistrationCodeBatchWithCodes } from '@/types/admin'
-import { Plus, ChevronDown, ChevronRight, Copy, X, Download, Handshake, Pencil, Trash2 } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Copy, X, Download, Handshake, Pencil, Trash2, Mail } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 const createBatchSchema = z.object({
@@ -80,6 +80,10 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
   const [renaming, setRenaming] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [recipientDialogCode, setRecipientDialogCode] = useState<RegistrationCode | null>(null)
+  const [recipientName, setRecipientName] = useState('')
+  const [recipientEmail, setRecipientEmail] = useState('')
+  const [savingRecipient, setSavingRecipient] = useState(false)
 
   const loadDetails = async () => {
     if (batchDetails) return
@@ -170,6 +174,45 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
     } finally {
       setAssigning(false)
     }
+  }
+
+  const openRecipientDialog = (code: RegistrationCode, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setRecipientDialogCode(code)
+    setRecipientName(code.recipient_name || '')
+    setRecipientEmail(code.recipient_email || '')
+  }
+
+  const handleSaveRecipient = async () => {
+    if (!recipientDialogCode) return
+    setSavingRecipient(true)
+    try {
+      const updated = await adminApi.updateCodeRecipient(
+        recipientDialogCode.id,
+        recipientName.trim() || null,
+        recipientEmail.trim() || null,
+      )
+      setBatchDetails((prev) =>
+        prev
+          ? { ...prev, codes: prev.codes.map((c) => (c.id === updated.id ? updated : c)) }
+          : prev,
+      )
+      setRecipientDialogCode(null)
+      toast({ title: 'Destinatario aggiornato' })
+    } catch {
+      toast({ title: 'Errore durante il salvataggio', variant: 'destructive' })
+    } finally {
+      setSavingRecipient(false)
+    }
+  }
+
+  const buildMailto = (code: RegistrationCode): string => {
+    const email = code.recipient_email || ''
+    const subject = encodeURIComponent('Il tuo codice invito Forecasto')
+    const name = code.recipient_name ? `Ciao ${code.recipient_name},` : 'Ciao,'
+    const expires = code.expires_at ? `%0AScadenza: ${formatDate(code.expires_at)}.` : ''
+    const body = `${encodeURIComponent(name)}%0A%0ATi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.%0A%0ACodice: ${code.code}%0ALink di registrazione: https://app.forecasto.it/register${expires}`
+    return `mailto:${email}?subject=${subject}&body=${body}`
   }
 
   const exportCSV = () => {
@@ -280,12 +323,13 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
                   <TableRow>
                     <TableHead>Codice</TableHead>
                     <TableHead>Stato</TableHead>
+                    <TableHead>Destinatario</TableHead>
                     <TableHead>Usato da</TableHead>
                     <TableHead>Data uso</TableHead>
                     <TableHead>Fatturato</TableHead>
                     <TableHead>Fatt. a</TableHead>
                     <TableHead>Fee</TableHead>
-                    <TableHead className="w-[100px]">Azioni</TableHead>
+                    <TableHead className="w-[120px]">Azioni</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -296,6 +340,16 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
                         <TableCell className="font-mono">{code.code}</TableCell>
                         <TableCell>
                           <Badge variant={status.variant}>{status.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {code.recipient_name || code.recipient_email ? (
+                            <div>
+                              {code.recipient_name && <div className="font-medium">{code.recipient_name}</div>}
+                              {code.recipient_email && <div className="text-muted-foreground text-xs">{code.recipient_email}</div>}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                         <TableCell>{code.used_by_email || '-'}</TableCell>
                         <TableCell>{formatDate(code.used_at)}</TableCell>
@@ -332,6 +386,25 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
                               <Button
                                 variant="ghost"
                                 size="icon"
+                                onClick={(e) => openRecipientDialog(code, e)}
+                                title="Imposta destinatario"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={!code.recipient_email}
+                              onClick={() => window.open(buildMailto(code), '_blank')}
+                              title={code.recipient_email ? 'Invia per email' : 'Aggiungi email destinatario prima'}
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                            {!code.used_at && !code.revoked_at && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => revokeCode(code.id)}
                                 title="Revoca codice"
                               >
@@ -349,6 +422,46 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
           ) : null}
         </div>
       </CollapsibleContent>
+
+      {/* Dialog destinatario */}
+      <Dialog open={!!recipientDialogCode} onOpenChange={(open) => { if (!open) setRecipientDialogCode(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Imposta Destinatario</DialogTitle>
+            <DialogDescription>
+              Associa un nome e un'email al codice <span className="font-mono">{recipientDialogCode?.code}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="recipient-name">Nome</Label>
+              <Input
+                id="recipient-name"
+                placeholder="es. Mario Rossi"
+                value={recipientName}
+                onChange={(e) => setRecipientName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="recipient-email">Email</Label>
+              <Input
+                id="recipient-email"
+                type="email"
+                placeholder="es. mario@esempio.it"
+                value={recipientEmail}
+                onChange={(e) => setRecipientEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSaveRecipient() }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRecipientDialogCode(null)}>Annulla</Button>
+            <Button onClick={handleSaveRecipient} disabled={savingRecipient}>
+              {savingRecipient ? 'Salvataggio...' : 'Salva'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog rinomina */}
       <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
