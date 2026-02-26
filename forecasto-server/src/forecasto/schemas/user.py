@@ -32,6 +32,13 @@ class UserUpdate(BaseModel):
     name: str | None = None
     notification_preferences: dict | None = None
 
+
+class PasswordChange(BaseModel):
+    """Password change request."""
+
+    current_password: str
+    new_password: str
+
 class UserResponse(BaseModel):
     """User profile response."""
 

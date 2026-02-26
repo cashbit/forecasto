@@ -14,7 +14,7 @@ from forecasto.dependencies import get_current_user
 from forecasto.exceptions import NotFoundException
 from forecasto.models.user import User
 from forecasto.schemas.common import SuccessResponse
-from forecasto.schemas.user import UserCreate, UserResponse, UserUpdate
+from forecasto.schemas.user import UserCreate, UserResponse, UserUpdate, PasswordChange
 from forecasto.services.auth_service import AuthService
 from forecasto.services.user_service import UserService
 
@@ -50,6 +50,18 @@ async def update_profile(
     service = UserService(db)
     user = await service.update_user(current_user, data)
     return UserResponse.model_validate(user)
+
+
+@router.post("/me/password", response_model=SuccessResponse)
+async def change_password(
+    data: PasswordChange,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Change current user password."""
+    service = UserService(db)
+    await service.change_password(current_user, data.current_password, data.new_password)
+    return SuccessResponse(success=True)
 
 
 @router.get("/lookup/{invite_code}", response_model=dict)

@@ -14,11 +14,13 @@ import { BankAccountsTab } from '@/components/settings/BankAccountsTab'
 import { PartnershipTab } from '@/components/settings/PartnershipTab'
 import { WorkspaceBankAccountsSection } from '@/components/settings/WorkspaceBankAccountsSection'
 import { toast } from '@/hooks/useToast'
+import { authApi } from '@/api/auth'
 
 export function SettingsPage() {
-  const { user } = useAuthStore()
+  const { user, fetchUser } = useAuthStore()
   const { workspaces, selectedWorkspaceIds, updateWorkspace } = useWorkspaceStore()
   const [isLoading, setIsLoading] = useState(false)
+  const [isPasswordLoading, setIsPasswordLoading] = useState(false)
   const [membersDialogOpen, setMembersDialogOpen] = useState(false)
 
   // Use the first selected workspace for settings
@@ -29,6 +31,14 @@ export function SettingsPage() {
     defaultValues: {
       name: user?.name || '',
       email: user?.email || '',
+    },
+  })
+
+  const passwordForm = useForm({
+    defaultValues: {
+      current_password: '',
+      new_password: '',
+      confirm_password: '',
     },
   })
 
@@ -51,10 +61,34 @@ export function SettingsPage() {
     }
   }, [primaryWorkspace?.id, primaryWorkspace?.name, primaryWorkspace?.description, primaryWorkspace?.settings?.vat_number])
 
-  const handleProfileSave = async () => {
+  const handleProfileSave = async (data: { name: string; email: string }) => {
     setIsLoading(true)
-    // TODO: Implement profile update
-    setIsLoading(false)
+    try {
+      await authApi.updateProfile({ name: data.name })
+      await fetchUser()
+      toast({ title: 'Profilo aggiornato', variant: 'success' })
+    } catch {
+      toast({ title: 'Errore durante il salvataggio', variant: 'destructive' })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handlePasswordChange = async (data: { current_password: string; new_password: string; confirm_password: string }) => {
+    if (data.new_password !== data.confirm_password) {
+      toast({ title: 'Le password non coincidono', variant: 'destructive' })
+      return
+    }
+    setIsPasswordLoading(true)
+    try {
+      await authApi.changePassword({ current_password: data.current_password, new_password: data.new_password })
+      passwordForm.reset()
+      toast({ title: 'Password aggiornata', variant: 'success' })
+    } catch {
+      toast({ title: 'Password attuale non corretta', variant: 'destructive' })
+    } finally {
+      setIsPasswordLoading(false)
+    }
   }
 
   const handleWorkspaceSave = async (data: { name: string; description: string; vat_number: string }) => {
@@ -266,15 +300,23 @@ export function SettingsPage() {
               <CardDescription>Gestisci password e autenticazione</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Cambia Password</Label>
+              <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)} className="space-y-4">
                 <div className="space-y-2">
-                  <Input type="password" placeholder="Password attuale" />
-                  <Input type="password" placeholder="Nuova password" />
-                  <Input type="password" placeholder="Conferma nuova password" />
+                  <Label htmlFor="current_password">Password attuale</Label>
+                  <Input id="current_password" type="password" {...passwordForm.register('current_password', { required: true })} />
                 </div>
-                <Button>Aggiorna Password</Button>
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new_password">Nuova password</Label>
+                  <Input id="new_password" type="password" {...passwordForm.register('new_password', { required: true, minLength: 6 })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirm_password">Conferma nuova password</Label>
+                  <Input id="confirm_password" type="password" {...passwordForm.register('confirm_password', { required: true })} />
+                </div>
+                <Button type="submit" disabled={isPasswordLoading}>
+                  {isPasswordLoading ? 'Aggiornamento...' : 'Aggiorna Password'}
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>
