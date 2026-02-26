@@ -553,6 +553,32 @@ class AdminService:
 
         return await self.get_batch(batch_id)
 
+    async def update_batch(self, batch_id: str, name: str) -> BatchWithCodesResponse:
+        """Rename a batch."""
+        result = await self.db.execute(
+            select(RegistrationCodeBatch).where(RegistrationCodeBatch.id == batch_id)
+        )
+        batch = result.scalar_one_or_none()
+        if not batch:
+            raise NotFoundException(f"Batch {batch_id} not found")
+
+        batch.name = name
+        await self.db.flush()
+
+        return await self.get_batch(batch_id)
+
+    async def delete_batch(self, batch_id: str) -> None:
+        """Delete a batch and all its codes (cascade)."""
+        result = await self.db.execute(
+            select(RegistrationCodeBatch).where(RegistrationCodeBatch.id == batch_id)
+        )
+        batch = result.scalar_one_or_none()
+        if not batch:
+            raise NotFoundException(f"Batch {batch_id} not found")
+
+        await self.db.delete(batch)
+        await self.db.flush()
+
     async def list_partner_batches(self, partner_id: str) -> list[PartnerBatchResponse]:
         """List batches assigned to a partner with codes and statistics."""
         result = await self.db.execute(

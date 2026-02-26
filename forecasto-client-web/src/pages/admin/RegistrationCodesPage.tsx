@@ -40,7 +40,7 @@ import {
 import { adminApi } from '@/api/admin'
 import { PartnerCombobox } from '@/components/admin/PartnerCombobox'
 import type { AdminUser, RegistrationCode, RegistrationCodeBatch, RegistrationCodeBatchWithCodes } from '@/types/admin'
-import { Plus, ChevronDown, ChevronRight, Copy, X, Download, Handshake } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Copy, X, Download, Handshake, Pencil, Trash2 } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 const createBatchSchema = z.object({
@@ -75,6 +75,11 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
   const [isOpen, setIsOpen] = useState(false)
   const [batchDetails, setBatchDetails] = useState<RegistrationCodeBatchWithCodes | null>(null)
   const [loading, setLoading] = useState(false)
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false)
+  const [newName, setNewName] = useState(batch.name)
+  const [renaming, setRenaming] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const loadDetails = async () => {
     if (batchDetails) return
@@ -116,6 +121,35 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
         description: 'Impossibile revocare il codice',
         variant: 'destructive',
       })
+    }
+  }
+
+  const handleRename = async () => {
+    if (!newName.trim()) return
+    setRenaming(true)
+    try {
+      await adminApi.updateBatch(batch.id, newName.trim())
+      toast({ title: 'Batch rinominato' })
+      setRenameDialogOpen(false)
+      onRefresh()
+    } catch {
+      toast({ title: 'Errore durante la rinomina', variant: 'destructive' })
+    } finally {
+      setRenaming(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      await adminApi.deleteBatch(batch.id)
+      toast({ title: 'Batch eliminato' })
+      setDeleteDialogOpen(false)
+      onRefresh()
+    } catch {
+      toast({ title: 'Errore durante l\'eliminazione', variant: 'destructive' })
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -172,7 +206,27 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
           <div className="flex items-center gap-3">
             {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             <div>
-              <p className="font-medium">{batch.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{batch.name}</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  title="Rinomina batch"
+                  onClick={(e) => { e.stopPropagation(); setNewName(batch.name); setRenameDialogOpen(true) }}
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-destructive hover:text-destructive"
+                  title="Elimina batch"
+                  onClick={(e) => { e.stopPropagation(); setDeleteDialogOpen(true) }}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
                 Creato il {formatDate(batch.created_at)}
               </p>
@@ -295,6 +349,52 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
           ) : null}
         </div>
       </CollapsibleContent>
+
+      {/* Dialog rinomina */}
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rinomina Batch</DialogTitle>
+            <DialogDescription>
+              Inserisci il nuovo nome per il batch "{batch.name}"
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-2">
+            <Label htmlFor="rename-input">Nome batch</Label>
+            <Input
+              id="rename-input"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleRename() }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>Annulla</Button>
+            <Button onClick={handleRename} disabled={renaming || !newName.trim()}>
+              {renaming ? 'Salvataggio...' : 'Salva'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog conferma eliminazione */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Elimina Batch</DialogTitle>
+            <DialogDescription>
+              Sei sicuro di voler eliminare il batch "{batch.name}"? Verranno eliminati tutti i {batch.total_codes} codici, compresi quelli già assegnati. Questa operazione non è reversibile.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Annulla</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Eliminazione...' : 'Elimina'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
         <DialogContent>

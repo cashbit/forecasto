@@ -27,6 +27,7 @@ from forecasto.schemas.admin import (
     RegistrationCodeResponse,
     SetPartnerRequest,
     SetPartnerTypeRequest,
+    UpdateBatchRequest,
     UserFilter,
     ValidateCodeRequest,
     ValidateCodeResponse,
@@ -221,6 +222,31 @@ async def set_partner(
     service = AdminService(db)
     user = await service.set_partner(user_id, data.is_partner, admin_user)
     return {"success": True, "user": user}
+
+
+@router.patch("/registration-codes/batches/{batch_id}", response_model=dict)
+async def update_batch(
+    batch_id: str,
+    data: UpdateBatchRequest,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Rename a batch."""
+    service = AdminService(db)
+    batch = await service.update_batch(batch_id, data.name)
+    return {"success": True, "batch": batch}
+
+
+@router.delete("/registration-codes/batches/{batch_id}", response_model=dict)
+async def delete_batch(
+    batch_id: str,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Delete a batch and all its codes."""
+    service = AdminService(db)
+    await service.delete_batch(batch_id)
+    return {"success": True}
 
 
 @router.patch("/registration-codes/batches/{batch_id}/assign-partner", response_model=dict)

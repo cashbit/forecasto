@@ -152,6 +152,15 @@ export const adminApi = {
     return response.data.user
   },
 
+  updateBatch: async (batchId: string, name: string): Promise<RegistrationCodeBatchWithCodes> => {
+    const response = await apiClient.patch<BatchResponse>(`/admin/registration-codes/batches/${batchId}`, { name })
+    return response.data.batch
+  },
+
+  deleteBatch: async (batchId: string): Promise<void> => {
+    await apiClient.delete(`/admin/registration-codes/batches/${batchId}`)
+  },
+
   assignBatchToPartner: async (batchId: string, partnerId: string): Promise<RegistrationCodeBatchWithCodes> => {
     const response = await apiClient.patch<BatchResponse>(`/admin/registration-codes/batches/${batchId}/assign-partner`, { partner_id: partnerId })
     return response.data.batch

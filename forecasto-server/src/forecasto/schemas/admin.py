@@ -18,6 +18,12 @@ class CreateBatchRequest(BaseModel):
     partner_id: str | None = None
 
 
+class UpdateBatchRequest(BaseModel):
+    """Request to update a batch name."""
+
+    name: str = Field(..., min_length=1, max_length=100)
+
+
 class RegistrationCodeResponse(BaseModel):
     """Single registration code response."""
 
