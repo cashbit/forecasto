@@ -90,6 +90,17 @@ function PartnerBatchRow({ batch }: { batch: PartnerBatch }) {
     return `mailto:${email}?subject=${subject}&body=${body}`
   }
 
+  const buildGmailUrl = (code: PartnerCode): string => {
+    const to = encodeURIComponent(code.recipient_email || '')
+    const su = encodeURIComponent('Il tuo codice invito Forecasto')
+    const name = code.recipient_name ? `Ciao ${code.recipient_name},` : 'Ciao,'
+    const expires = code.expires_at ? `\nScadenza: ${formatDate(code.expires_at)}.` : ''
+    const body = encodeURIComponent(
+      `${name}\n\nTi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.\n\nCodice: ${code.code}\nLink di registrazione: https://app.forecasto.it/register${expires}`
+    )
+    return `https://mail.google.com/mail/u/0/?fs=1&tf=cm&to=${to}&su=${su}&body=${body}`
+  }
+
   const exportCSV = () => {
     const header = 'Codice,Stato,Destinatario,Email Destinatario,Usato da,Email,Data uso\n'
     const rows = codes.map((code) => {
@@ -215,9 +226,20 @@ function PartnerBatchRow({ batch }: { batch: PartnerBatch }) {
                               size="icon"
                               disabled={!code.recipient_email}
                               onClick={() => window.open(buildMailto(code), '_blank')}
-                              title={code.recipient_email ? 'Invia per email' : 'Aggiungi email destinatario prima'}
+                              title={code.recipient_email ? 'Invia per email (client predefinito)' : 'Aggiungi email destinatario prima'}
                             >
                               <Mail className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={!code.recipient_email}
+                              onClick={() => window.open(buildGmailUrl(code), '_blank')}
+                              title={code.recipient_email ? 'Apri in Gmail' : 'Aggiungi email destinatario prima'}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.910 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/>
+                              </svg>
                             </Button>
                           </div>
                         </TableCell>
