@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.exceptions import ForbiddenException, NotFoundException
@@ -151,7 +151,9 @@ class RecordService:
         filters: RecordFilter,
         member: WorkspaceMember | None = None,
         current_user_id: str | None = None,
-    ) -> list[Record]:
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> tuple[list[Record], int]:
         """List records with filters and permission-based filtering."""
         query = select(Record).where(Record.workspace_id == workspace_id)
 
@@ -195,6 +197,16 @@ class RecordService:
 
         query = query.order_by(Record.date_cashflow, Record.created_at)
 
+        # COUNT total matching records (before pagination)
+        count_result = await self.db.execute(select(func.count()).select_from(query.subquery()))
+        total = count_result.scalar_one()
+
+        # Apply pagination at SQL level
+        if offset:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+
         result = await self.db.execute(query)
         records = list(result.scalars().all())
 
@@ -213,7 +225,7 @@ class RecordService:
                     filtered_records.append(record)
             records = filtered_records
 
-        return records
+        return records, total
 
     async def update_record(
         self,

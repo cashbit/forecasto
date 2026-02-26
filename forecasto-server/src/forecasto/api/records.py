@@ -50,8 +50,10 @@ async def list_records(
     text_filter_field: str | None = Query(None),
     project_code: str | None = Query(None),
     bank_account_id: str | None = Query(None),
+    limit: int | None = Query(None, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
 ):
-    """List records with filters."""
+    """List records with filters and optional pagination."""
     workspace, member = workspace_data
 
     # Check area permission if area specified
@@ -72,8 +74,9 @@ async def list_records(
     )
 
     # Pass member and current_user_id for granular permission filtering
-    records = await service.list_records(
-        workspace_id, filters, member=member, current_user_id=current_user.id
+    records, total = await service.list_records(
+        workspace_id, filters, member=member, current_user_id=current_user.id,
+        limit=limit, offset=offset,
     )
 
     # Filter by readable areas if no specific area
@@ -83,11 +86,16 @@ async def list_records(
         ]
         records = [r for r in records if r.area in readable_areas]
 
-    return {
+    result = {
         "success": True,
         "records": [_record_to_response(r, getattr(r, "_draft", False)) for r in records],
-        "total_records": len(records),
+        "total_records": total,
     }
+    if limit is not None:
+        result["limit"] = limit
+        result["offset"] = offset
+        result["has_more"] = (offset + len(records)) < total
+    return result
 
 @router.post("/{workspace_id}/records", response_model=dict, status_code=201)
 async def create_record(
