@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -26,6 +26,7 @@ type FormData = z.infer<typeof schema>
 
 export function RegisterPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { register: registerUser, isLoading } = useAuthStore()
   const [error, setError] = useState('')
 
@@ -35,6 +36,9 @@ export function RegisterPage() {
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      registrationCode: searchParams.get('code') ?? '',
+    },
   })
 
   const onSubmit = async (data: FormData) => {

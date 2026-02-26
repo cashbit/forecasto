@@ -86,7 +86,7 @@ function PartnerBatchRow({ batch }: { batch: PartnerBatch }) {
     const subject = encodeURIComponent('Il tuo codice invito Forecasto')
     const name = code.recipient_name ? `Ciao ${code.recipient_name},` : 'Ciao,'
     const expires = code.expires_at ? `%0AScadenza: ${formatDate(code.expires_at)}.` : ''
-    const body = `${encodeURIComponent(name)}%0A%0ATi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.%0A%0ACodice: ${code.code}%0ALink di registrazione: https://app.forecasto.it/register${expires}`
+    const body = `${encodeURIComponent(name)}%0A%0ATi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.%0A%0ACodice: ${code.code}%0ALink di registrazione: https://app.forecasto.it/register?code=${encodeURIComponent(code.code)}${expires}`
     return `mailto:${email}?subject=${subject}&body=${body}`
   }
 
@@ -96,7 +96,7 @@ function PartnerBatchRow({ batch }: { batch: PartnerBatch }) {
     const name = code.recipient_name ? `Ciao ${code.recipient_name},` : 'Ciao,'
     const expires = code.expires_at ? `\nScadenza: ${formatDate(code.expires_at)}.` : ''
     const body = encodeURIComponent(
-      `${name}\n\nTi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.\n\nCodice: ${code.code}\nLink di registrazione: https://app.forecasto.it/register${expires}`
+      `${name}\n\nTi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.\n\nCodice: ${code.code}\nLink di registrazione: https://app.forecasto.it/register?code=${encodeURIComponent(code.code)}${expires}`
     )
     return `https://mail.google.com/mail/u/0/?fs=1&tf=cm&to=${to}&su=${su}&body=${body}`
   }
