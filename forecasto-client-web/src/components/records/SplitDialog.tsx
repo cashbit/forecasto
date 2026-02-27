@@ -24,8 +24,10 @@ import type { Record, RecordCreate } from '@/types/record'
 
 interface Installment {
   date: string
-  amount: number
-  total: number
+  splitPercent: number  // % dell'imponibile originale (es: 50 per 50%)
+  amount: number        // imponibile assoluto (con segno)
+  vatPercent: number    // aliquota IVA % (es: 22)
+  total: number         // totale calcolato
 }
 
 interface SplitDialogProps {
@@ -50,9 +52,16 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
   useEffect(() => {
     if (!record) return
 
+    const absOriginalAmount = Math.abs(Number(record.amount))
+    const absOriginalTotal  = Math.abs(Number(record.total))
+    const recordVatPercent = absOriginalAmount > 0
+      ? Math.round(((absOriginalTotal - absOriginalAmount) / absOriginalAmount) * 10000) / 100
+      : 0
+
     const baseDate = new Date(record.date_cashflow)
     const baseAmount = isClone ? Number(record.amount) : Number(record.amount) / numInstallments
-    const baseTotal = isClone ? Number(record.total) : Number(record.total) / numInstallments
+    const baseTotal  = isClone ? Number(record.total)  : Number(record.total)  / numInstallments
+    const baseSplitPercent = isClone ? 100 : 100 / numInstallments
 
     const newInstallments: Installment[] = []
     for (let i = 0; i < numInstallments; i++) {
@@ -68,8 +77,10 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
 
       newInstallments.push({
         date: date.toISOString().split('T')[0],
+        splitPercent: Math.round(baseSplitPercent * 100) / 100,
         amount: Math.round(baseAmount * 100) / 100,
-        total: Math.round(baseTotal * 100) / 100,
+        total:  Math.round(baseTotal  * 100) / 100,
+        vatPercent: recordVatPercent,
       })
     }
 
@@ -77,24 +88,53 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
   }, [record, numInstallments, intervalValue, intervalUnit, isClone])
 
   // Calculate totals and delta
-  const { totalAmount, totalTotal, deltaAmount, deltaTotal } = useMemo(() => {
+  const { totalAmount, totalTotal, totalSplitPercent, deltaAmount, deltaTotal } = useMemo(() => {
     const totalAmount = installments.reduce((sum, inst) => sum + inst.amount, 0)
-    const totalTotal = installments.reduce((sum, inst) => sum + inst.total, 0)
+    const totalTotal  = installments.reduce((sum, inst) => sum + inst.total,  0)
+    const totalSplitPercent = installments.reduce((sum, inst) => sum + inst.splitPercent, 0)
     const originalAmount = record ? Number(record.amount) : 0
-    const originalTotal = record ? Number(record.total) : 0
+    const originalTotal  = record ? Number(record.total)  : 0
 
     return {
       totalAmount,
       totalTotal,
+      totalSplitPercent,
       deltaAmount: totalAmount - originalAmount,
-      deltaTotal: totalTotal - originalTotal,
+      deltaTotal:  totalTotal  - originalTotal,
     }
   }, [installments, record])
 
-  const updateInstallment = (index: number, field: keyof Installment, value: string | number) => {
+  const updateInstallment = (index: number, field: 'date' | 'splitPercent' | 'amount' | 'vatPercent' | 'total', value: string | number) => {
+    const origAbs = Math.abs(Number(record!.amount))
     setInstallments(prev => prev.map((inst, i) => {
       if (i !== index) return inst
-      return { ...inst, [field]: field === 'date' ? value : Number(value) }
+      if (field === 'date') return { ...inst, date: value as string }
+      if (field === 'splitPercent') {
+        const sp = Number(value)
+        const sign = Number(record!.amount) < 0 ? -1 : 1
+        const a = Math.round(origAbs * sp / 100 * 100) / 100 * sign
+        const t = Math.round(a * (1 + inst.vatPercent / 100) * 100) / 100
+        return { ...inst, splitPercent: sp, amount: a, total: t }
+      }
+      if (field === 'amount') {
+        const a = Number(value)
+        const sp = origAbs > 0 ? Math.round((Math.abs(a) / origAbs) * 10000) / 100 : 0
+        const t = Math.round(a * (1 + inst.vatPercent / 100) * 100) / 100
+        return { ...inst, amount: a, splitPercent: sp, total: t }
+      }
+      if (field === 'vatPercent') {
+        const vp = Number(value)
+        const t = Math.round(inst.amount * (1 + vp / 100) * 100) / 100
+        return { ...inst, vatPercent: vp, total: t }
+      }
+      if (field === 'total') {
+        const t = Number(value)
+        const vp = inst.amount !== 0
+          ? Math.round(((t - inst.amount) / inst.amount) * 10000) / 100
+          : 0
+        return { ...inst, total: t, vatPercent: vp }
+      }
+      return inst
     }))
   }
 
@@ -114,7 +154,7 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
         owner: record.owner,
         nextaction: record.nextaction,
         amount: inst.amount.toString(),
-        vat: record.vat,
+        vat: Math.abs(inst.total - inst.amount).toFixed(2),
         total: inst.total.toString(),
         stage: record.stage,
         transaction_id: record.transaction_id ? `${record.transaction_id}-${index + 1}` : `${isClone ? 'CLONE' : 'SPLIT'}-${Date.now()}-${index + 1}`,
@@ -131,9 +171,15 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
 
   if (!record) return null
 
+  const absOriginalAmount = Math.abs(Number(record.amount))
+  const absOriginalTotal  = Math.abs(Number(record.total))
+  const recordVatPercent = absOriginalAmount > 0
+    ? Math.round(((absOriginalTotal - absOriginalAmount) / absOriginalAmount) * 10000) / 100
+    : 0
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isClone ? <Copy className="h-5 w-5" /> : <Split className="h-5 w-5" />}
@@ -214,6 +260,10 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
                 <AmountDisplay amount={record.amount} className="font-medium" />
               </div>
               <div>
+                <span className="text-sm text-muted-foreground">IVA: </span>
+                <span className="font-medium">{recordVatPercent.toFixed(0)}%</span>
+              </div>
+              <div>
                 <span className="text-sm text-muted-foreground">Totale: </span>
                 <AmountDisplay amount={record.total} className="font-medium" />
               </div>
@@ -221,20 +271,22 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
           </div>
 
           {/* Installments table */}
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-lg overflow-hidden overflow-x-auto">
             <table className="w-full">
               <thead className="bg-muted">
                 <tr>
-                  <th className="text-left text-sm font-medium p-3">Rata</th>
-                  <th className="text-left text-sm font-medium p-3">Data Cashflow</th>
-                  <th className="text-right text-sm font-medium p-3">Imponibile</th>
-                  <th className="text-right text-sm font-medium p-3">Totale</th>
+                  <th className="text-left text-sm font-medium p-3 whitespace-nowrap">Rata</th>
+                  <th className="text-left text-sm font-medium p-3 whitespace-nowrap">Data Cashflow</th>
+                  <th className="text-right text-sm font-medium p-3 whitespace-nowrap">%</th>
+                  <th className="text-right text-sm font-medium p-3 whitespace-nowrap">Imponibile</th>
+                  <th className="text-right text-sm font-medium p-3 whitespace-nowrap">% IVA</th>
+                  <th className="text-right text-sm font-medium p-3 whitespace-nowrap">Totale</th>
                 </tr>
               </thead>
               <tbody>
                 {installments.map((inst, index) => (
                   <tr key={index} className="border-t">
-                    <td className="p-3 text-sm font-medium">
+                    <td className="p-3 text-sm font-medium whitespace-nowrap">
                       {index + 1}/{installments.length}
                     </td>
                     <td className="p-3">
@@ -249,9 +301,27 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
                       <Input
                         type="number"
                         step="0.01"
+                        value={inst.splitPercent}
+                        onChange={(e) => updateInstallment(index, 'splitPercent', e.target.value)}
+                        className="w-20 text-right"
+                      />
+                    </td>
+                    <td className="p-3">
+                      <Input
+                        type="number"
+                        step="0.01"
                         value={inst.amount}
                         onChange={(e) => updateInstallment(index, 'amount', e.target.value)}
                         className="w-32 text-right"
+                      />
+                    </td>
+                    <td className="p-3">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={inst.vatPercent}
+                        onChange={(e) => updateInstallment(index, 'vatPercent', e.target.value)}
+                        className="w-16 text-right"
                       />
                     </td>
                     <td className="p-3">
@@ -270,8 +340,14 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
                 <tr>
                   <td className="p-3 text-sm font-medium" colSpan={2}>{isClone ? 'Totale Copie' : 'Totale Rate'}</td>
                   <td className="p-3 text-right">
+                    <span className={cn('text-sm font-medium', Math.abs(totalSplitPercent - 100) > 0.05 ? 'text-amber-600' : '')}>
+                      {totalSplitPercent.toFixed(1)}%
+                    </span>
+                  </td>
+                  <td className="p-3 text-right">
                     <AmountDisplay amount={totalAmount} className="font-medium" />
                   </td>
+                  <td className="p-3" />
                   <td className="p-3 text-right">
                     <AmountDisplay amount={totalTotal} className="font-medium" />
                   </td>
@@ -284,6 +360,7 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
                         Delta rispetto all'originale
                       </span>
                     </td>
+                    <td className="p-3" />
                     <td className="p-3 text-right">
                       <span className={cn(
                         'font-medium',
@@ -292,6 +369,7 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
                         {deltaAmount > 0 ? '+' : ''}{deltaAmount.toFixed(2)} €
                       </span>
                     </td>
+                    <td className="p-3" />
                     <td className="p-3 text-right">
                       <span className={cn(
                         'font-medium',
