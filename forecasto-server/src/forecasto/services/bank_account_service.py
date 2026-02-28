@@ -174,6 +174,19 @@ class BankAccountService:
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
+    async def delete_balance(self, balance_id: str, account_id: str) -> None:
+        """Delete a balance record by ID, ensuring it belongs to the given account."""
+        result = await self.db.execute(
+            select(BankAccountBalance).where(
+                BankAccountBalance.id == balance_id,
+                BankAccountBalance.bank_account_id == account_id,
+            )
+        )
+        balance = result.scalar_one_or_none()
+        if not balance:
+            raise NotFoundException(f"Balance {balance_id} not found for account {account_id}")
+        await self.db.delete(balance)
+
     async def get_balance_at_date(self, account_id: str, date) -> BankAccountBalance | None:
         """Get the balance closest to a specific date."""
         result = await self.db.execute(

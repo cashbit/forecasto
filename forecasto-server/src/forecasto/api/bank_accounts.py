@@ -186,3 +186,23 @@ async def add_balance(
     await db.flush()
     await db.refresh(balance)
     return {"success": True, "balance": BalanceResponse.model_validate(balance)}
+
+@router.delete(
+    "/{workspace_id}/bank-accounts/{account_id}/balances/{balance_id}",
+    response_model=dict,
+)
+async def delete_balance(
+    workspace_id: str,
+    account_id: str,
+    balance_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Delete a balance snapshot."""
+    _, member = workspace_data
+    _require_workspace_owner(member)
+    service = BankAccountService(db)
+    await service.delete_balance(balance_id, account_id)
+    return {"success": True}

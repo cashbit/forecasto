@@ -21,6 +21,7 @@ export interface CashflowEntry {
   outflows: number
   net: number
   running_balance: number
+  balance_snapshot?: number | null  // declared bank balance on this date (triggers reset)
   by_area: {
     budget?: { inflows: number; outflows: number }
     prospect?: { inflows: number; outflows: number }
@@ -77,6 +78,23 @@ export interface BankAccount {
   settings: Record<string, unknown>
   created_at: string
   updated_at: string
+}
+
+export interface BankAccountBalance {
+  id: string
+  bank_account_id: string
+  balance_date: string
+  balance: number
+  source: string
+  recorded_at: string
+  note: string | null
+}
+
+export interface BankAccountBalanceCreate {
+  balance_date: string
+  balance: number
+  source?: string
+  note?: string
 }
 
 export interface BankAccountCreate {

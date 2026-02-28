@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Wallet, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react'
+import { Wallet, TrendingUp, TrendingDown, PiggyBank, Anchor } from 'lucide-react'
 import { startOfMonth, endOfMonth, addMonths, format } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { CashflowChart } from '@/components/cashflow/CashflowChart'
 import { CashflowTable } from '@/components/cashflow/CashflowTable'
 import { CashflowFilters } from '@/components/cashflow/CashflowFilters'
+import { BalanceSnapshotsDialog } from '@/components/cashflow/BalanceSnapshotsDialog'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { AmountDisplay } from '@/components/common/AmountDisplay'
 import { useCashflow } from '@/hooks/useCashflow'
@@ -42,12 +44,32 @@ export function CashflowPage() {
     areas: ['actual', 'orders'],
     group_by: 'day',
   })
+  const [snapshotsOpen, setSnapshotsOpen] = useState(false)
 
   const { cashflow, summary, initialBalance, isLoading } = useCashflow(params)
 
   return (
     <div className="p-6 space-y-4">
-      <CashflowFilters params={params} onChange={setParams} />
+      <div className="flex items-end gap-4">
+        <div className="flex-1">
+          <CashflowFilters params={params} onChange={setParams} />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mb-0 shrink-0"
+          onClick={() => setSnapshotsOpen(true)}
+        >
+          <Anchor className="h-3.5 w-3.5 mr-1.5" />
+          Saldi a Data
+        </Button>
+      </div>
+
+      <BalanceSnapshotsDialog
+        open={snapshotsOpen}
+        onOpenChange={setSnapshotsOpen}
+        cashflowParams={params}
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

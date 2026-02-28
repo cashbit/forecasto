@@ -64,6 +64,7 @@ class CashflowEntry(DecimalAsFloat):
     outflows: Decimal
     net: Decimal
     running_balance: Decimal
+    balance_snapshot: Decimal | None = None  # set when a BankAccountBalance reset occurred on this date
     records: list[CashflowRecordSummary] | None = None
     by_account: dict[str, AccountCashflowEntry] | None = None
 

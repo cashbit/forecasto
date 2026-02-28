@@ -169,7 +169,22 @@ export function CashflowChart({ data, height = 400, bankAccounts }: CashflowChar
           dataKey="running_balance"
           stroke="#2563EB"
           strokeWidth={2}
-          dot={false}
+          dot={(props: { cx: number; cy: number; payload: { balance_snapshot?: number | null } }) => {
+            if (props.payload?.balance_snapshot != null) {
+              return (
+                <circle
+                  key={`dot-${props.cx}-${props.cy}`}
+                  cx={props.cx}
+                  cy={props.cy}
+                  r={5}
+                  fill="#2563EB"
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                />
+              )
+            }
+            return <g key={`dot-${props.cx}-${props.cy}`} />
+          }}
           name="running_balance"
           hide={hiddenLines.has('running_balance')}
         />

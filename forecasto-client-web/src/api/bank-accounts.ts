@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { BankAccount, BankAccountCreate, BankAccountUpdate } from '@/types/cashflow'
+import type { BankAccount, BankAccountBalance, BankAccountBalanceCreate, BankAccountCreate, BankAccountUpdate } from '@/types/cashflow'
 
 export const bankAccountsApi = {
   // --- User-level endpoints (personal bank account registry) ---
@@ -41,22 +41,26 @@ export const bankAccountsApi = {
 
   // --- Balance endpoints ---
 
-  getBalances: async (workspaceId: string, accountId: string, fromDate?: string, toDate?: string) => {
+  getBalances: async (workspaceId: string, accountId: string, fromDate?: string, toDate?: string): Promise<BankAccountBalance[]> => {
     const params = new URLSearchParams()
     if (fromDate) params.set('from_date', fromDate)
     if (toDate) params.set('to_date', toDate)
     const query = params.toString() ? `?${params.toString()}` : ''
-    const response = await apiClient.get<{ success: boolean; balances: unknown[] }>(
+    const response = await apiClient.get<{ success: boolean; balances: BankAccountBalance[] }>(
       `/workspaces/${workspaceId}/bank-accounts/${accountId}/balances${query}`
     )
     return response.data.balances
   },
 
-  addBalance: async (workspaceId: string, accountId: string, data: { balance_date: string; balance: number; source?: string; note?: string }) => {
-    const response = await apiClient.post<{ success: boolean; balance: unknown }>(
+  addBalance: async (workspaceId: string, accountId: string, data: BankAccountBalanceCreate): Promise<BankAccountBalance> => {
+    const response = await apiClient.post<{ success: boolean; balance: BankAccountBalance }>(
       `/workspaces/${workspaceId}/bank-accounts/${accountId}/balances`,
       data
     )
     return response.data.balance
+  },
+
+  deleteBalance: async (workspaceId: string, accountId: string, balanceId: string): Promise<void> => {
+    await apiClient.delete(`/workspaces/${workspaceId}/bank-accounts/${accountId}/balances/${balanceId}`)
   },
 }

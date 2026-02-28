@@ -50,6 +50,12 @@ class CashflowService:
         for record in records:
             records_by_date[record.date_cashflow].append(record)
 
+        # Get balance snapshots within the date range (strictly after from_date)
+        # These act as anchor points that reset the running balance to a known value
+        snapshots_by_date = await self._get_balance_snapshots(
+            workspace_id, params.from_date + timedelta(days=1), params.to_date
+        )
+
         # Resolve workspace's default bank account for records without explicit bank_account_id
         ws_result = await self.db.execute(
             select(Workspace.bank_account_id).where(Workspace.id == workspace_id)
@@ -117,6 +123,24 @@ class CashflowService:
                     running_balance=account_running_balances[acct_id],
                 )
 
+            # Apply balance snapshot if present: force running_balance to declared value
+            day_snapshot_value: Decimal | None = None
+            if current_date in snapshots_by_date:
+                snap = snapshots_by_date[current_date]
+                day_snapshot_value = snap.balance
+                running_balance = snap.balance
+                # Also reset the per-account balance for the account linked to this snapshot
+                if snap.bank_account_id in account_running_balances:
+                    account_running_balances[snap.bank_account_id] = snap.balance
+                    # Update the by_account entry with the corrected running_balance
+                    existing = by_account_entries.get(snap.bank_account_id)
+                    if existing:
+                        by_account_entries[snap.bank_account_id] = AccountCashflowEntry(
+                            inflows=existing.inflows,
+                            outflows=existing.outflows,
+                            running_balance=snap.balance,
+                        )
+
             # Track min/max
             if running_balance < min_balance.amount:
                 min_balance = BalancePoint(date=current_date, amount=running_balance)
@@ -130,14 +154,15 @@ class CashflowService:
             if running_balance < -total_credit_limit:
                 credit_breaches.append(BalancePoint(date=current_date, amount=running_balance))
 
-            # Only add entry if there are records or if grouping includes it
-            if day_records or params.group_by == "day":
+            # Only add entry if there are records, a snapshot, or if grouping includes it
+            if day_records or day_snapshot_value is not None or params.group_by == "day":
                 entry = CashflowEntry(
                     date=current_date,
                     inflows=inflows,
                     outflows=outflows,
                     net=net,
                     running_balance=running_balance,
+                    balance_snapshot=day_snapshot_value,
                     records=[
                         CashflowRecordSummary(
                             id=r.id,
@@ -270,6 +295,34 @@ class CashflowService:
         query = query.order_by(Record.date_cashflow)
         result = await self.db.execute(query)
         return list(result.scalars().all())
+
+    async def _get_balance_snapshots(
+        self,
+        workspace_id: str,
+        from_date: date,
+        to_date: date,
+    ) -> dict[date, BankAccountBalance]:
+        """Get BankAccountBalance snapshots within a date range for the workspace's bank account.
+
+        Returns a dict keyed by balance_date for O(1) lookup during daily iteration.
+        """
+        # Find the bank account(s) linked to this workspace
+        ws_result = await self.db.execute(
+            select(Workspace.bank_account_id).where(Workspace.id == workspace_id)
+        )
+        ws_bank_account_id = ws_result.scalar_one_or_none()
+        if not ws_bank_account_id:
+            return {}
+
+        result = await self.db.execute(
+            select(BankAccountBalance).where(
+                BankAccountBalance.bank_account_id == ws_bank_account_id,
+                BankAccountBalance.balance_date >= from_date,
+                BankAccountBalance.balance_date <= to_date,
+            )
+        )
+        snapshots = result.scalars().all()
+        return {s.balance_date: s for s in snapshots}
 
     def _aggregate_entries(
         self,

@@ -85,7 +85,8 @@ export function useCashflow(params: CashflowParams) {
               inflows: toNum(entry.inflows),
               outflows: toNum(entry.outflows),
               net: toNum(entry.net),
-              running_balance: 0,
+              running_balance: toNum(entry.running_balance),
+              balance_snapshot: entry.balance_snapshot != null ? toNum(entry.balance_snapshot) : undefined,
               by_area: {},
             }
             if (entry.by_area) {
@@ -146,16 +147,31 @@ export function useCashflow(params: CashflowParams) {
         }
       }
 
-      // Recalculate total running balance
-      let runningBalance = totalInitialBalance
-      for (const entry of sortedEntries) {
-        runningBalance += entry.net
-        entry.running_balance = runningBalance
+      // Recalculate total running balance.
+      // For single workspace: trust server running_balance directly (it already applied snapshot resets).
+      // For multi-workspace: recalculate from net, applying balance_snapshot resets when present.
+      if (responses.length === 1) {
+        // Single workspace: server values are authoritative, adjust for initial balance offset only
+        // (server calculates running_balance already, we just trust it)
+        // No recalculation needed — running_balance is already set from server data above.
+      } else {
+        let runningBalance = totalInitialBalance
+        for (const entry of sortedEntries) {
+          runningBalance += entry.net
+          // If a balance snapshot reset occurred on this date (from any workspace),
+          // use it as the new anchor for the consolidated running balance.
+          if (entry.balance_snapshot != null) {
+            runningBalance = entry.balance_snapshot
+          }
+          entry.running_balance = runningBalance
+        }
       }
 
       // Aggregate summary
       let aggregatedSummary: CashflowSummary | undefined = undefined
       if (sortedEntries.length > 0) {
+        const finalRunningBalance = sortedEntries[sortedEntries.length - 1]?.running_balance ?? totalInitialBalance
+
         let minBalance = totalInitialBalance
         let minBalanceDate = ''
         let maxBalance = totalInitialBalance
@@ -176,7 +192,7 @@ export function useCashflow(params: CashflowParams) {
           total_inflows: responses.reduce((sum, r) => sum + toNum(r.summary?.total_inflows), 0),
           total_outflows: responses.reduce((sum, r) => sum + toNum(r.summary?.total_outflows), 0),
           net_cashflow: responses.reduce((sum, r) => sum + toNum(r.summary?.net_cashflow), 0),
-          final_balance: runningBalance,
+          final_balance: finalRunningBalance,
           min_balance: { date: minBalanceDate, amount: minBalance },
           max_balance: { date: maxBalanceDate, amount: maxBalance },
           credit_limit_breaches: [],
