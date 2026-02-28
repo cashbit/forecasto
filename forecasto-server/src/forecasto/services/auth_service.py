@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from forecasto.config import settings
 from forecasto.exceptions import UnauthorizedException, ValidationException
@@ -203,3 +204,25 @@ class AuthService:
         self.db.add(member)
 
         return user
+
+    async def reset_password_by_code(
+        self, email: str, registration_code: str, new_password: str
+    ) -> None:
+        """Reset user password using the original registration code."""
+        result = await self.db.execute(
+            select(User)
+            .where(User.email == email)
+            .options(selectinload(User.registration_code))
+        )
+        user = result.scalar_one_or_none()
+
+        error_msg = "Email o codice invito non validi"
+
+        if not user or not user.registration_code_id or not user.registration_code:
+            raise ValidationException(error_msg)
+
+        normalized_input = registration_code.upper().strip()
+        if user.registration_code.code != normalized_input:
+            raise ValidationException(error_msg)
+
+        user.password_hash = hash_password(new_password)

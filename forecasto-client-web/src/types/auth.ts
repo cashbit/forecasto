@@ -33,6 +33,12 @@ export interface RefreshTokenRequest {
   refresh_token: string
 }
 
+export interface ResetPasswordByCodeRequest {
+  email: string
+  registration_code: string
+  new_password: string
+}
+
 export interface RefreshTokenResponse {
   access_token: string
   token_type: string

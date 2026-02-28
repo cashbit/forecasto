@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.database import get_db
-from forecasto.schemas.auth import LoginRequest, LoginResponse, RefreshRequest, TokenResponse
+from forecasto.schemas.auth import LoginRequest, LoginResponse, RefreshRequest, ResetPasswordByCodeRequest, TokenResponse
 from forecasto.schemas.common import SuccessResponse
 from forecasto.services.auth_service import AuthService
 
@@ -42,4 +42,14 @@ async def logout(
     """Revoke refresh token."""
     service = AuthService(db)
     await service.logout(data.refresh_token)
+    return SuccessResponse()
+
+@router.post("/reset-password/by-code", response_model=SuccessResponse)
+async def reset_password_by_code(
+    data: ResetPasswordByCodeRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Reset password using the original registration code."""
+    service = AuthService(db)
+    await service.reset_password_by_code(data.email, data.registration_code, data.new_password)
     return SuccessResponse()

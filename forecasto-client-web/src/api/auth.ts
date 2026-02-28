@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { LoginRequest, LoginResponse, RegisterRequest, RefreshTokenRequest, RefreshTokenResponse, User } from '@/types/auth'
+import type { LoginRequest, LoginResponse, RegisterRequest, RefreshTokenRequest, RefreshTokenResponse, ResetPasswordByCodeRequest, User } from '@/types/auth'
 
 export const authApi = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
@@ -33,5 +33,9 @@ export const authApi = {
 
   changePassword: async (data: { current_password: string; new_password: string }): Promise<void> => {
     await apiClient.post('/users/me/password', data)
+  },
+
+  resetPasswordByCode: async (data: ResetPasswordByCodeRequest): Promise<void> => {
+    await apiClient.post('/auth/reset-password/by-code', data)
   },
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -20,8 +20,10 @@ type FormData = z.infer<typeof schema>
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { login, isLoading } = useAuthStore()
   const [error, setError] = useState('')
+  const passwordReset = (location.state as { passwordReset?: boolean } | null)?.passwordReset
 
   const {
     register,
@@ -53,6 +55,11 @@ export function LoginPage() {
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
+            {passwordReset && (
+              <div className="p-3 rounded-lg bg-green-500/10 text-green-700 dark:text-green-400 text-sm">
+                Password aggiornata con successo. Ora puoi accedere.
+              </div>
+            )}
             {error && (
               <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
                 {error}
@@ -87,6 +94,9 @@ export function LoginPage() {
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Accesso in corso...' : 'Accedi'}
             </Button>
+            <Link to="/forgot-password" className="text-sm text-muted-foreground hover:underline">
+              Hai dimenticato la password?
+            </Link>
             <p className="text-sm text-muted-foreground">
               Non hai un account?{' '}
               <Link to="/register" className="text-primary hover:underline">

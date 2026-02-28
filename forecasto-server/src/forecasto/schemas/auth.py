@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 class LoginRequest(BaseModel):
     """Login request body."""
@@ -30,6 +30,14 @@ class LoginResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     user: UserInfo
+
+class ResetPasswordByCodeRequest(BaseModel):
+    """Request to reset password using the original registration code."""
+
+    email: EmailStr
+    registration_code: str
+    new_password: str = Field(min_length=6)
+
 
 class RefreshRequest(BaseModel):
     """Token refresh request."""
