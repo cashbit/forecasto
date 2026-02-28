@@ -153,7 +153,7 @@ export function BalanceSnapshotsDialog({
   }
 
   const snapshots = snapshotsQuery.data ?? []
-  const noAccounts = !accountQueries.isLoading && workspaceAccounts.length === 0
+  const noAccounts = !accountQueries.isLoading && !accountQueries.isFetching && workspaceAccounts.length === 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

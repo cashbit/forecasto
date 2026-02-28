@@ -60,6 +60,7 @@ export function useWorkspaceBankAccount(workspaceId: string) {
       bankAccountsApi.setWorkspaceAccount(workspaceId, accountId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bankAccounts', 'workspace', workspaceId] })
+      queryClient.invalidateQueries({ queryKey: ['workspace-bank-accounts'] })
     },
   })
 
@@ -67,6 +68,7 @@ export function useWorkspaceBankAccount(workspaceId: string) {
     mutationFn: () => bankAccountsApi.unsetWorkspaceAccount(workspaceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bankAccounts', 'workspace', workspaceId] })
+      queryClient.invalidateQueries({ queryKey: ['workspace-bank-accounts'] })
     },
   })
 
