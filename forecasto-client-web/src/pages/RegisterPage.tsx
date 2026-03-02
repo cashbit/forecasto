@@ -30,6 +30,9 @@ export function RegisterPage() {
   const { register: registerUser, isLoading } = useAuthStore()
   const [error, setError] = useState('')
 
+  const prefilledEmail = searchParams.get('email') ?? ''
+  const prefilledName = searchParams.get('name') ?? ''
+
   const {
     register,
     handleSubmit,
@@ -38,6 +41,8 @@ export function RegisterPage() {
     resolver: zodResolver(schema),
     defaultValues: {
       registrationCode: searchParams.get('code') ?? '',
+      email: prefilledEmail,
+      name: prefilledName,
     },
   })
 

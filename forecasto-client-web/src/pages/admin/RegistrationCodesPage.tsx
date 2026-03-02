@@ -206,12 +206,21 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
     }
   }
 
+  const buildRegistrationUrl = (code: RegistrationCode): string => {
+    const url = new URL('https://app.forecasto.it/register')
+    url.searchParams.set('code', code.code)
+    if (code.recipient_email) url.searchParams.set('email', code.recipient_email)
+    if (code.recipient_name) url.searchParams.set('name', code.recipient_name)
+    return url.toString()
+  }
+
   const buildMailto = (code: RegistrationCode): string => {
     const email = code.recipient_email || ''
     const subject = encodeURIComponent('Il tuo codice invito Forecasto')
     const name = code.recipient_name ? `Ciao ${code.recipient_name},` : 'Ciao,'
     const expires = code.expires_at ? `%0AScadenza: ${formatDate(code.expires_at)}.` : ''
-    const body = `${encodeURIComponent(name)}%0A%0ATi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.%0A%0ACodice: ${code.code}%0ALink di registrazione: https://app.forecasto.it/register?code=${encodeURIComponent(code.code)}${expires}`
+    const registrationUrl = buildRegistrationUrl(code)
+    const body = `${encodeURIComponent(name)}%0A%0ATi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.%0A%0ACodice: ${code.code}%0ALink di registrazione: ${encodeURIComponent(registrationUrl)}${expires}`
     return `mailto:${email}?subject=${subject}&body=${body}`
   }
 
@@ -220,8 +229,9 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
     const su = encodeURIComponent('Il tuo codice invito Forecasto')
     const name = code.recipient_name ? `Ciao ${code.recipient_name},` : 'Ciao,'
     const expires = code.expires_at ? `\nScadenza: ${formatDate(code.expires_at)}.` : ''
+    const registrationUrl = buildRegistrationUrl(code)
     const body = encodeURIComponent(
-      `${name}\n\nTi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.\n\nCodice: ${code.code}\nLink di registrazione: https://app.forecasto.it/register?code=${encodeURIComponent(code.code)}${expires}`
+      `${name}\n\nTi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.\n\nCodice: ${code.code}\nLink di registrazione: ${registrationUrl}${expires}`
     )
     return `https://mail.google.com/mail/u/0/?fs=1&tf=cm&to=${to}&su=${su}&body=${body}`
   }
