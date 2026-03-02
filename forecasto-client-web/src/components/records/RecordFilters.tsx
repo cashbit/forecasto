@@ -228,7 +228,8 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder={textFilterField ? `Cerca in ${TEXT_FILTER_FIELDS.find(f => f.value === textFilterField)?.label}...` : 'Cerca per riferimento, conto...'}
+              placeholder={textFilterField ? `Cerca in ${TEXT_FILTER_FIELDS.find(f => f.value === textFilterField)?.label}...` : 'Cerca... (più parole = AND)'}
+              title="Inserisci una o più parole: la ricerca trova righe che contengono tutte le parole indicate"
               value={textFilter}
               onChange={(e) => setTextFilter(e.target.value)}
               className="pl-9 rounded-l-none"

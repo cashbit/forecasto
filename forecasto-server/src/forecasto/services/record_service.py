@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 
+import logging
+import re
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.exceptions import ForbiddenException, NotFoundException
@@ -13,6 +15,49 @@ from forecasto.models.record import Record
 from forecasto.models.user import User
 from forecasto.models.workspace import Workspace, WorkspaceMember
 from forecasto.schemas.record import RecordCreate, RecordFilter, RecordUpdate
+
+logger = logging.getLogger(__name__)
+
+
+def _build_fts_query(raw: str) -> str | None:
+    """Converti input utente in FTS5 query sicura con semantica AND+prefix.
+
+    "acme inc" → '"acme"* AND "inc"*'
+    Ritorna None se nessun token valido dopo sanitizzazione.
+    """
+    tokens = raw.split()
+    clean_tokens = []
+    for token in tokens:
+        # Strip FTS5 syntax characters that would cause parse errors
+        clean = re.sub(r'["\-\*\^\(\)\:\']', '', token).strip()
+        if clean:
+            # Wrap in double-quotes so FTS5 treats it as a phrase,
+            # preventing keywords (AND, OR, NOT) from being interpreted as operators
+            clean_tokens.append(f'"{clean}"*')
+    return ' AND '.join(clean_tokens) if clean_tokens else None
+
+
+async def _fts_search_ids(
+    db: AsyncSession, workspace_id: str, fts_query: str
+) -> list[str] | None:
+    """Cerca in records_fts e ritorna lista di record.id corrispondenti.
+
+    Ritorna None in caso di errore, per triggherare il fallback a ILIKE.
+    """
+    try:
+        sql = text("""
+            SELECT r.id
+            FROM records r
+            WHERE r.rowid IN (
+                SELECT rowid FROM records_fts WHERE records_fts MATCH :query
+            )
+            AND r.workspace_id = :ws_id
+        """)
+        result = await db.execute(sql, {"query": fts_query, "ws_id": workspace_id})
+        return [row[0] for row in result.fetchall()]
+    except Exception as exc:
+        logger.warning("FTS5 search failed, falling back to ILIKE: %s", exc)
+        return None
 
 
 def get_sign_from_amount(amount: Decimal | str | float) -> str:
@@ -175,16 +220,29 @@ class RecordService:
             search = f"%{filters.text_filter}%"
             field = filters.text_filter_field
             if field and hasattr(Record, field):
+                # Ricerca campo specifico: comportamento ILIKE invariato
                 query = query.where(getattr(Record, field).ilike(search))
             else:
-                query = query.where(
-                    or_(
-                        Record.account.ilike(search),
-                        Record.reference.ilike(search),
-                        Record.note.ilike(search),
-                        Record.transaction_id.ilike(search),
+                # Ricerca su tutti i campi: tenta FTS5, fallback a ILIKE
+                fts_q = _build_fts_query(filters.text_filter)
+                matched_ids = None
+                if fts_q:
+                    matched_ids = await _fts_search_ids(self.db, workspace_id, fts_q)
+
+                if matched_ids is not None:
+                    if matched_ids:
+                        query = query.where(Record.id.in_(matched_ids))
+                    else:
+                        query = query.where(False)
+                else:
+                    query = query.where(
+                        or_(
+                            Record.account.ilike(search),
+                            Record.reference.ilike(search),
+                            Record.note.ilike(search),
+                            Record.transaction_id.ilike(search),
+                        )
                     )
-                )
 
         if filters.project_code:
             query = query.where(Record.project_code.ilike(f"%{filters.project_code}%"))
