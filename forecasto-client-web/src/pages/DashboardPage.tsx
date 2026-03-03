@@ -85,7 +85,8 @@ export function DashboardPage() {
     try {
       await updateRecord({
         recordId: editingRecord.id,
-        data: { ...formData, review_date: nextDate.toISOString().split('T')[0] }
+        data: { ...formData, review_date: nextDate.toISOString().split('T')[0] },
+        workspaceId: editingRecord.workspace_id,
       })
       markEdited(editingRecord.id)
       setSelectedRecord(editingRecord)
@@ -123,7 +124,7 @@ export function DashboardPage() {
   const handleUpdateRecord = async (data: RecordUpdate) => {
     if (!editingRecord) return
     try {
-      await updateRecord({ recordId: editingRecord.id, data })
+      await updateRecord({ recordId: editingRecord.id, data, workspaceId: editingRecord.workspace_id })
       markEdited(editingRecord.id)
       setSelectedRecord(editingRecord)
       setEditingRecord(null)
@@ -438,8 +439,9 @@ export function DashboardPage() {
   }
 
   const handleBulkExport = (selectedRecords: Record[]) => {
-    const headers = ['Data', 'Conto', 'Riferimento', 'ID Transazione', 'Responsabile', 'Imponibile', 'Totale', 'Stage', 'Area', 'Revisione']
+    const headers = ['#', 'Data', 'Conto', 'Riferimento', 'ID Transazione', 'Responsabile', 'Imponibile', 'Totale', 'Stage', 'Area', 'Revisione']
     const rows = selectedRecords.map(r => [
+      r.seq_num ?? '',
       r.date_cashflow,
       r.account,
       r.reference,
