@@ -126,6 +126,9 @@ export function registerRecordTools(
       transaction_id: z.string().optional(),
       bank_account_id: z.string().optional(),
       project_code: z.string().optional(),
+      owner: z.string().optional(),
+      nextaction: z.string().optional(),
+      review_date: z.string().optional().describe("YYYY-MM-DD"),
     },
     async ({ workspace_id, record_id, ...body }) => {
       const payload = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
