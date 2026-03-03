@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { join } from "path";
 import type { Response } from "express";
 import { generateCodeVerifier, generateCodeChallenge } from "./pkce.js";
 import type {
@@ -13,69 +14,23 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { config } from "../config.js";
+import { PersistentOAuthStore } from "./state-store.js";
 
-// ---------------------------------------------------------------------------
-// Pending auth flows — keyed by the state we generate for the FastAPI flow
-// ---------------------------------------------------------------------------
-interface PendingAuth {
-  /** The state that Claude sent us (we forward it back to Claude at the end) */
-  clientState: string | undefined;
-  /** Claude's redirect URI — we redirect here with our own code at the end */
-  clientRedirectUri: string;
-  /** The code_challenge Claude sent us (we store it for verifyAccessToken) */
-  codeChallenge: string;
-  /** The MCP client that initiated the flow */
-  clientId: string;
-  /** Timestamp for expiry cleanup */
-  createdAt: number;
-}
-
-/** Our own authorization codes — keyed by code, value = tokens from FastAPI */
-interface IssuedCode {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-  codeChallenge: string;
-  createdAt: number;
-}
-
-// ---------------------------------------------------------------------------
-// In-memory client store with Dynamic Registration support
-// ---------------------------------------------------------------------------
-class InMemoryClientsStore implements OAuthRegisteredClientsStore {
-  private clients = new Map<string, OAuthClientInformationFull>();
-
-  getClient(clientId: string): OAuthClientInformationFull | undefined {
-    return this.clients.get(clientId);
-  }
-
-  registerClient(
-    client: Omit<OAuthClientInformationFull, "client_id" | "client_id_issued_at">,
-  ): OAuthClientInformationFull {
-    const full: OAuthClientInformationFull = {
-      ...client,
-      client_id: randomUUID(),
-      client_id_issued_at: Math.floor(Date.now() / 1000),
-    };
-    this.clients.set(full.client_id, full);
-    console.log(`[OAuth] Dynamic client registered: ${full.client_id} (${full.client_name ?? "unnamed"})`);
-    return full;
-  }
-}
+const STATE_FILE = process.env.OAUTH_STATE_FILE ?? join(process.cwd(), "oauth-state.json");
 
 // ---------------------------------------------------------------------------
 // ForecastoOAuthProvider — delegates auth to FastAPI (Third-Party Auth Flow)
 // ---------------------------------------------------------------------------
 export class ForecastoOAuthProvider implements OAuthServerProvider {
-  readonly clientsStore: OAuthRegisteredClientsStore = new InMemoryClientsStore();
+  readonly clientsStore: OAuthRegisteredClientsStore;
   readonly skipLocalPkceValidation = true;
 
-  // Pending FastAPI OAuth flows: fastapi_state → PendingAuth
-  private pendingFlows = new Map<string, PendingAuth>();
-  // Code verifiers for the FastAPI leg: fastapi_state → codeVerifier
-  private pendingVerifiers = new Map<string, string>();
-  // Our issued codes: mcp_code → IssuedCode
-  private issuedCodes = new Map<string, IssuedCode>();
+  private store: PersistentOAuthStore;
+
+  constructor() {
+    this.store = new PersistentOAuthStore(STATE_FILE);
+    this.clientsStore = this.store.clientsStore;
+  }
 
   /**
    * Called by mcpAuthRouter when Claude hits GET /authorize.
@@ -91,14 +46,14 @@ export class ForecastoOAuthProvider implements OAuthServerProvider {
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = generateCodeChallenge(codeVerifier);
 
-    this.pendingFlows.set(fastapiState, {
+    this.store.pendingFlows.set(fastapiState, {
       clientState: params.state,
       clientRedirectUri: params.redirectUri,
       codeChallenge: params.codeChallenge,
       clientId: client.client_id,
       createdAt: Date.now(),
     });
-    this.pendingVerifiers.set(fastapiState, codeVerifier);
+    this.store.pendingVerifiers.set(fastapiState, codeVerifier);
 
     const query = new URLSearchParams({
       client_id: "forecasto-mcp",
@@ -121,13 +76,13 @@ export class ForecastoOAuthProvider implements OAuthServerProvider {
     fastapiCode: string,
     fastapiState: string,
   ): Promise<string> {
-    const pending = this.pendingFlows.get(fastapiState);
+    const pending = this.store.pendingFlows.get(fastapiState);
     if (!pending) throw new Error("State not found or expired");
-    this.pendingFlows.delete(fastapiState);
+    this.store.pendingFlows.delete(fastapiState);
 
-    const codeVerifier = this.pendingVerifiers.get(fastapiState);
+    const codeVerifier = this.store.pendingVerifiers.get(fastapiState);
     if (!codeVerifier) throw new Error("Code verifier not found");
-    this.pendingVerifiers.delete(fastapiState);
+    this.store.pendingVerifiers.delete(fastapiState);
 
     // Exchange FastAPI code for tokens
     const body = new URLSearchParams({
@@ -157,7 +112,7 @@ export class ForecastoOAuthProvider implements OAuthServerProvider {
 
     // Issue our own code that Claude will exchange
     const mcpCode = randomUUID();
-    this.issuedCodes.set(mcpCode, {
+    this.store.issuedCodes.set(mcpCode, {
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token,
       expiresIn: tokenData.expires_in,
@@ -180,7 +135,7 @@ export class ForecastoOAuthProvider implements OAuthServerProvider {
     _client: OAuthClientInformationFull,
     authorizationCode: string,
   ): Promise<string> {
-    const issued = this.issuedCodes.get(authorizationCode);
+    const issued = this.store.issuedCodes.get(authorizationCode);
     if (!issued) throw new Error("Authorization code not found");
     return issued.codeChallenge;
   }
@@ -195,11 +150,11 @@ export class ForecastoOAuthProvider implements OAuthServerProvider {
     _codeVerifier?: string,
     _redirectUri?: string,
   ): Promise<OAuthTokens> {
-    const issued = this.issuedCodes.get(authorizationCode);
+    const issued = this.store.issuedCodes.get(authorizationCode);
     if (!issued) throw new Error("Authorization code not found or already used");
 
     // Single-use
-    this.issuedCodes.delete(authorizationCode);
+    this.store.issuedCodes.delete(authorizationCode);
 
     return {
       access_token: issued.accessToken,

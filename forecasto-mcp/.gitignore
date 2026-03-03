@@ -2,3 +2,5 @@ node_modules/
 dist/
 .env
 *.env.local
+oauth-state.json
+oauth-state.json.tmp
