@@ -212,6 +212,9 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
     try {
       await adminApi.syncActiveCampaign(codeId)
       toast({ title: 'Contatto sincronizzato su ActiveCampaign' })
+      // Refresh batch details to show updated ac_synced_at
+      const details = await adminApi.getBatch(batch.id)
+      setBatchDetails(details)
     } catch {
       toast({ title: 'Errore sincronizzazione ActiveCampaign', variant: 'destructive' })
     } finally {
@@ -461,10 +464,16 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7"
+                              className={`h-7 w-7 ${code.ac_synced_at ? 'text-green-600' : ''}`}
                               disabled={!code.recipient_email || syncingCodeId === code.id}
                               onClick={() => handleSyncActiveCampaign(code.id)}
-                              title={code.recipient_email ? 'Sincronizza su ActiveCampaign' : 'Aggiungi email destinatario prima'}
+                              title={
+                                !code.recipient_email
+                                  ? 'Aggiungi email destinatario prima'
+                                  : code.ac_synced_at
+                                    ? `Ultimo sync AC: ${formatDate(code.ac_synced_at)}`
+                                    : 'Sincronizza su ActiveCampaign'
+                              }
                             >
                               <RefreshCw className={`h-3.5 w-3.5 ${syncingCodeId === code.id ? 'animate-spin' : ''}`} />
                             </Button>

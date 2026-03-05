@@ -44,6 +44,7 @@ class RegistrationCodeResponse(BaseModel):
     invoice_note: str | None = None
     partner_fee_recognized: bool = False
     partner_fee_recognized_at: datetime | None = None
+    ac_synced_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

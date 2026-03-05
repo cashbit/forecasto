@@ -434,6 +434,12 @@ async def sync_activecampaign_contact(
             invite_url=invite_url,
         )
         contact_data = ac_response.get("contact", {})
+
+        # Update ac_synced_at timestamp
+        from datetime import datetime
+        code.ac_synced_at = datetime.utcnow()
+        await db.commit()
+
         return {
             "success": True,
             "contact_id": contact_data.get("id"),

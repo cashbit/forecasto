@@ -18,6 +18,7 @@ export interface RegistrationCode {
   invoice_note: string | null
   partner_fee_recognized: boolean
   partner_fee_recognized_at: string | null
+  ac_synced_at: string | null
 }
 
 export interface RegistrationCodeBatch {

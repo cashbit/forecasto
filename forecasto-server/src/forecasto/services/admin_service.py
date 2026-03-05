@@ -100,6 +100,7 @@ class AdminService:
                     code=c.code,
                     created_at=c.created_at,
                     expires_at=c.expires_at,
+                    ac_synced_at=c.ac_synced_at,
                 )
                 for c in codes
             ],
@@ -197,6 +198,7 @@ class AdminService:
                     invoice_note=code.invoice_note,
                     partner_fee_recognized=code.partner_fee_recognized,
                     partner_fee_recognized_at=code.partner_fee_recognized_at,
+                    ac_synced_at=code.ac_synced_at,
                 )
             )
 
@@ -294,6 +296,7 @@ class AdminService:
                     invoice_note=code.invoice_note,
                     partner_fee_recognized=code.partner_fee_recognized,
                     partner_fee_recognized_at=code.partner_fee_recognized_at,
+                    ac_synced_at=code.ac_synced_at,
                 )
             )
 
@@ -869,6 +872,7 @@ class AdminService:
                     invoice_note=code.invoice_note,
                     partner_fee_recognized=code.partner_fee_recognized,
                     partner_fee_recognized_at=code.partner_fee_recognized_at,
+                    ac_synced_at=code.ac_synced_at,
                 )
             )
 

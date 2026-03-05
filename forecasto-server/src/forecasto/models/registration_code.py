@@ -72,6 +72,9 @@ class RegistrationCode(Base, UUIDMixin):
     recipient_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     recipient_email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
+    # ActiveCampaign sync
+    ac_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     # Billing fields
     invoiced: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     invoiced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
