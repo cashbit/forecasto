@@ -40,7 +40,7 @@ import {
 import { adminApi } from '@/api/admin'
 import { PartnerCombobox } from '@/components/admin/PartnerCombobox'
 import type { AdminUser, RegistrationCode, RegistrationCodeBatch, RegistrationCodeBatchWithCodes } from '@/types/admin'
-import { Plus, ChevronDown, ChevronRight, Copy, X, Download, Handshake, Pencil, Trash2, Mail } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Copy, X, Download, Handshake, Pencil, Trash2, Mail, RefreshCw } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 const createBatchSchema = z.object({
@@ -84,6 +84,7 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
   const [recipientName, setRecipientName] = useState('')
   const [recipientEmail, setRecipientEmail] = useState('')
   const [savingRecipient, setSavingRecipient] = useState(false)
+  const [syncingCodeId, setSyncingCodeId] = useState<string | null>(null)
 
   const loadDetails = async () => {
     if (batchDetails) return
@@ -203,6 +204,18 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
       toast({ title: 'Errore durante il salvataggio', variant: 'destructive' })
     } finally {
       setSavingRecipient(false)
+    }
+  }
+
+  const handleSyncActiveCampaign = async (codeId: string) => {
+    setSyncingCodeId(codeId)
+    try {
+      await adminApi.syncActiveCampaign(codeId)
+      toast({ title: 'Contatto sincronizzato su ActiveCampaign' })
+    } catch {
+      toast({ title: 'Errore sincronizzazione ActiveCampaign', variant: 'destructive' })
+    } finally {
+      setSyncingCodeId(null)
     }
   }
 
@@ -444,6 +457,16 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
                               <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.910 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/>
                               </svg>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={!code.recipient_email || syncingCodeId === code.id}
+                              onClick={() => handleSyncActiveCampaign(code.id)}
+                              title={code.recipient_email ? 'Sincronizza su ActiveCampaign' : 'Aggiungi email destinatario prima'}
+                            >
+                              <RefreshCw className={`h-3.5 w-3.5 ${syncingCodeId === code.id ? 'animate-spin' : ''}`} />
                             </Button>
                             {!code.used_at && !code.revoked_at && (
                               <Button

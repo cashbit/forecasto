@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-
+import logging
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
@@ -14,7 +14,10 @@ from forecasto.exceptions import UnauthorizedException, ValidationException
 from forecasto.models.user import RefreshToken, User
 from forecasto.models.workspace import Workspace, WorkspaceMember
 from forecasto.schemas.auth import LoginResponse, TokenResponse, UserInfo
+from forecasto.services.activecampaign_service import ActiveCampaignService
 from forecasto.services.admin_service import AdminService
+
+logger = logging.getLogger(__name__)
 from forecasto.utils.security import (
     create_access_token,
     create_refresh_token,
@@ -176,6 +179,17 @@ class AuthService:
 
         # Mark code as used
         await admin_service.mark_code_used(code, user.id)
+
+        # Track SIGNEDUP event in ActiveCampaign
+        try:
+            ac_service = ActiveCampaignService()
+            ac_email = code.recipient_email or email
+            if not code.recipient_email:
+                # No recipient_email on code — create contact in AC first
+                await ac_service.sync_contact(email=ac_email, first_name=name)
+            await ac_service.track_event(ac_email, "SIGNEDUP")
+        except Exception as e:
+            logger.warning(f"ActiveCampaign SIGNEDUP event failed for {email}: {e}")
 
         # Create default workspace for the user
         current_year = datetime.utcnow().year

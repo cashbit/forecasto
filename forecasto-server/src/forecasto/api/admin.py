@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,7 +35,11 @@ from forecasto.schemas.admin import (
     ValidateCodeRequest,
     ValidateCodeResponse,
 )
+from forecasto.models.registration_code import RegistrationCode
+from forecasto.services.activecampaign_service import ActiveCampaignService
 from forecasto.services.admin_service import AdminService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -380,3 +386,58 @@ async def export_activated_codes_csv(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=report_attivazioni.csv"},
     )
+
+
+# ActiveCampaign Integration
+
+
+@router.post("/activecampaign/sync-code/{code_id}", response_model=dict)
+async def sync_activecampaign_contact(
+    code_id: str,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Sync a registration code's recipient to ActiveCampaign."""
+    from sqlalchemy import select
+
+    result = await db.execute(
+        select(RegistrationCode).where(RegistrationCode.id == code_id)
+    )
+    code = result.scalar_one_or_none()
+    if not code:
+        raise HTTPException(status_code=404, detail="Codice non trovato")
+    if not code.recipient_email:
+        raise HTTPException(status_code=400, detail="Codice senza email destinatario")
+
+    # Build registration URL
+    params: dict[str, str] = {"code": code.code}
+    if code.recipient_email:
+        params["email"] = code.recipient_email
+    if code.recipient_name:
+        params["name"] = code.recipient_name
+    invite_url = f"https://app.forecasto.it/register?{urlencode(params)}"
+
+    # Split name into first/last
+    first_name = None
+    last_name = None
+    if code.recipient_name:
+        parts = code.recipient_name.strip().split(" ", 1)
+        first_name = parts[0]
+        last_name = parts[1] if len(parts) > 1 else None
+
+    ac_service = ActiveCampaignService()
+    try:
+        ac_response = await ac_service.sync_contact(
+            email=code.recipient_email,
+            first_name=first_name,
+            last_name=last_name,
+            invite_url=invite_url,
+        )
+        contact_data = ac_response.get("contact", {})
+        return {
+            "success": True,
+            "contact_id": contact_data.get("id"),
+        }
+    except Exception as e:
+        logger.error(f"ActiveCampaign sync failed for {code.recipient_email}: {e}")
+        raise HTTPException(status_code=502, detail=f"Errore ActiveCampaign: {e}")

@@ -179,6 +179,15 @@ export const adminApi = {
     return response.data.user
   },
 
+  // ActiveCampaign Integration
+
+  syncActiveCampaign: async (codeId: string): Promise<{ contact_id: number }> => {
+    const response = await apiClient.post<{ success: boolean; contact_id: number }>(
+      `/admin/activecampaign/sync-code/${codeId}`
+    )
+    return { contact_id: response.data.contact_id }
+  },
+
   // Report and Billing Endpoints
 
   getActivatedCodesReport: async (filters?: ActivatedCodesReportFilter): Promise<ActivatedCodeReportRow[]> => {
