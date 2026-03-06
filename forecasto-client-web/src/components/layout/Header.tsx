@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LogOut, Settings, User, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare } from 'lucide-react'
+import { LogOut, Settings, User, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle } from 'lucide-react'
 import logoIcon from '@/assets/logo-icon.png'
 import logoText from '@/assets/logo-text.png'
 import { Link, useLocation } from 'react-router-dom'
@@ -28,8 +28,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import type { PendingInvitation, WorkspaceMember } from '@/types/workspace'
 import type { Area } from '@/types/record'
 import { canImport, canImportSdi, canExport } from '@/lib/permissions'
+import { useTourContext } from '@/components/tour/TourProvider'
 
 export function Header() {
+  const { startTour } = useTourContext()
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { sidebarOpen, toggleSidebar, reviewMode, toggleReviewMode } = useUiStore()
@@ -308,6 +310,21 @@ export function Header() {
             </TooltipContent>
           </Tooltip>
         </div>
+
+        {/* Help / Tour Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={startTour}
+              data-tour="help-button"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Guida Interattiva</TooltipContent>
+        </Tooltip>
 
         {/* Pending Invitations */}
         <DropdownMenu>

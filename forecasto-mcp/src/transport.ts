@@ -30,9 +30,28 @@ export function createExpressApp(): express.Express {
   app.set("trust proxy", 1);
   app.use(express.json());
 
-  // Health check
-  app.get("/health", (_req, res) => {
-    res.json({ status: "ok", service: "forecasto-mcp" });
+  // Health check — also verifies backend connectivity
+  app.get("/health", async (_req, res) => {
+    try {
+      const backendRes = await fetch(`${config.forecastoApiUrl}/health`, {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (backendRes.ok) {
+        res.json({ status: "ok", service: "forecasto-mcp", backend: "ok" });
+      } else {
+        res.status(503).json({
+          status: "degraded",
+          service: "forecasto-mcp",
+          backend: "unhealthy",
+        });
+      }
+    } catch {
+      res.status(503).json({
+        status: "degraded",
+        service: "forecasto-mcp",
+        backend: "unreachable",
+      });
+    }
   });
 
   // -------------------------------------------------------------------------
@@ -93,28 +112,50 @@ export function createExpressApp(): express.Express {
     }
 
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    let sessionEntry = sessionId ? sessions.get(sessionId) : undefined;
 
-    if (!sessionEntry) {
-      const { server: sessionServer, sessionId: newSessionId } = createSessionServer(accessToken);
-
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => newSessionId,
-        onsessioninitialized: (sid) => {
-          sessions.set(sid, { server: sessionServer, transport });
-        },
+    // Case 1: Session ID present but unknown → 404
+    // This signals the MCP client to re-initialize (triggers "Reconnect" button)
+    if (sessionId && !sessions.has(sessionId)) {
+      res.status(404).json({
+        jsonrpc: "2.0",
+        error: { code: -32001, message: "Session not found" },
+        id: null,
       });
-
-      await sessionServer.connect(transport);
-      sessionEntry = { server: sessionServer, transport };
-
-      transport.onclose = () => {
-        sessions.delete(newSessionId);
-      };
+      return;
     }
 
-    await sessionEntry.transport.handleRequest(req, res, req.body);
+    // Case 2: Known session → delegate to existing transport
+    if (sessionId) {
+      const entry = sessions.get(sessionId)!;
+      await entry.transport.handleRequest(req, res, req.body);
+      return;
+    }
+
+    // Case 3: No session ID → new session (expects InitializeRequest)
+    const { server: sessionServer, sessionId: newSessionId } = createSessionServer(accessToken);
+
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => newSessionId,
+      onsessioninitialized: (sid) => {
+        sessions.set(sid, { server: sessionServer, transport });
+      },
+    });
+
+    await sessionServer.connect(transport);
+
+    transport.onclose = () => {
+      sessions.delete(newSessionId);
+    };
+
+    await transport.handleRequest(req, res, req.body);
   });
 
   return app;
+}
+
+/** Close all active MCP sessions (for graceful shutdown). */
+export async function shutdownAllSessions(): Promise<void> {
+  const entries = Array.from(sessions.values());
+  await Promise.allSettled(entries.map(({ transport }) => transport.close()));
+  sessions.clear();
 }

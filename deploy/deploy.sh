@@ -119,8 +119,22 @@ systemctl enable forecasto
 # Restart the FastAPI service
 echo "Restarting forecasto service..."
 systemctl restart forecasto
-sleep 2
-systemctl status forecasto --no-pager || true
+
+# Wait for FastAPI to be healthy (up to 15 seconds)
+echo "Waiting for FastAPI health check..."
+API_HEALTHY=false
+for i in $(seq 1 15); do
+  if curl -sf http://127.0.0.1:8000/health | grep -q '"status"'; then
+    API_HEALTHY=true
+    echo "FastAPI server healthy after ${i}s"
+    break
+  fi
+  sleep 1
+done
+if [ "$API_HEALTHY" = false ]; then
+  echo "WARNING: FastAPI did not become healthy within 15s!"
+  systemctl status forecasto --no-pager || true
+fi
 
 # ---- MCP Server ----
 
@@ -151,8 +165,22 @@ systemctl enable forecasto-mcp
 # Restart MCP service
 echo "Restarting forecasto-mcp service..."
 systemctl restart forecasto-mcp
-sleep 2
-systemctl status forecasto-mcp --no-pager || true
+
+# Wait for MCP to be healthy (up to 15 seconds)
+echo "Waiting for MCP health check..."
+MCP_HEALTHY=false
+for i in $(seq 1 15); do
+  if curl -sf http://127.0.0.1:3100/health | grep -q '"status":"ok"'; then
+    MCP_HEALTHY=true
+    echo "MCP server healthy after ${i}s"
+    break
+  fi
+  sleep 1
+done
+if [ "$MCP_HEALTHY" = false ]; then
+  echo "WARNING: MCP did not become healthy within 15s!"
+  systemctl status forecasto-mcp --no-pager || true
+fi
 
 echo ""
 echo "=== Deploy complete! ==="

@@ -27,6 +27,7 @@ import { BulkEditDialog } from '@/components/records/BulkEditDialog'
 import { useRecords } from '@/hooks/useRecords'
 import { useFilterStore } from '@/stores/filterStore'
 import { useUiStore } from '@/stores/uiStore'
+import { useTourContext } from '@/components/tour/TourProvider'
 import { toast } from '@/hooks/useToast'
 import { AREA_LABELS, AREAS } from '@/lib/constants'
 import { recordsApi } from '@/api/records'
@@ -38,6 +39,7 @@ export function DashboardPage() {
   const { createRecordDialogOpen, setCreateRecordDialogOpen, reviewMode } = useUiStore()
   const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord, primaryWorkspaceId } = useRecords()
   const queryClient = useQueryClient()
+  const { registerDashboardActions } = useTourContext()
 
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
@@ -46,6 +48,26 @@ export function DashboardPage() {
   const markEdited = (id: string) => {
     setVisitedRecordIds(prev => new Set(prev).add(id))
   }
+
+  // Register dashboard actions for the guided tour
+  useEffect(() => {
+    registerDashboardActions({
+      openSplitForRecord: (record) => setSplitRecord(record as Record),
+      selectRecord: (record) => {
+        setEditingRecord(null)
+        setSelectedRecord(record as Record)
+      },
+      editRecord: (record) => {
+        setSelectedRecord(record as Record)
+        setEditingRecord(record as Record)
+      },
+      selectAndEditRecord: (record) => {
+        setSelectedRecord(record as Record)
+        setEditingRecord(record as Record)
+      },
+      getRecords: () => records,
+    })
+  }, [registerDashboardActions, records])
 
   // Refresh detail panel data: use fresh record from list, or fetch from API if not in filtered list
   useEffect(() => {
@@ -470,13 +492,14 @@ export function DashboardPage() {
     <div className="flex h-[calc(100vh-3.5rem)]">
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Area Tabs */}
-        <div>
+        <div data-tour="area-tabs">
           <Tabs value={currentArea} onValueChange={(v) => setArea(v as Area)}>
             <TabsList className="w-full justify-start rounded-none border-none bg-transparent p-0 h-auto">
               {AREAS.map((area) => (
                 <TabsTrigger
                   key={area}
                   value={area}
+                  data-tour={`tab-${area}`}
                   className="flex-1 rounded-none border-b-2 border-border py-2.5 data-[state=active]:border-primary data-[state=active]:border-b-[3px] data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-none"
                 >
                   {AREA_LABELS[area]}

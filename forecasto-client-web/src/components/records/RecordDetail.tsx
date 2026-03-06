@@ -147,7 +147,7 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
 
       </CardContent>
       <div className="flex-shrink-0 p-4 border-t">
-        <Button className="w-full" onClick={onEdit}>
+        <Button className="w-full" onClick={onEdit} data-tour="btn-edit-record">
           Modifica Record
         </Button>
       </div>

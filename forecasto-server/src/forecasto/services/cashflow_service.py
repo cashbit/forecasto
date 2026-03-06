@@ -7,7 +7,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.models.bank_account import BankAccount, BankAccountBalance
@@ -37,10 +37,8 @@ class CashflowService:
         params: CashflowRequest,
     ) -> CashflowResponse:
         """Calculate cashflow projection for a workspace."""
-        # Get initial balances
-        initial_balance = await self._get_initial_balance(
-            workspace_id, params.from_date, params.bank_account_id
-        )
+        # Get initial balances (snapshot + records in the gap before from_date)
+        initial_balance = await self._get_initial_balance(workspace_id, params)
 
         # Get records in date range
         records = await self._get_records(workspace_id, params)
@@ -203,10 +201,17 @@ class CashflowService:
     async def _get_initial_balance(
         self,
         workspace_id: str,
-        start_date: date,
-        bank_account_id: str | None = None,
+        params: CashflowRequest,
     ) -> InitialBalance:
-        """Get initial balance for cashflow calculation."""
+        """Get initial balance for cashflow calculation.
+
+        The initial balance is computed as:
+        1. The most recent BankAccountBalance snapshot on or before from_date
+        2. Plus the sum of all matching records between that snapshot date and from_date
+        """
+        start_date = params.from_date
+        bank_account_id = params.bank_account_id
+
         # Get bank account associated with this workspace (1-to-1)
         if bank_account_id:
             # Filter to specific account
@@ -238,7 +243,7 @@ class CashflowService:
         total = Decimal("0")
 
         for account in accounts:
-            # Get balance closest to start date
+            # Get the most recent balance snapshot on or before start_date
             result = await self.db.execute(
                 select(BankAccountBalance)
                 .where(
@@ -250,7 +255,15 @@ class CashflowService:
             )
             balance_record = result.scalar_one_or_none()
 
-            balance = balance_record.balance if balance_record else Decimal("0")
+            snapshot_balance = balance_record.balance if balance_record else Decimal("0")
+            snapshot_date = balance_record.balance_date if balance_record else None
+
+            # Sum records in the gap between snapshot and from_date
+            gap_sum = await self._sum_records_before(
+                workspace_id, params, account.id, snapshot_date
+            )
+
+            balance = snapshot_balance + gap_sum
             total += balance
 
             by_account[account.id] = AccountBalance(
@@ -295,6 +308,47 @@ class CashflowService:
         query = query.order_by(Record.date_cashflow)
         result = await self.db.execute(query)
         return list(result.scalars().all())
+
+    async def _sum_records_before(
+        self,
+        workspace_id: str,
+        params: CashflowRequest,
+        bank_account_id: str,
+        after_date: date | None,
+    ) -> Decimal:
+        """Sum record totals between after_date (exclusive) and from_date (exclusive).
+
+        Used to compute the gap between the last balance snapshot and the
+        cashflow start date. Applies the same area/stage/sign filters as
+        the main cashflow query.
+        """
+        query = select(func.coalesce(func.sum(Record.total), 0)).where(
+            Record.workspace_id == workspace_id,
+            Record.deleted_at.is_(None),
+            Record.date_cashflow < params.from_date,
+        )
+
+        if after_date is not None:
+            query = query.where(Record.date_cashflow > after_date)
+
+        if params.areas:
+            query = query.where(Record.area.in_(params.areas))
+        if params.stages:
+            query = query.where(Record.stage.in_(params.stages))
+        if params.sign_filter == "in":
+            query = query.where(Record.amount > 0)
+        elif params.sign_filter == "out":
+            query = query.where(Record.amount < 0)
+
+        # Include records explicitly on this account,
+        # or records with no bank_account_id (they default to the workspace account)
+        query = query.where(
+            (Record.bank_account_id == bank_account_id)
+            | (Record.bank_account_id.is_(None))
+        )
+
+        result = await self.db.execute(query)
+        return Decimal(str(result.scalar() or 0))
 
     async def _get_balance_snapshots(
         self,

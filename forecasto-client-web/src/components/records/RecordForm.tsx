@@ -249,7 +249,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
       <form onSubmit={handleSubmit(handleFormSubmit)} className="flex flex-col flex-1 min-h-0">
         <CardContent className="pt-4 space-y-3 flex-1 overflow-y-auto">
           {/* Tipo (Entrata/Uscita) */}
-          <div className="space-y-1">
+          <div className="space-y-1" data-tour="form-sign">
             <Label className="text-sm font-medium">Tipo</Label>
             <div className="flex gap-1">
               {SIGN_OPTIONS.map((option) => {
@@ -338,7 +338,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
           </div>
 
           {/* Stato */}
-          <div className="space-y-1">
+          <div className="space-y-1" data-tour="form-stage">
             <Label>Stato</Label>
             <div className="flex gap-1">
               {stages.map((stage) => (
@@ -425,12 +425,13 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
                 variant="outline"
                 className="bg-blue-50 border-blue-300 hover:bg-blue-100 text-blue-700"
                 onClick={() => handlePromoteClick(nextArea)}
+                data-tour="form-promote"
               >
                 <ArrowRight className="h-3.5 w-3.5 mr-1" />
                 {AREA_LABELS[nextArea]}
               </Button>
             )}
-            <Button type="submit" className="flex-1" disabled={isLoading || !canPerformAction}>
+            <Button type="submit" className="flex-1" disabled={isLoading || !canPerformAction} data-tour="form-submit">
               {isLoading ? 'Salvataggio...' : record ? 'Aggiorna' : 'Crea'}
             </Button>
           </div>

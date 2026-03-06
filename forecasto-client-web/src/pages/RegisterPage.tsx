@@ -3,6 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { Eye, EyeOff } from 'lucide-react'
 import logoText from '@/assets/logo-text.png'
 import logoIcon from '@/assets/logo-icon.png'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,8 @@ export function RegisterPage() {
   const [searchParams] = useSearchParams()
   const { register: registerUser, isLoading } = useAuthStore()
   const [error, setError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const prefilledEmail = searchParams.get('email') ?? ''
   const prefilledName = searchParams.get('name') ?? ''
@@ -100,24 +103,44 @@ export function RegisterPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Crea una password"
-                {...register('password')}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Crea una password"
+                  {...register('password')}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {errors.password && (
                 <p className="text-sm text-destructive">{errors.password.message}</p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Conferma Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Ripeti la password"
-                {...register('confirmPassword')}
-              />
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Ripeti la password"
+                  {...register('confirmPassword')}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {errors.confirmPassword && (
                 <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
               )}
