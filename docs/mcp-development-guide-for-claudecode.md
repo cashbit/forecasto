@@ -18,9 +18,10 @@ Questa guida documenta i pattern corretti, le insidie e le soluzioni per svilupp
 10. [Gestione sessioni (stateful mode)](#10-gestione-sessioni-stateful-mode)
 11. [Implementare i tool MCP](#11-implementare-i-tool-mcp)
 12. [Client HTTP verso il backend](#12-client-http-verso-il-backend)
-13. [Deploy: nginx + systemd](#13-deploy-nginx--systemd)
-14. [Insidie comuni e soluzioni](#14-insidie-comuni-e-soluzioni)
-15. [Checklist pre-deploy](#15-checklist-pre-deploy)
+13. [Graceful Shutdown e resilienza ai deploy](#13-graceful-shutdown-e-resilienza-ai-deploy)
+14. [Deploy: nginx + systemd](#14-deploy-nginx--systemd)
+15. [Insidie comuni e soluzioni](#15-insidie-comuni-e-soluzioni)
+16. [Checklist pre-deploy](#16-checklist-pre-deploy)
 
 ---
 
@@ -117,7 +118,21 @@ export function createExpressApp(): express.Express {
 
   app.use(express.json());
 
-  app.get("/health", (_req, res) => res.json({ status: "ok" }));
+  // Health check — verifica anche la connettività con il backend
+  app.get("/health", async (_req, res) => {
+    try {
+      const backendRes = await fetch(`${config.backendUrl}/health`, {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (backendRes.ok) {
+        res.json({ status: "ok", service: "my-mcp", backend: "ok" });
+      } else {
+        res.status(503).json({ status: "degraded", backend: "unhealthy" });
+      }
+    } catch {
+      res.status(503).json({ status: "degraded", backend: "unreachable" });
+    }
+  });
 
   // Monta gli endpoint OAuth (discovery, register, authorize, token)
   app.use(mcpAuthRouter({
@@ -148,24 +163,41 @@ export function createExpressApp(): express.Express {
     if (!accessToken) { res.status(401).json({ error: "Unauthorized" }); return; }
 
     const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    let sessionEntry = sessionId ? sessions.get(sessionId) : undefined;
 
-    if (!sessionEntry) {
-      const newSessionId = randomUUID();
-      const server = new McpServer({ name: "my-server", version: "1.0.0" });
-      registerAllTools(server, () => new MyApiClient(accessToken));
+    // ⚠️ CRITICO: gestione corretta dei session ID (3 casi)
 
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => newSessionId,
-        onsessioninitialized: (sid) => sessions.set(sid, { server, transport }),
+    // Caso 1: Session ID presente ma sconosciuto → 404
+    // Questo segnala al client MCP di reinizializzare (fa apparire il tasto "Riconnetti")
+    if (sessionId && !sessions.has(sessionId)) {
+      res.status(404).json({
+        jsonrpc: "2.0",
+        error: { code: -32001, message: "Session not found" },
+        id: null,
       });
-
-      await server.connect(transport);
-      sessionEntry = { server, transport };
-      transport.onclose = () => sessions.delete(newSessionId);
+      return;
     }
 
-    await sessionEntry.transport.handleRequest(req, res, req.body);
+    // Caso 2: Session ID noto → usa sessione esistente
+    if (sessionId) {
+      const entry = sessions.get(sessionId)!;
+      await entry.transport.handleRequest(req, res, req.body);
+      return;
+    }
+
+    // Caso 3: Nessun session ID → nuova sessione (InitializeRequest)
+    const newSessionId = randomUUID();
+    const server = new McpServer({ name: "my-server", version: "1.0.0" });
+    registerAllTools(server, () => new MyApiClient(accessToken));
+
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => newSessionId,
+      onsessioninitialized: (sid) => sessions.set(sid, { server, transport }),
+    });
+
+    await server.connect(transport);
+    transport.onclose = () => sessions.delete(newSessionId);
+
+    await transport.handleRequest(req, res, req.body);
   });
 
   return app;
@@ -518,36 +550,55 @@ class InMemoryClientsStore implements OAuthRegisteredClientsStore {
 
 Il transport `StreamableHTTPServerTransport` supporta sia modalità stateless che stateful. Per la maggior parte dei casi d'uso, la modalità **stateful** è preferibile perché mantiene il contesto tra le chiamate tool.
 
+Le sessioni sono in-memory (`Map`) e vengono perse al restart del server. Per questo è **critico** gestire correttamente i 3 casi nel routing:
+
 ```typescript
 const sessions = new Map<string, { server: McpServer; transport: StreamableHTTPServerTransport }>();
 
 app.all("/mcp", bearerAuth, async (req, res) => {
+  const accessToken = req.auth?.token;
+  if (!accessToken) { res.status(401).json({ error: "Unauthorized" }); return; }
+
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
-  let sessionEntry = sessionId ? sessions.get(sessionId) : undefined;
 
-  if (!sessionEntry) {
-    // Nuova sessione: crea McpServer + Transport
-    const newSessionId = randomUUID();
-    const server = new McpServer({ name: "my-server", version: "1.0.0" });
-
-    // Passa il token al client API per questa sessione
-    registerAllTools(server, () => new MyApiClient(req.auth!.token));
-
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => newSessionId,
-      onsessioninitialized: (sid) => sessions.set(sid, { server, transport }),
+  // ⚠️ CASO 1: Session ID sconosciuto → 404
+  // Dopo un restart, i session ID in-memory sono persi.
+  // Il 404 è il segnale standard MCP che dice al client "reinizializza la connessione".
+  // Senza questo, il client riceve errori criptici e non sa di dover riconnettersi.
+  if (sessionId && !sessions.has(sessionId)) {
+    res.status(404).json({
+      jsonrpc: "2.0",
+      error: { code: -32001, message: "Session not found" },
+      id: null,
     });
-
-    await server.connect(transport);
-    sessionEntry = { server, transport };
-
-    // Cleanup alla chiusura della sessione
-    transport.onclose = () => sessions.delete(newSessionId);
+    return;
   }
 
-  await sessionEntry.transport.handleRequest(req, res, req.body);
+  // CASO 2: Session ID noto → usa sessione esistente
+  if (sessionId) {
+    const entry = sessions.get(sessionId)!;
+    await entry.transport.handleRequest(req, res, req.body);
+    return;
+  }
+
+  // CASO 3: Nessun session ID → nuova sessione (InitializeRequest)
+  const newSessionId = randomUUID();
+  const server = new McpServer({ name: "my-server", version: "1.0.0" });
+  registerAllTools(server, () => new MyApiClient(accessToken));
+
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => newSessionId,
+    onsessioninitialized: (sid) => sessions.set(sid, { server, transport }),
+  });
+
+  await server.connect(transport);
+  transport.onclose = () => sessions.delete(newSessionId);
+
+  await transport.handleRequest(req, res, req.body);
 });
 ```
+
+> **Perché il 404 è critico:** quando il client MCP (Claude) riceve HTTP 404 per un session ID, sa che la sessione è scaduta e avvia automaticamente una reinizializzazione. In Claude, questo fa apparire il tasto "Riconnetti" che permette all'utente di ristabilire la connessione. Senza il 404, il client crea sessioni fantasma e i tool smettono di funzionare con errori generici.
 
 ---
 
@@ -658,7 +709,80 @@ export class MyApiClient {
 
 ---
 
-## 13. Deploy: nginx + systemd
+## 13. Graceful Shutdown e resilienza ai deploy
+
+Quando il server viene riavviato (es. `systemctl restart`), le sessioni in-memory vengono perse e le connessioni SSE attive si interrompono bruscamente. Per gestire questo in modo pulito:
+
+### Esportare una funzione di shutdown da `transport.ts`
+
+```typescript
+/** Chiude tutte le sessioni MCP attive. */
+export async function shutdownAllSessions(): Promise<void> {
+  const entries = Array.from(sessions.values());
+  await Promise.allSettled(entries.map(({ transport }) => transport.close()));
+  sessions.clear();
+}
+```
+
+`transport.close()` dall'SDK chiude tutti gli stream SSE e chiama `onclose`, che a sua volta fa il cleanup dalla mappa sessioni.
+
+### Handler SIGTERM/SIGINT in `index.ts`
+
+```typescript
+import { createExpressApp, shutdownAllSessions } from "./transport.js";
+
+const app = createExpressApp();
+const httpServer = app.listen(config.port, "0.0.0.0", () => {
+  console.log(`MCP Server running on port ${config.port}`);
+});
+
+let isShuttingDown = false;
+
+async function gracefulShutdown(signal: string): Promise<void> {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.log(`${signal} received. Starting graceful shutdown...`);
+
+  // 1. Stop nuove connessioni
+  httpServer.close(() => console.log("HTTP server closed."));
+
+  // 2. Chiudi sessioni MCP attive
+  try {
+    await shutdownAllSessions();
+    console.log("All MCP sessions closed.");
+  } catch (err) {
+    console.error("Error closing sessions:", err);
+  }
+
+  // 3. Grace period per richieste in-flight, poi exit
+  setTimeout(() => {
+    console.log("Grace period expired. Exiting.");
+    process.exit(0);
+  }, 5000);
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+```
+
+### Configurazione systemd
+
+Per dare tempo al graceful shutdown di completarsi:
+
+```ini
+[Service]
+# ... altre opzioni ...
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10       # ⚠️ attende 10s prima di SIGKILL
+KillMode=mixed           # ⚠️ SIGTERM al main process, SIGKILL ai figli dopo timeout
+```
+
+Senza `TimeoutStopSec`, systemd invia SIGKILL quasi immediatamente dopo SIGTERM, vanificando il graceful shutdown.
+
+---
+
+## 14. Deploy: nginx + systemd
 
 ### systemd service
 
@@ -667,19 +791,52 @@ export class MyApiClient {
 [Unit]
 Description=My MCP Server
 After=network.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=www-data
 WorkingDirectory=/app/my-mcp
 ExecStart=/usr/bin/node /app/my-mcp/dist/index.js
-Restart=always
+Restart=on-failure
 RestartSec=5
+TimeoutStopSec=10       # ⚠️ Attende il graceful shutdown prima di SIGKILL
+KillMode=mixed           # ⚠️ SIGTERM al main, SIGKILL ai figli dopo timeout
 EnvironmentFile=/app/my-mcp/.env
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
 ```
+
+### Health check nel deploy script
+
+Dopo ogni `systemctl restart`, non usare un semplice `sleep` — verificare che il servizio sia effettivamente pronto:
+
+```bash
+# Restart e attendi che sia healthy (max 15 secondi)
+systemctl restart my-mcp
+
+echo "Waiting for health check..."
+HEALTHY=false
+for i in $(seq 1 15); do
+  if curl -sf http://127.0.0.1:3100/health | grep -q '"status":"ok"'; then
+    HEALTHY=true
+    echo "Server healthy after ${i}s"
+    break
+  fi
+  sleep 1
+done
+if [ "$HEALTHY" = false ]; then
+  echo "WARNING: Server did not become healthy within 15s!"
+  systemctl status my-mcp --no-pager || true
+fi
+```
+
+> **Ordine importante nel deploy:** se il server MCP dipende da un backend (FastAPI, ecc.), restartare e verificare il backend **prima** del server MCP. In questo modo l'health check del server MCP (che verifica il backend) potrà riportare `status: ok`.
 
 ### nginx
 
@@ -736,7 +893,24 @@ location /oauth/ {
 
 ---
 
-## 14. Insidie comuni e soluzioni
+## 15. Insidie comuni e soluzioni
+
+### ❌ Tool MCP non rispondono dopo un deploy / restart
+
+**Causa**: le sessioni MCP sono in-memory e vengono perse al restart. Se il handler `/mcp` non distingue tra "nessun session ID" e "session ID sconosciuto", crea sessioni fantasma con ID diversi dal header inviato dal client, causando confusione nel protocollo.
+
+**Sintomo**: errore generico `{"error": "Error occurred during tool execution"}` su tutte le chiamate tool dopo un deploy. Claude non mostra il tasto "Riconnetti".
+
+**Soluzione**: implementare i 3 casi nel routing (vedi sezione 10):
+1. Session ID sconosciuto → HTTP 404 con JSON-RPC error code `-32001`
+2. Session ID noto → usa sessione esistente
+3. Nessun session ID → crea nuova sessione
+
+Il **404 è il segnale chiave**: dice al client MCP che la sessione è scaduta e deve reinizializzare. In Claude questo attiva automaticamente il meccanismo di riconnessione.
+
+Complementare con graceful shutdown (sezione 13) per chiudere le sessioni in modo pulito prima del restart, e health check con verifica backend per evitare errori criptici quando il backend è ancora in avvio.
+
+---
 
 ### ❌ `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR`
 
@@ -808,7 +982,7 @@ dist/
 
 **Causa**: lo store in-memory (`pendingFlows`, `issuedCodes`) viene svuotato a ogni restart. Se il server viene riavviato tra l'inizio del flusso OAuth e il callback, lo state è perso.
 
-**Soluzione per produzione**: non riavviare il server durante un flusso OAuth attivo, oppure persistere lo state su Redis/DB. In development, usare `--no-reload` o evitare hot-reload durante il test OAuth.
+**Soluzione per produzione**: persistere lo state OAuth su disco (vedi `PersistentOAuthStore` nel progetto Forecasto, file `oauth/state-store.ts`). In development, usare `--no-reload` o evitare hot-reload durante il test OAuth.
 
 ---
 
@@ -826,18 +1000,37 @@ import { config } from "./config.js";
 
 ---
 
-## 15. Checklist pre-deploy
+## 16. Checklist pre-deploy
 
+**Autenticazione e OAuth:**
 - [ ] `app.set("trust proxy", 1)` aggiunto **prima** di `mcpAuthRouter`
 - [ ] `verifyAccessToken` ritorna `AuthInfo` con `expiresAt` (numero unix seconds)
 - [ ] `resourceServerUrl` in `mcpAuthRouter` punta a `${APP_URL}/mcp`
-- [ ] Endpoint `/users/me` (o equivalente) del backend verificato e raggiungibile
-- [ ] nginx: `location ^~ /oauth/callback` prima di `location /oauth/`
-- [ ] nginx: `proxy_buffering off` sull'endpoint `/mcp` (per SSE/streaming)
-- [ ] nginx: `proxy_read_timeout 3600s` su `/mcp`
-- [ ] `.gitignore` con `node_modules/` e `dist/`
-- [ ] Variabili d'ambiente in `.env` (o `EnvironmentFile` in systemd)
 - [ ] `skipLocalPkceValidation = true` nel provider (quando PKCE è gestito dal backend)
+- [ ] Endpoint `/users/me` (o equivalente) del backend verificato e raggiungibile
+
+**Sessioni e resilienza:**
+- [ ] Handler `/mcp` restituisce **404** per session ID sconosciuti (non crea sessioni fantasma)
+- [ ] Graceful shutdown: handler SIGTERM/SIGINT che chiude sessioni e HTTP server
+- [ ] Health check (`/health`) verifica la connettività con il backend (503 se irraggiungibile)
+
+**nginx:**
+- [ ] `location ^~ /oauth/callback` prima di `location /oauth/`
+- [ ] `proxy_buffering off` sull'endpoint `/mcp` (per SSE/streaming)
+- [ ] `proxy_read_timeout 3600s` su `/mcp`
+
+**systemd:**
+- [ ] `TimeoutStopSec=10` (attende graceful shutdown)
+- [ ] `KillMode=mixed` (SIGTERM al main, SIGKILL ai figli dopo timeout)
+- [ ] `EnvironmentFile` punta al `.env` corretto
+
+**Deploy script:**
+- [ ] Health check loop dopo ogni `systemctl restart` (non semplice `sleep`)
+- [ ] Backend restartato e verificato **prima** del server MCP
+
+**Codice e tool:**
+- [ ] `.gitignore` con `node_modules/` e `dist/`
+- [ ] Variabili d'ambiente in `.env`
 - [ ] Tool: ogni campo ha `.describe()` nello schema zod
 - [ ] Tool: response sempre `{ content: [{ type: "text", text: "..." }] }`
 
