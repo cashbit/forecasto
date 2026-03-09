@@ -37,7 +37,7 @@ export function CashflowFilters({ params, onChange }: CashflowFiltersProps) {
         <Input
           type="date"
           value={params.from_date}
-          onChange={(e) => onChange({ ...params, from_date: e.target.value })}
+          onChange={(e) => { if (e.target.value) onChange({ ...params, from_date: e.target.value }) }}
           className="w-40"
         />
       </div>
@@ -47,7 +47,7 @@ export function CashflowFilters({ params, onChange }: CashflowFiltersProps) {
         <Input
           type="date"
           value={params.to_date}
-          onChange={(e) => onChange({ ...params, to_date: e.target.value })}
+          onChange={(e) => { if (e.target.value) onChange({ ...params, to_date: e.target.value }) }}
           className="w-40"
         />
       </div>

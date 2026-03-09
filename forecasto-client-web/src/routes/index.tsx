@@ -7,6 +7,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { CashflowPage } from '@/pages/CashflowPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { SupportPage } from '@/pages/SupportPage'
 import { AdminLayout, AdminDashboard, RegistrationCodesPage, UsersPage, ActivatedCodesReportPage, BillingSummaryPage } from '@/pages/admin'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -31,6 +32,10 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 export const router = createBrowserRouter([
+  {
+    path: '/support',
+    element: <SupportPage />,
+  },
   {
     path: '/login',
     element: (

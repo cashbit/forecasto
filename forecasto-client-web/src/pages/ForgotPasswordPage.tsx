@@ -134,6 +134,12 @@ export function ForgotPasswordPage() {
                 Accedi
               </Link>
             </p>
+            <p className="text-sm text-muted-foreground">
+              Hai bisogno di aiuto?{' '}
+              <Link to="/support" className="text-primary hover:underline">
+                Centro Supporto
+              </Link>
+            </p>
           </CardFooter>
         </form>
       </Card>

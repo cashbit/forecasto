@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LogOut, Settings, User, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle } from 'lucide-react'
+import { LogOut, Settings, User, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy } from 'lucide-react'
 import logoIcon from '@/assets/logo-icon.png'
 import logoText from '@/assets/logo-text.png'
 import { Link, useLocation } from 'react-router-dom'
@@ -326,6 +326,18 @@ export function Header() {
           <TooltipContent>Guida Interattiva</TooltipContent>
         </Tooltip>
 
+        {/* Support Button */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" asChild>
+              <Link to="/support">
+                <LifeBuoy className="h-5 w-5" />
+              </Link>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Supporto</TooltipContent>
+        </Tooltip>
+
         {/* Pending Invitations */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -454,6 +466,13 @@ export function Header() {
                 </DropdownMenuItem>
               </>
             )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/support">
+                <LifeBuoy className="mr-2 h-4 w-4" />
+                Supporto
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout}>
               <LogOut className="mr-2 h-4 w-4" />

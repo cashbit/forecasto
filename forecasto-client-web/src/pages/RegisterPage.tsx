@@ -165,9 +165,15 @@ export function RegisterPage() {
               {isLoading ? 'Registrazione...' : 'Registrati'}
             </Button>
             <p className="text-sm text-muted-foreground">
-              Hai gia un account?{' '}
+              Hai già un account?{' '}
               <Link to="/login" className="text-primary hover:underline">
                 Accedi
+              </Link>
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Hai bisogno di aiuto?{' '}
+              <Link to="/support" className="text-primary hover:underline">
+                Centro Supporto
               </Link>
             </p>
           </CardFooter>

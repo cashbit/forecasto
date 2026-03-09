@@ -11,6 +11,7 @@ export function useCashflow(params: CashflowParams) {
     queries: selectedWorkspaceIds.map(workspaceId => ({
       queryKey: ['cashflow', workspaceId, params],
       queryFn: () => cashflowApi.getCashflow(workspaceId, params),
+      enabled: !!params.from_date && !!params.to_date,
       staleTime: 30000, // 30 seconds
     })),
     combine: (results) => {
