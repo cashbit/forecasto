@@ -1,0 +1,26 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "client-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "forecasto-client-web",
+      "port": 3000
+    },
+    {
+      "name": "server",
+      "runtimeExecutable": ".venv/bin/python",
+      "runtimeArgs": ["-m", "uvicorn", "forecasto.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
+      "cwd": "forecasto-server",
+      "port": 8000
+    },
+    {
+      "name": "mcp",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "forecasto-mcp",
+      "port": 3100
+    }
+  ]
+}
