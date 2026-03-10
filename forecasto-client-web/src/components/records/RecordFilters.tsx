@@ -19,7 +19,7 @@ function ToggleButtonGroup({ value, options, onChange }: ToggleButtonGroupProps)
           key={option.value}
           onClick={() => onChange(option.value)}
           className={cn(
-            "px-3 py-1 text-sm font-medium rounded transition-colors",
+            "h-8 px-3 py-0 text-sm font-medium rounded transition-colors",
             value === option.value
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
@@ -191,13 +191,13 @@ const TEXT_FILTER_FIELDS = [
 
 export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
   const {
-    currentArea, sign, stageFilter, textFilter, textFilterField,
+    selectedAreas, sign, stageFilter, textFilter, textFilterField,
     yearFilter, ownerFilter, nextactionFilter, expiredFilter, projectCodeFilter,
     setSign, setStageFilter, setTextFilter, setTextFilterField, resetFilters,
     toggleOwnerFilter, clearOwnerFilter, setNextactionFilter, setExpiredFilter, setProjectCodeFilter
   } = useFilterStore()
 
-  const stageLabels = STAGE_LABELS_BY_AREA[currentArea] || { '0': 'Stato 0', '1': 'Stato 1' }
+  const stageLabels = STAGE_LABELS_BY_AREA[selectedAreas[0]] || { '0': 'Stato 0', '1': 'Stato 1' }
 
   const hasDateFilter = yearFilter !== null
   const hasOwnerFilter = ownerFilter.length > 0
@@ -210,39 +210,41 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
   const uniqueOwners = [...new Set(availableOwners.filter(Boolean))].sort()
 
   return (
-    <div className="flex flex-col gap-2 p-4 border-b">
-      {/* Search fields row */}
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col border-b">
+      {/* Single responsive row — wraps automatically when the window narrows */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
         <DateFilter />
 
-        <div className="relative flex-1 max-w-sm flex">
+        {/* Text search: select + input */}
+        <div className="flex">
           <select
             value={textFilterField || ''}
             onChange={(e) => setTextFilterField(e.target.value as any || null)}
-            className="h-10 rounded-l-md border border-r-0 bg-muted text-xs px-2 cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-8 rounded-l-md border border-r-0 bg-muted text-xs px-2 cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
           >
             {TEXT_FILTER_FIELDS.map((f) => (
               <option key={f.value} value={f.value}>{f.label}</option>
             ))}
           </select>
-          <div className="relative flex-1">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder={textFilterField ? `Cerca in ${TEXT_FILTER_FIELDS.find(f => f.value === textFilterField)?.label}...` : 'Cerca... (più parole = AND)'}
+              placeholder={textFilterField ? `Cerca in ${TEXT_FILTER_FIELDS.find(f => f.value === textFilterField)?.label}...` : 'Cerca...'}
               title="Inserisci una o più parole: la ricerca trova righe che contengono tutte le parole indicate"
               value={textFilter}
               onChange={(e) => setTextFilter(e.target.value)}
-              className="pl-9 rounded-l-none"
+              className="h-8 w-44 pl-9 rounded-l-none"
             />
           </div>
         </div>
 
-        <div className="relative flex-1 max-w-sm">
+        {/* Project code */}
+        <div className="relative">
           <Input
             placeholder="Progetto"
             value={projectCodeFilter || ''}
             onChange={(e) => setProjectCodeFilter(e.target.value || null)}
-            className="pl-3"
+            className="h-8 w-36 pl-3"
           />
           {hasProjectCodeFilter && (
             <button
@@ -253,10 +255,8 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
             </button>
           )}
         </div>
-      </div>
 
-      {/* Buttons row */}
-      <div className="flex items-center gap-4">
+        {/* Toggle groups */}
         <ToggleButtonGroup
           value={sign}
           onChange={(v) => setSign(v as 'in' | 'out' | 'all')}
@@ -298,16 +298,16 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
         />
 
         {hasAnyFilter && (
-          <Button variant="ghost" size="sm" onClick={resetFilters}>
+          <Button variant="ghost" size="sm" className="h-8" onClick={resetFilters}>
             <X className="h-4 w-4 mr-1" />
             Reset
           </Button>
         )}
       </div>
 
-      {/* Owner filter row */}
+      {/* Owner filter row — separate, wraps on its own */}
       {(uniqueOwners.length > 0 || hasOwnerFilter) && (
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap px-4 pb-2">
           <span className="text-sm text-muted-foreground">Responsabile:</span>
           <button
             onClick={() => toggleOwnerFilter('_noowner_')}
