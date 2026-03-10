@@ -26,6 +26,9 @@ import { cn } from '@/lib/utils'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
+import { useFilterStore } from '@/stores/filterStore'
+import { AREA_LABELS } from '@/lib/constants'
+import type { Area } from '@/types/record'
 
 function parseAmount(amount: string | number): number {
   if (typeof amount === 'number') return amount
@@ -102,6 +105,8 @@ export function RecordGrid({
   const { selectedWorkspaceIds } = useWorkspaceStore()
   const { user } = useAuthStore()
   const { setCreateRecordDialogOpen } = useUiStore()
+  const selectedAreas = useFilterStore(state => state.selectedAreas)
+  const showAreaColumn = selectedAreas.length > 1
 
   const handleSetViewMode = (mode: 'compact' | 'extended') => {
     setViewMode(mode)
@@ -120,7 +125,7 @@ export function RecordGrid({
     localStorage.setItem('forecasto_showSeqNum', String(show))
   }
 
-  const columnVisibility: VisibilityState = { seq_num: showSeqNum, project_code: showProject, owner: showOwner }
+  const columnVisibility: VisibilityState = { seq_num: showSeqNum, project_code: showProject, owner: showOwner, area: showAreaColumn }
   const textCellClass = viewMode === 'compact' ? 'truncate' : 'whitespace-normal break-words'
 
   const SortIcon = ({ column }: { column: { getIsSorted: () => false | 'asc' | 'desc' } }) => {
@@ -169,6 +174,26 @@ export function RecordGrid({
         cell: ({ row }) => (
           <span className="block font-mono text-xs text-right text-muted-foreground">
             {row.original.seq_num ?? ''}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'area',
+        size: 75,
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-1 h-8"
+          >
+            Area
+            <SortIcon column={column} />
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {AREA_LABELS[row.original.area as Area] ?? row.original.area}
           </span>
         ),
       },
