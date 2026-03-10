@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { AxiosError } from 'axios'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { CheckCircle2, Circle } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +35,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { Record, Area, RecordCreate, RecordUpdate } from '@/types/record'
 
 export function DashboardPage() {
-  const { currentArea, setArea } = useFilterStore()
+  const { selectedAreas, selectSingleArea, toggleAreaSelection } = useFilterStore()
+  const primaryArea = selectedAreas[0]
   const { createRecordDialogOpen, setCreateRecordDialogOpen, reviewMode } = useUiStore()
   const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord, primaryWorkspaceId } = useRecords()
   const queryClient = useQueryClient()
@@ -492,21 +493,32 @@ export function DashboardPage() {
     <div className="flex h-[calc(100vh-3.5rem)]">
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Area Tabs */}
-        <div data-tour="area-tabs">
-          <Tabs value={currentArea} onValueChange={(v) => setArea(v as Area)}>
-            <TabsList className="w-full justify-start rounded-none border-none bg-transparent p-0 h-auto">
-              {AREAS.map((area) => (
-                <TabsTrigger
-                  key={area}
-                  value={area}
-                  data-tour={`tab-${area}`}
-                  className="flex-1 rounded-none border-b-2 border-border py-2.5 data-[state=active]:border-primary data-[state=active]:border-b-[3px] data-[state=active]:bg-primary/20 data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-none"
+        <div data-tour="area-tabs" className="flex border-b">
+          {AREAS.map((area) => {
+            const isSelected = selectedAreas.includes(area)
+            return (
+              <div
+                key={area}
+                data-tour={`tab-${area}`}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 border-b-2 select-none transition-colors ${
+                  isSelected
+                    ? 'border-primary bg-primary/10 text-primary font-semibold border-b-[3px]'
+                    : 'border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                }`}
+              >
+                {isSelected
+                  ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" onClick={(e) => { e.stopPropagation(); toggleAreaSelection(area) }} />
+                  : <Circle className="h-4 w-4 shrink-0 text-muted-foreground/50" onClick={(e) => { e.stopPropagation(); toggleAreaSelection(area) }} />
+                }
+                <span
+                  className="cursor-pointer"
+                  onClick={() => selectSingleArea(area)}
                 >
                   {AREA_LABELS[area]}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+                </span>
+              </div>
+            )
+          })}
         </div>
 
         <RecordFilters availableOwners={records.map(r => r.owner).filter(Boolean) as string[]} />
@@ -539,7 +551,7 @@ export function DashboardPage() {
           {editingRecord ? (
             <RecordForm
               record={editingRecord}
-              area={currentArea}
+              area={primaryArea}
               onSubmit={(data) => handleUpdateRecord(data as RecordUpdate)}
               onCancel={() => setEditingRecord(null)}
               onClose={() => setEditingRecord(null)}
@@ -549,7 +561,7 @@ export function DashboardPage() {
             />
           ) : createRecordDialogOpen ? (
             <RecordForm
-              area={currentArea}
+              area={primaryArea}
               onSubmit={(data) => handleCreateRecord(data as RecordCreate)}
               onCancel={() => setCreateRecordDialogOpen(false)}
               onClose={() => setCreateRecordDialogOpen(false)}
@@ -606,7 +618,7 @@ export function DashboardPage() {
 
       <BulkTransferDialog
         records={bulkRecords}
-        currentArea={currentArea}
+        currentArea={primaryArea}
         open={showBulkTransfer}
         onOpenChange={(open) => { if (!open) { setShowBulkTransfer(false); setBulkRecords(null) } }}
         onConfirm={handleBulkTransfer}
@@ -614,7 +626,7 @@ export function DashboardPage() {
 
       <BulkStageDialog
         records={bulkRecords}
-        currentArea={currentArea}
+        currentArea={primaryArea}
         open={showBulkStage}
         onOpenChange={(open) => { if (!open) { setShowBulkStage(false); setBulkRecords(null) } }}
         onConfirm={handleBulkSetStage}
@@ -636,7 +648,7 @@ export function DashboardPage() {
 
       <BulkEditDialog
         records={bulkRecords}
-        currentArea={currentArea}
+        currentArea={primaryArea}
         open={showBulkEdit}
         onOpenChange={(open) => { if (!open) { setShowBulkEdit(false); setBulkRecords(null) } }}
         onConfirm={handleBulkEdit}
