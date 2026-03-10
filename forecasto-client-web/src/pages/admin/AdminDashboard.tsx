@@ -166,7 +166,7 @@ export function AdminDashboard() {
                 className="flex items-center gap-2 p-2 rounded-md hover:bg-muted transition-colors"
               >
                 <KeyRound className="h-4 w-4" />
-                <span className="text-sm">Genera nuovi codici invito</span>
+                <span className="text-sm">Genera nuovi codici attivazione</span>
               </Link>
               <Link
                 to="/admin/users"

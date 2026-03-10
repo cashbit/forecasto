@@ -232,22 +232,22 @@ function BatchRow({ batch, onRefresh, partners }: { batch: RegistrationCodeBatch
 
   const buildMailto = (code: RegistrationCode): string => {
     const email = code.recipient_email || ''
-    const subject = encodeURIComponent('Il tuo codice invito Forecasto')
+    const subject = encodeURIComponent('Il tuo codice attivazione Forecasto')
     const name = code.recipient_name ? `Ciao ${code.recipient_name},` : 'Ciao,'
     const expires = code.expires_at ? `%0AScadenza: ${formatDate(code.expires_at)}.` : ''
     const registrationUrl = buildRegistrationUrl(code)
-    const body = `${encodeURIComponent(name)}%0A%0ATi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.%0A%0ACodice: ${code.code}%0ALink di registrazione: ${encodeURIComponent(registrationUrl)}${expires}`
+    const body = `${encodeURIComponent(name)}%0A%0ATi inviamo il tuo codice di attivazione personale per accedere alla piattaforma Forecasto.%0A%0ACodice: ${code.code}%0ALink di registrazione: ${encodeURIComponent(registrationUrl)}${expires}`
     return `mailto:${email}?subject=${subject}&body=${body}`
   }
 
   const buildGmailUrl = (code: RegistrationCode): string => {
     const to = encodeURIComponent(code.recipient_email || '')
-    const su = encodeURIComponent('Il tuo codice invito Forecasto')
+    const su = encodeURIComponent('Il tuo codice attivazione Forecasto')
     const name = code.recipient_name ? `Ciao ${code.recipient_name},` : 'Ciao,'
     const expires = code.expires_at ? `\nScadenza: ${formatDate(code.expires_at)}.` : ''
     const registrationUrl = buildRegistrationUrl(code)
     const body = encodeURIComponent(
-      `${name}\n\nTi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.\n\nCodice: ${code.code}\nLink di registrazione: ${registrationUrl}${expires}`
+      `${name}\n\nTi inviamo il tuo codice di attivazione personale per accedere alla piattaforma Forecasto.\n\nCodice: ${code.code}\nLink di registrazione: ${registrationUrl}${expires}`
     )
     return `https://mail.google.com/mail/u/0/?fs=1&tf=cm&to=${to}&su=${su}&body=${body}`
   }
@@ -702,9 +702,9 @@ export function RegistrationCodesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Codici Invito</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Codici Attivazione</h2>
           <p className="text-muted-foreground">
-            Genera e gestisci i codici di registrazione
+            Genera e gestisci i codici di attivazione
           </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -717,9 +717,9 @@ export function RegistrationCodesPage() {
           <DialogContent>
             <form onSubmit={handleSubmit(onSubmit)}>
               <DialogHeader>
-                <DialogTitle>Genera Codici Invito</DialogTitle>
+                <DialogTitle>Genera Codici Attivazione</DialogTitle>
                 <DialogDescription>
-                  Crea un nuovo batch di codici di registrazione
+                  Crea un nuovo batch di codici di attivazione
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">

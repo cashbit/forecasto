@@ -17,7 +17,7 @@ const schema = z.object({
   email: z.string().email('Email non valida'),
   password: z.string().min(6, 'Password deve avere almeno 6 caratteri'),
   confirmPassword: z.string(),
-  registrationCode: z.string().min(1, 'Codice invito richiesto'),
+  registrationCode: z.string().min(1, 'Codice attivazione richiesto'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Le password non coincidono',
   path: ['confirmPassword'],
@@ -146,7 +146,7 @@ export function RegisterPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="registrationCode">Codice Invito</Label>
+              <Label htmlFor="registrationCode">Codice Attivazione</Label>
               <Input
                 id="registrationCode"
                 placeholder="XXXX-XXXX-XXXX"
@@ -156,7 +156,7 @@ export function RegisterPage() {
                 <p className="text-sm text-destructive">{errors.registrationCode.message}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                Inserisci il codice invito ricevuto per registrarti
+                Inserisci il codice di attivazione ricevuto per registrarti
               </p>
             </div>
           </CardContent>

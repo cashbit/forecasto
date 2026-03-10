@@ -83,20 +83,20 @@ function PartnerBatchRow({ batch }: { batch: PartnerBatch }) {
 
   const buildMailto = (code: PartnerCode): string => {
     const email = code.recipient_email || ''
-    const subject = encodeURIComponent('Il tuo codice invito Forecasto')
+    const subject = encodeURIComponent('Il tuo codice attivazione Forecasto')
     const name = code.recipient_name ? `Ciao ${code.recipient_name},` : 'Ciao,'
     const expires = code.expires_at ? `%0AScadenza: ${formatDate(code.expires_at)}.` : ''
-    const body = `${encodeURIComponent(name)}%0A%0ATi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.%0A%0ACodice: ${code.code}%0ALink di registrazione: https://app.forecasto.it/register?code=${encodeURIComponent(code.code)}${expires}`
+    const body = `${encodeURIComponent(name)}%0A%0ATi inviamo il tuo codice di attivazione personale per accedere alla piattaforma Forecasto.%0A%0ACodice: ${code.code}%0ALink di registrazione: https://app.forecasto.it/register?code=${encodeURIComponent(code.code)}${expires}`
     return `mailto:${email}?subject=${subject}&body=${body}`
   }
 
   const buildGmailUrl = (code: PartnerCode): string => {
     const to = encodeURIComponent(code.recipient_email || '')
-    const su = encodeURIComponent('Il tuo codice invito Forecasto')
+    const su = encodeURIComponent('Il tuo codice attivazione Forecasto')
     const name = code.recipient_name ? `Ciao ${code.recipient_name},` : 'Ciao,'
     const expires = code.expires_at ? `\nScadenza: ${formatDate(code.expires_at)}.` : ''
     const body = encodeURIComponent(
-      `${name}\n\nTi inviamo il tuo codice invito personale per accedere alla piattaforma Forecasto.\n\nCodice: ${code.code}\nLink di registrazione: https://app.forecasto.it/register?code=${encodeURIComponent(code.code)}${expires}`
+      `${name}\n\nTi inviamo il tuo codice di attivazione personale per accedere alla piattaforma Forecasto.\n\nCodice: ${code.code}\nLink di registrazione: https://app.forecasto.it/register?code=${encodeURIComponent(code.code)}${expires}`
     )
     return `https://mail.google.com/mail/u/0/?fs=1&tf=cm&to=${to}&su=${su}&body=${body}`
   }
@@ -376,9 +376,9 @@ export function PartnershipTab() {
 
       <Card>
         <CardHeader>
-          <CardTitle>I tuoi codici invito</CardTitle>
+          <CardTitle>I tuoi codici attivazione</CardTitle>
           <CardDescription>
-            Codici di registrazione assegnati al tuo account partner
+            Codici di attivazione assegnati al tuo account partner
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">

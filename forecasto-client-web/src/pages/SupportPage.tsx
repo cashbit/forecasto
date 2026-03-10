@@ -47,7 +47,7 @@ const faqs = [
   {
     question: "Ho dimenticato la password, come la recupero?",
     answer:
-      "Dalla pagina di login clicca su 'Hai dimenticato la password?'. Inserisci la tua email e il codice invito ricevuto all'iscrizione per reimpostare la password.",
+      "Dalla pagina di login clicca su 'Hai dimenticato la password?'. Inserisci la tua email e il codice di attivazione ricevuto all'iscrizione per reimpostare la password.",
   },
   {
     question: "Cos'è la modalità 'Revisione Zero'?",
@@ -55,7 +55,7 @@ const faqs = [
       "La modalità Revisione Zero è un filtro visivo che evidenzia le voci che richiedono revisione, aiutandoti a identificare rapidamente i record da aggiornare o verificare. Si attiva dal pulsante nell'header.",
   },
   {
-    question: "Non ho un codice invito. Come posso ottenerlo?",
+    question: "Non ho un codice di attivazione. Come posso ottenerlo?",
     answer:
       "Forecasto è attualmente disponibile su invito. Visita il sito forecasto.it per scoprire come accedere, richiedere un invito o conoscere i piani disponibili.",
   },

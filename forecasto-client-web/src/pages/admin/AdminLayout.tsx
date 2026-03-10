@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
-  { to: '/admin/codes', icon: KeyRound, label: 'Codici Invito', end: false },
+  { to: '/admin/codes', icon: KeyRound, label: 'Codici Attivazione', end: false },
   { to: '/admin/users', icon: Users, label: 'Utenti', end: false },
   { to: '/admin/reports/activations', icon: FileBarChart, label: 'Report Attivazioni', end: false },
   { to: '/admin/reports/billing', icon: Receipt, label: 'Report Fatturazione', end: false },

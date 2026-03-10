@@ -13,7 +13,7 @@ import { authApi } from '@/api/auth'
 
 const schema = z.object({
   email: z.string().email('Email non valida'),
-  registration_code: z.string().min(1, 'Codice invito richiesto'),
+  registration_code: z.string().min(1, 'Codice attivazione richiesto'),
   new_password: z.string().min(6, 'La password deve avere almeno 6 caratteri'),
   confirmPassword: z.string(),
 }).refine((data) => data.new_password === data.confirmPassword, {
@@ -47,7 +47,7 @@ export function ForgotPasswordPage() {
       })
       navigate('/login', { state: { passwordReset: true } })
     } catch {
-      setError('Email o codice invito non validi')
+      setError('Email o codice di attivazione non validi')
     } finally {
       setIsLoading(false)
     }
@@ -63,7 +63,7 @@ export function ForgotPasswordPage() {
           </div>
           <CardTitle className="text-2xl">Recupera la tua password</CardTitle>
           <CardDescription>
-            Inserisci l&apos;email e il codice invito che hai ricevuto al momento della registrazione
+            Inserisci l&apos;email e il codice di attivazione che hai ricevuto al momento della registrazione
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -86,7 +86,7 @@ export function ForgotPasswordPage() {
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="registration_code">Codice Invito</Label>
+              <Label htmlFor="registration_code">Codice Attivazione</Label>
               <Input
                 id="registration_code"
                 placeholder="XXXX-XXXX-XXXX"
