@@ -191,7 +191,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
     // Build tour context — use getter for dashboardActions so it always reads from the ref
     const ctx: TourContext = {
-      setArea: filterStore.setArea,
+      setArea: filterStore.selectSingleArea,
       setCreateRecordDialogOpen: uiStore.setCreateRecordDialogOpen,
       primaryWorkspaceId: primaryWorkspaceId || selectedWorkspaceIds[0],
       updateRecord,
