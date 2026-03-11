@@ -197,7 +197,13 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
     // Remove sign and vat from data (UI-only fields); normalize bank_account_id empty string to undefined
     const { sign, vat: _vat, vat_deduction: _vatDed, review_date, bank_account_id, ...submitData } = data
 
-    return { submitData, signedAmount, signedTotal, vat, vatDeduction, review_date, bank_account_id: bank_account_id || undefined }
+    // In create mode: '' → undefined (don't send field)
+    // In update mode: '' → null (explicitly clear the field on server)
+    const normalizedBankAccountId = bank_account_id
+      ? bank_account_id
+      : record ? null : undefined
+
+    return { submitData, signedAmount, signedTotal, vat, vatDeduction, review_date, bank_account_id: normalizedBankAccountId }
   }
 
   const handleFormSubmit = (data: FormData) => {
