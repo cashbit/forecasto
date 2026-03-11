@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from forecasto.exceptions import ForbiddenException, NotFoundException
 from forecasto.models.record import Record
@@ -177,10 +178,19 @@ class RecordService:
 
         return record
 
+    _audit_options = [
+        selectinload(Record.creator),
+        selectinload(Record.updater),
+        selectinload(Record.deleter),
+        selectinload(Record.bank_account),
+    ]
+
     async def get_record(self, record_id: str, workspace_id: str) -> Record:
         """Get a record by ID."""
         result = await self.db.execute(
-            select(Record).where(
+            select(Record)
+            .options(*self._audit_options)
+            .where(
                 Record.id == record_id,
                 Record.workspace_id == workspace_id,
             )
@@ -265,7 +275,7 @@ class RecordService:
         if limit is not None:
             query = query.limit(limit)
 
-        result = await self.db.execute(query)
+        result = await self.db.execute(query.options(*self._audit_options))
         records = list(result.scalars().all())
 
         # Apply granular permission filtering if member provided
@@ -336,6 +346,35 @@ class RecordService:
 
         record.deleted_at = datetime.utcnow()
         record.deleted_by = user.id
+        record.version += 1
+
+        return record
+
+    async def restore_record(
+        self,
+        record: Record,
+        user: User,
+        member: WorkspaceMember | None = None,
+    ) -> Record:
+        """Restore a soft-deleted record."""
+        if record.deleted_at is None:
+            raise ForbiddenException("Record is not deleted")
+
+        # Reuse delete permission check for restore
+        if member:
+            sign = get_sign_from_amount(record.amount)
+            if not check_granular_permission(
+                member, record.area, sign, "can_delete_others",
+                record.created_by, user.id
+            ):
+                raise ForbiddenException(
+                    f"You don't have permission to restore records created by others in {record.area}"
+                )
+
+        record.deleted_at = None
+        record.deleted_by = None
+        record.updated_by = user.id
+        record.updated_at = datetime.utcnow()
         record.version += 1
 
         return record

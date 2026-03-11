@@ -35,6 +35,7 @@ export interface Record {
   review_date?: string
   transaction_id?: string
   bank_account_id?: string
+  bank_account_name?: string
   project_code?: string
   classification?: Classification
   transfer_history?: TransferEntry[]
@@ -43,8 +44,13 @@ export interface Record {
   is_draft?: boolean
   created_by?: string
   updated_by?: string
+  deleted_at?: string
+  deleted_by?: string
   created_at: string
   updated_at: string
+  creator_email?: string
+  updater_email?: string
+  deleter_email?: string
 }
 
 export interface RecordCreate {
@@ -101,6 +107,7 @@ export interface RecordFilters {
   text_filter_field?: TextFilterField
   project_code?: string
   bank_account_id?: string
+  include_deleted?: boolean
   page?: number
   page_size?: number
 }

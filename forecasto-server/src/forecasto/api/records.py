@@ -28,10 +28,13 @@ from forecasto.services.record_service import RecordService
 router = APIRouter()
 
 def _record_to_response(record, is_draft: bool = False) -> RecordResponse:
-    """Convert record model to response schema using Pydantic auto-mapping."""
-    # Use .model_validate() with override for is_draft (computed field)
+    """Convert record model to response schema, enriching with audit user info."""
     response = RecordResponse.model_validate(record)
     response.is_draft = is_draft
+    response.creator_email = record.creator.email if record.creator else None
+    response.updater_email = record.updater.email if record.updater else None
+    response.deleter_email = record.deleter.email if record.deleter else None
+    response.bank_account_name = record.bank_account.name if record.bank_account else None
     return response
 
 @router.get("/{workspace_id}/records", response_model=dict)
@@ -50,6 +53,7 @@ async def list_records(
     text_filter_field: str | None = Query(None),
     project_code: str | None = Query(None),
     bank_account_id: str | None = Query(None),
+    include_deleted: bool = Query(False),
     limit: int | None = Query(None, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
@@ -71,6 +75,7 @@ async def list_records(
         text_filter_field=text_filter_field,
         project_code=project_code,
         bank_account_id=bank_account_id,
+        include_deleted=include_deleted,
     )
 
     # Pass member and current_user_id for granular permission filtering
@@ -258,6 +263,40 @@ async def delete_record(
     await service.delete_record(record, current_user, member=member)
 
     return {"success": True, "message": "Record deleted"}
+
+
+@router.post("/{workspace_id}/records/{record_id}/restore", response_model=dict)
+async def restore_record(
+    workspace_id: str,
+    record_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Restore a soft-deleted record."""
+    workspace, member = workspace_data
+
+    service = RecordService(db)
+    # Fetch including deleted records
+    from forecasto.models.record import Record as RecordModel
+    from sqlalchemy import select as sa_select
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        sa_select(RecordModel)
+        .options(*service._audit_options)
+        .where(RecordModel.id == record_id, RecordModel.workspace_id == workspace_id)
+    )
+    record = result.scalar_one_or_none()
+    if not record:
+        from forecasto.exceptions import NotFoundException
+        raise NotFoundException(f"Record {record_id} not found")
+
+    check_area_permission(member, record.area, "write")
+    record = await service.restore_record(record, current_user, member=member)
+
+    return {"success": True, "record": _record_to_response(record)}
 
 
 @router.get("/{workspace_id}/records/export", response_model=dict)

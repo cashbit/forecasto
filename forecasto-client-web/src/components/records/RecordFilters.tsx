@@ -1,4 +1,4 @@
-import { Search, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useFilterStore } from '@/stores/filterStore'
@@ -193,8 +193,10 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
   const {
     selectedAreas, sign, stageFilter, textFilter, textFilterField,
     yearFilter, ownerFilter, nextactionFilter, expiredFilter, projectCodeFilter,
+    includeDeleted,
     setSign, setStageFilter, setTextFilter, setTextFilterField, resetFilters,
-    toggleOwnerFilter, clearOwnerFilter, setNextactionFilter, setExpiredFilter, setProjectCodeFilter
+    toggleOwnerFilter, clearOwnerFilter, setNextactionFilter, setExpiredFilter, setProjectCodeFilter,
+    setIncludeDeleted
   } = useFilterStore()
 
   const stageLabels = STAGE_LABELS_BY_AREA[selectedAreas[0]] || { '0': 'Stato 0', '1': 'Stato 1' }
@@ -204,7 +206,7 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
   const hasNextactionFilter = nextactionFilter !== 'all'
   const hasExpiredFilter = expiredFilter !== 'all'
   const hasProjectCodeFilter = !!projectCodeFilter
-  const hasAnyFilter = textFilter || sign !== 'all' || stageFilter !== 'all' || hasDateFilter || hasOwnerFilter || hasNextactionFilter || hasExpiredFilter || hasProjectCodeFilter
+  const hasAnyFilter = textFilter || sign !== 'all' || stageFilter !== 'all' || hasDateFilter || hasOwnerFilter || hasNextactionFilter || hasExpiredFilter || hasProjectCodeFilter || includeDeleted
 
   // Get unique owners from available owners
   const uniqueOwners = [...new Set(availableOwners.filter(Boolean))].sort()
@@ -296,6 +298,16 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
             { value: 'no', label: 'Non scaduti' },
           ]}
         />
+
+        <Button
+          variant={includeDeleted ? 'destructive' : 'outline'}
+          size="sm"
+          className="h-8 gap-1"
+          onClick={() => setIncludeDeleted(!includeDeleted)}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          {includeDeleted ? 'Nascondi eliminati' : 'Mostra eliminati'}
+        </Button>
 
         {hasAnyFilter && (
           <Button variant="ghost" size="sm" className="h-8" onClick={resetFilters}>

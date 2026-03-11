@@ -12,7 +12,7 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table'
 import { useState } from 'react'
-import { ArrowUpDown, ArrowUp, ArrowDown, Trash, ArrowRight, Split, Copy, Merge, Calendar, Download, Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus, FolderOutput, Pencil } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown, Trash, ArrowRight, Split, Copy, Merge, Calendar, Download, Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus, FolderOutput, Pencil, RotateCcw } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -62,6 +62,7 @@ interface RecordGridProps {
   onBulkSetStage?: (records: Record[]) => void
   onBulkMoveWorkspace?: (records: Record[]) => void
   onBulkEdit?: (records: Record[]) => void
+  onRestoreRecord?: (record: Record) => void
   visitedRecordIds?: Set<string>
   activeRecordId?: string | null
 }
@@ -81,6 +82,7 @@ export function RecordGrid({
   onBulkSetStage,
   onBulkMoveWorkspace,
   onBulkEdit,
+  onRestoreRecord,
   visitedRecordIds,
   activeRecordId,
 }: RecordGridProps) {
@@ -388,8 +390,35 @@ export function RecordGrid({
         },
         enableSorting: false,
       },
+      {
+        id: 'restore',
+        size: 28,
+        header: '',
+        cell: ({ row }) => {
+          const record = row.original
+          if (!record.deleted_at) return null
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
+                    onClick={(e) => { e.stopPropagation(); onRestoreRecord?.(record) }}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Ripristina</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )
+        },
+        enableSorting: false,
+      },
     ],
-    [user?.id, textCellClass]
+    [user?.id, textCellClass, onRestoreRecord]
   )
 
   const table = useReactTable({
@@ -755,20 +784,23 @@ export function RecordGrid({
             {table.getRowModel().rows.map((row) => {
               const isActive = activeRecordId === row.original.id
               const isVisited = visitedRecordIds?.has(row.original.id) ?? false
+              const isDeleted = !!row.original.deleted_at
               return (
               <TableRow
                 key={row.id}
-                className="cursor-pointer"
+                className={cn("cursor-pointer", isDeleted && "opacity-50")}
                 style={{
-                  backgroundColor: isActive
-                    ? 'var(--color-row-active)'
-                    : row.getIsSelected()
-                      ? 'var(--color-row-selected)'
-                      : isVisited
-                        ? 'var(--color-row-visited)'
-                        : ['0', 'unpaid', 'draft'].includes(row.original.stage) && new Date(row.original.date_cashflow) <= new Date()
-                          ? 'var(--color-row-overdue)'
-                          : undefined,
+                  backgroundColor: isDeleted
+                    ? undefined
+                    : isActive
+                      ? 'var(--color-row-active)'
+                      : row.getIsSelected()
+                        ? 'var(--color-row-selected)'
+                        : isVisited
+                          ? 'var(--color-row-visited)'
+                          : ['0', 'unpaid', 'draft'].includes(row.original.stage) && new Date(row.original.date_cashflow) <= new Date()
+                            ? 'var(--color-row-overdue)'
+                            : undefined,
                 }}
                 onClick={() => onSelectRecord?.(row.original)}
               >

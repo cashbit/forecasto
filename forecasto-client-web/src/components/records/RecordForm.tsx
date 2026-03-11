@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { STAGES, STAGE_LABELS_BY_AREA, SIGN_OPTIONS, AREA_LABELS } from '@/lib/constants'
@@ -15,6 +16,7 @@ import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useAuthStore } from '@/stores/authStore'
 import { AlertCircle, X, ArrowRight, Maximize2, Minimize2 } from 'lucide-react'
 import { MarkdownTextarea } from '@/components/common/MarkdownTextarea'
+import { bankAccountsApi } from '@/api/bank-accounts'
 
 const schema = z.object({
   account: z.string().min(1, 'Conto obbligatorio'),
@@ -32,6 +34,7 @@ const schema = z.object({
   project_code: z.string().optional(),
   vat: z.string().optional(),
   vat_deduction: z.string().optional(),
+  bank_account_id: z.string().optional(),
   sign: z.enum(['in', 'out'], { message: 'Seleziona entrata o uscita' }),
 })
 
@@ -111,6 +114,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
       review_date: record?.review_date?.split('T')[0] || '',
       vat_deduction: record?.vat_deduction ? parseFloat(record.vat_deduction).toFixed(0) : '100',
       project_code: record?.project_code || '',
+      bank_account_id: record?.bank_account_id || '',
       sign: record?.amount ? (parseFloat(record.amount) >= 0 ? 'in' : 'out') : undefined,
     },
   })
@@ -121,6 +125,12 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
   // Track which field (vat or total) was last manually edited
   const [lastEdited, setLastEdited] = useState<'vat' | 'total'>('total')
   const [noteExpanded, setNoteExpanded] = useState(false)
+
+  const { data: bankAccounts = [] } = useQuery({
+    queryKey: ['bank-accounts'],
+    queryFn: () => bankAccountsApi.listUserAccounts(),
+    staleTime: 60000,
+  })
 
   // Check permission based on selected sign
   const canPerformAction = selectedSign
@@ -184,35 +194,35 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
 
     const vatDeduction = data.vat_deduction || '100'
 
-    // Remove sign and vat from data (UI-only fields)
-    const { sign, vat: _vat, vat_deduction: _vatDed, review_date, ...submitData } = data
+    // Remove sign and vat from data (UI-only fields); normalize bank_account_id empty string to undefined
+    const { sign, vat: _vat, vat_deduction: _vatDed, review_date, bank_account_id, ...submitData } = data
 
-    return { submitData, signedAmount, signedTotal, vat, vatDeduction, review_date }
+    return { submitData, signedAmount, signedTotal, vat, vatDeduction, review_date, bank_account_id: bank_account_id || undefined }
   }
 
   const handleFormSubmit = (data: FormData) => {
-    const { submitData, signedAmount, signedTotal, vat, vatDeduction, review_date } = processFormData(data)
+    const { submitData, signedAmount, signedTotal, vat, vatDeduction, review_date, bank_account_id } = processFormData(data)
 
     if (record) {
-      onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, review_date: review_date || undefined } as RecordUpdate)
+      onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, review_date: review_date || undefined, bank_account_id } as RecordUpdate)
     } else {
       // Add default type for new records
-      onSubmit({ ...submitData, area, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, review_date: review_date || undefined, type: 'standard' } as RecordCreate)
+      onSubmit({ ...submitData, area, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, review_date: review_date || undefined, bank_account_id, type: 'standard' } as RecordCreate)
     }
   }
 
   const handleReviewClick = (days: number) => {
     handleSubmit((data: FormData) => {
-      const { submitData, signedAmount, signedTotal, vat, vatDeduction } = processFormData(data)
-      onReview?.(days, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction } as RecordUpdate)
+      const { submitData, signedAmount, signedTotal, vat, vatDeduction, bank_account_id } = processFormData(data)
+      onReview?.(days, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, bank_account_id } as RecordUpdate)
     })()
   }
 
   const handlePromoteClick = (toArea: Area) => {
     if (!record) return
     handleSubmit((data: FormData) => {
-      const { submitData, signedAmount, signedTotal, vat, vatDeduction } = processFormData(data)
-      onPromote?.(record.id, toArea, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction } as RecordUpdate)
+      const { submitData, signedAmount, signedTotal, vat, vatDeduction, bank_account_id } = processFormData(data)
+      onPromote?.(record.id, toArea, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, bank_account_id } as RecordUpdate)
     })()
   }
 
@@ -394,6 +404,27 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
               onValueChange={(v) => setValue('note', v)}
               heightClass="h-20"
             />
+          </div>
+
+          {/* Conto Bancario */}
+          <div className="space-y-1">
+            <Label>Conto Bancario</Label>
+            <Select
+              value={watch('bank_account_id') || '__none__'}
+              onValueChange={(v) => setValue('bank_account_id', v === '__none__' ? '' : v)}
+            >
+              <SelectTrigger className="h-8 text-sm">
+                <SelectValue placeholder="Default workspace" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Default workspace</SelectItem>
+                {bankAccounts.map((acc) => (
+                  <SelectItem key={acc.id} value={acc.id}>
+                    {acc.name}{acc.bank_name ? ` — ${acc.bank_name}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
 

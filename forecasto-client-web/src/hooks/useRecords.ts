@@ -9,15 +9,14 @@ export function useRecords() {
   // Use selectors for better performance and proper reactivity
   const selectedWorkspaceIds = useWorkspaceStore(state => state.selectedWorkspaceIds)
   const {
-    currentArea, dateRange, yearFilter, monthFilter, dayFilter,
+    selectedAreas, dateRange, yearFilter, monthFilter, dayFilter,
     sign, stageFilter, ownerFilter, nextactionFilter, expiredFilter,
-    textFilter, textFilterField, projectCodeFilter, bankAccountFilter
+    textFilter, textFilterField, projectCodeFilter, bankAccountFilter, includeDeleted
   } = useFilterStore()
   const reviewMode = useUiStore(state => state.reviewMode)
   const queryClient = useQueryClient()
 
-  const filters = {
-    area: currentArea,
+  const baseFilters = {
     date_start: dateRange?.start,
     date_end: dateRange?.end,
     sign: sign !== 'all' ? sign : undefined,
@@ -25,15 +24,18 @@ export function useRecords() {
     text_filter_field: textFilter && textFilterField ? textFilterField : undefined,
     project_code: projectCodeFilter || undefined,
     bank_account_id: bankAccountFilter || undefined,
+    include_deleted: includeDeleted || undefined,
   }
 
-  // Fetch records from all selected workspaces using combine
+  // Fetch records from all selected workspaces × selected areas using combine
   const { records, total, isLoading, isError, error } = useQueries({
-    queries: selectedWorkspaceIds.map(workspaceId => ({
-      queryKey: ['records', workspaceId, filters],
-      queryFn: () => recordsApi.list(workspaceId, filters),
-      staleTime: 30000,
-    })),
+    queries: selectedWorkspaceIds.flatMap(workspaceId =>
+      selectedAreas.map(area => ({
+        queryKey: ['records', workspaceId, area, baseFilters],
+        queryFn: () => recordsApi.list(workspaceId, { ...baseFilters, area }),
+        staleTime: 30000,
+      }))
+    ),
     combine: (results) => {
       const isLoading = results.some(r => r.isLoading)
       const isError = results.some(r => r.isError)
@@ -161,6 +163,14 @@ export function useRecords() {
     },
   })
 
+  const restoreMutation = useMutation({
+    mutationFn: ({ recordId, workspaceId }: { recordId: string; workspaceId?: string }) =>
+      recordsApi.restore(workspaceId || primaryWorkspaceId!, recordId),
+    onSuccess: () => {
+      invalidateAllWorkspaces()
+    },
+  })
+
   return {
     records,
     total,
@@ -171,10 +181,12 @@ export function useRecords() {
     updateRecord: (params: { recordId: string; data: RecordUpdate; workspaceId?: string }) => updateMutation.mutateAsync(params),
     deleteRecord: (recordId: string, workspaceId?: string) => deleteMutation.mutateAsync({ recordId, workspaceId }),
     transferRecord: (params: { recordId: string; toArea: Area; note?: string; workspaceId?: string }) => transferMutation.mutateAsync(params),
+    restoreRecord: (recordId: string, workspaceId?: string) => restoreMutation.mutateAsync({ recordId, workspaceId }),
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isTransferring: transferMutation.isPending,
+    isRestoring: restoreMutation.isPending,
     primaryWorkspaceId,
   }
 }

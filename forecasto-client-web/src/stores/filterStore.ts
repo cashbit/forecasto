@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { Area, TextFilterField } from '@/types/record'
 
 interface FilterState {
-  currentArea: Area
+  selectedAreas: Area[]
   dateRange: { start: string; end: string } | null
   yearFilter: number | null
   monthFilter: number | null
@@ -17,8 +17,10 @@ interface FilterState {
   accountFilter: string[]
   projectCodeFilter: string | null
   bankAccountFilter: string | null
+  includeDeleted: boolean
 
-  setArea: (area: Area) => void
+  selectSingleArea: (area: Area) => void
+  toggleAreaSelection: (area: Area) => void
   setDateRange: (range: { start: string; end: string } | null) => void
   setYearFilter: (year: number | null) => void
   setMonthFilter: (month: number | null) => void
@@ -34,11 +36,12 @@ interface FilterState {
   setAccountFilter: (accounts: string[]) => void
   setProjectCodeFilter: (code: string | null) => void
   setBankAccountFilter: (accountId: string | null) => void
+  setIncludeDeleted: (v: boolean) => void
   resetFilters: () => void
 }
 
 const initialState = {
-  currentArea: 'actual' as Area,
+  selectedAreas: ['actual'] as Area[],
   dateRange: null,
   yearFilter: null as number | null,
   monthFilter: null as number | null,
@@ -53,12 +56,24 @@ const initialState = {
   accountFilter: [],
   projectCodeFilter: null,
   bankAccountFilter: null,
+  includeDeleted: false,
 }
 
 export const useFilterStore = create<FilterState>()((set) => ({
   ...initialState,
 
-  setArea: (area) => set({ currentArea: area }),
+  selectSingleArea: (area) => set({ selectedAreas: [area] }),
+
+  toggleAreaSelection: (area) => set((state) => {
+    const isSelected = state.selectedAreas.includes(area)
+    // Prevent deselecting the last area
+    if (isSelected && state.selectedAreas.length === 1) return state
+    return {
+      selectedAreas: isSelected
+        ? state.selectedAreas.filter(a => a !== area)
+        : [...state.selectedAreas, area],
+    }
+  }),
 
   setDateRange: (range) => set({ dateRange: range }),
 
@@ -105,5 +120,7 @@ export const useFilterStore = create<FilterState>()((set) => ({
 
   setBankAccountFilter: (accountId) => set({ bankAccountFilter: accountId }),
 
-  resetFilters: () => set((state) => ({ ...initialState, currentArea: state.currentArea })),
+  setIncludeDeleted: (v) => set({ includeDeleted: v }),
+
+  resetFilters: () => set((state) => ({ ...initialState, selectedAreas: state.selectedAreas })),
 }))

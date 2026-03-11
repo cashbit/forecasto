@@ -64,4 +64,9 @@ export const recordsApi = {
   bulkDelete: async (workspaceId: string, recordIds: string[]): Promise<void> => {
     await apiClient.delete(`/workspaces/${workspaceId}/records/bulk`, { data: { ids: recordIds } })
   },
+
+  restore: async (workspaceId: string, recordId: string): Promise<Record> => {
+    const response = await apiClient.post<{ success: boolean; record: Record }>(`/workspaces/${workspaceId}/records/${recordId}/restore`)
+    return response.data.record
+  },
 }

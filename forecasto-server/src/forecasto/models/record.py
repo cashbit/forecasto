@@ -84,5 +84,6 @@ class Record(Base, UUIDMixin, TimestampMixin):
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="records")
     bank_account: Mapped[Optional["BankAccount"]] = relationship("BankAccount")
-    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by])
-    updater: Mapped[Optional["User"]] = relationship("User", foreign_keys=[updated_by])
+    creator: Mapped[Optional["User"]] = relationship("User", foreign_keys=[created_by], lazy="select")
+    updater: Mapped[Optional["User"]] = relationship("User", foreign_keys=[updated_by], lazy="select")
+    deleter: Mapped[Optional["User"]] = relationship("User", foreign_keys=[deleted_by], lazy="select")

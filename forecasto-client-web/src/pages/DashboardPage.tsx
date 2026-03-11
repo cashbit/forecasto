@@ -38,7 +38,7 @@ export function DashboardPage() {
   const { selectedAreas, selectSingleArea, toggleAreaSelection } = useFilterStore()
   const primaryArea = selectedAreas[0]
   const { createRecordDialogOpen, setCreateRecordDialogOpen, reviewMode } = useUiStore()
-  const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord, primaryWorkspaceId } = useRecords()
+  const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord, restoreRecord, primaryWorkspaceId } = useRecords()
   const queryClient = useQueryClient()
   const { registerDashboardActions } = useTourContext()
 
@@ -461,6 +461,17 @@ export function DashboardPage() {
     }
   }
 
+  const handleRestoreRecord = async (record: Record) => {
+    try {
+      await restoreRecord(record.id, record.workspace_id)
+      toast({ title: 'Record ripristinato', variant: 'success' })
+    } catch (error) {
+      const axiosError = error as AxiosError<{ error?: string; message?: string }>
+      const message = axiosError.response?.data?.error || 'Errore durante il ripristino.'
+      toast({ title: 'Errore', description: message, variant: 'destructive' })
+    }
+  }
+
   const handleBulkExport = (selectedRecords: Record[]) => {
     const headers = ['#', 'Data', 'Conto', 'Riferimento', 'ID Transazione', 'Responsabile', 'Imponibile', 'Totale', 'Stage', 'Area', 'Revisione']
     const rows = selectedRecords.map(r => [
@@ -539,6 +550,7 @@ export function DashboardPage() {
             onBulkSetStage={(recs) => { setBulkRecords(recs); setShowBulkStage(true) }}
             onBulkMoveWorkspace={(recs) => { setBulkRecords(recs); setShowBulkMoveWorkspace(true) }}
             onBulkEdit={(recs) => { setBulkRecords(recs); setShowBulkEdit(true) }}
+            onRestoreRecord={handleRestoreRecord}
             visitedRecordIds={visitedRecordIds}
             activeRecordId={editingRecord?.id || selectedRecord?.id}
           />

@@ -91,6 +91,7 @@ class RecordResponse(BaseModel):
     stage: str
     transaction_id: str | None = None
     bank_account_id: str | None = None
+    bank_account_name: str | None = None
     project_code: str | None = None
     review_date: date | None = None
     classification: dict
@@ -100,8 +101,13 @@ class RecordResponse(BaseModel):
     is_draft: bool = False
     created_by: str | None = None
     updated_by: str | None = None
+    deleted_at: datetime | None = None
+    deleted_by: str | None = None
     created_at: datetime
     updated_at: datetime
+    creator_email: str | None = None
+    updater_email: str | None = None
+    deleter_email: str | None = None
 
     model_config = {"from_attributes": True}
 

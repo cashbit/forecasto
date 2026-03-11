@@ -1,4 +1,5 @@
-import { X } from 'lucide-react'
+import { useState } from 'react'
+import { X, ChevronDown, ChevronRight, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -16,6 +17,8 @@ interface RecordDetailProps {
 }
 
 export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
+  const [auditExpanded, setAuditExpanded] = useState(false)
+
   return (
     <Card className="h-full border-0 rounded-none flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 flex-shrink-0">
@@ -51,6 +54,14 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
         <div>
           <p className="text-sm text-muted-foreground">Progetto</p>
           <p className="font-mono text-sm">{record.project_code || '-'}</p>
+        </div>
+
+        <div>
+          <p className="text-sm text-muted-foreground">Conto Bancario</p>
+          {record.bank_account_name
+            ? <p className="text-sm font-medium">{record.bank_account_name}</p>
+            : <p className="text-sm text-muted-foreground italic">Default workspace</p>
+          }
         </div>
 
         <div>
@@ -145,11 +156,58 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
           </>
         )}
 
+        <Separator />
+
+        {/* Sezione Audit */}
+        <div>
+          <button
+            type="button"
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground w-full text-left"
+            onClick={() => setAuditExpanded(v => !v)}
+          >
+            <Info className="h-3.5 w-3.5" />
+            <span>Informazioni</span>
+            {auditExpanded ? <ChevronDown className="h-3.5 w-3.5 ml-auto" /> : <ChevronRight className="h-3.5 w-3.5 ml-auto" />}
+          </button>
+          {auditExpanded && (
+            <div className="mt-2 space-y-2 text-sm pl-1">
+              <div>
+                <span className="text-muted-foreground">Creato il </span>
+                <DateDisplay date={record.created_at} format="datetime" />
+                {record.creator_email && (
+                  <span className="text-muted-foreground"> da <span className="text-foreground font-medium">{record.creator_email}</span></span>
+                )}
+              </div>
+              {record.updated_at !== record.created_at && (
+                <div>
+                  <span className="text-muted-foreground">Modificato il </span>
+                  <DateDisplay date={record.updated_at} format="datetime" />
+                  {record.updater_email && (
+                    <span className="text-muted-foreground"> da <span className="text-foreground font-medium">{record.updater_email}</span></span>
+                  )}
+                </div>
+              )}
+              {record.deleted_at && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="destructive" className="text-xs">Eliminato</Badge>
+                  <span className="text-muted-foreground">il </span>
+                  <DateDisplay date={record.deleted_at} format="datetime" />
+                  {record.deleter_email && (
+                    <span className="text-muted-foreground"> da <span className="text-foreground font-medium">{record.deleter_email}</span></span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
       </CardContent>
       <div className="flex-shrink-0 p-4 border-t">
-        <Button className="w-full" onClick={onEdit} data-tour="btn-edit-record">
-          Modifica Record
-        </Button>
+        {!record.deleted_at && (
+          <Button className="w-full" onClick={onEdit} data-tour="btn-edit-record">
+            Modifica Record
+          </Button>
+        )}
       </div>
     </Card>
   )
