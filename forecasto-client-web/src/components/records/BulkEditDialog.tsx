@@ -1,14 +1,18 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { STAGES, STAGE_LABELS_BY_AREA, SIGN_OPTIONS } from '@/lib/constants'
+import { bankAccountsApi } from '@/api/bank-accounts'
 import type { Record, Area, RecordUpdate } from '@/types/record'
 
 const FIELD_LABELS: Record<string, string> = {
   account: 'Conto',
+  bank_account_id: 'Conto Bancario',
   reference: 'Riferimento',
   transaction_id: 'ID Transazione',
   project_code: 'Codice Progetto',
@@ -26,6 +30,7 @@ const FIELD_LABELS: Record<string, string> = {
 interface BulkEditFormState {
   sign: 'in' | 'out' | ''
   account: string
+  bank_account_id: string  // '__skip__' = non modificare, '__none__' = default workspace, UUID = assegna
   reference: string
   transaction_id: string
   project_code: string
@@ -44,6 +49,7 @@ interface BulkEditFormState {
 const EMPTY_FORM: BulkEditFormState = {
   sign: '',
   account: '',
+  bank_account_id: '__skip__',
   reference: '',
   transaction_id: '',
   project_code: '',
@@ -77,6 +83,12 @@ export function BulkEditDialog({
   const [phase, setPhase] = useState<'editing' | 'confirming'>('editing')
   const [form, setForm] = useState<BulkEditFormState>({ ...EMPTY_FORM })
   const [lastEdited, setLastEdited] = useState<'vat' | 'total'>('total')
+
+  const { data: bankAccounts = [] } = useQuery({
+    queryKey: ['bank-accounts'],
+    queryFn: () => bankAccountsApi.listUserAccounts(),
+    staleTime: 60000,
+  })
 
   const stages = STAGES[currentArea] || []
 
@@ -125,6 +137,9 @@ export function BulkEditDialog({
     const signMultiplier = form.sign === 'out' ? -1 : 1
 
     if (form.account.trim()) changes.account = form.account.trim()
+    if (form.bank_account_id !== '__skip__') {
+      changes.bank_account_id = form.bank_account_id === '__none__' ? null : form.bank_account_id
+    }
     if (form.reference.trim()) changes.reference = form.reference.trim()
     if (form.transaction_id.trim()) changes.transaction_id = form.transaction_id.trim()
     if (form.project_code.trim()) changes.project_code = form.project_code.trim()
@@ -228,6 +243,28 @@ export function BulkEditDialog({
               <div className="space-y-1">
                 <Label htmlFor="bulk-account">Conto</Label>
                 <Input id="bulk-account" value={form.account} onChange={e => setField('account', e.target.value)} />
+              </div>
+
+              {/* Conto Bancario */}
+              <div className="space-y-1">
+                <Label>Conto Bancario</Label>
+                <Select
+                  value={form.bank_account_id}
+                  onValueChange={(v) => setField('bank_account_id', v)}
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="— Non modificare —" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__skip__">— Non modificare —</SelectItem>
+                    <SelectItem value="__none__">Default workspace</SelectItem>
+                    {bankAccounts.map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        {acc.name}{acc.bank_name ? ` — ${acc.bank_name}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Riferimento */}
@@ -341,7 +378,11 @@ export function BulkEditDialog({
                   {changedEntries.map(([key, value]) => (
                     <li key={key} className="text-sm flex items-baseline gap-2">
                       <span className="text-muted-foreground">{FIELD_LABELS[key] || key}</span>
-                      <span className="font-medium">→ "{getDisplayValue(key, value as string)}"</span>
+                      <span className="font-medium">
+                        → "{key === 'bank_account_id'
+                          ? (value === null ? 'Default workspace' : (bankAccounts.find(a => a.id === value)?.name || value))
+                          : getDisplayValue(key, value as string)}"
+                      </span>
                     </li>
                   ))}
                 </ul>
