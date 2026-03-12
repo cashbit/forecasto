@@ -532,7 +532,10 @@ export function DashboardPage() {
           })}
         </div>
 
-        <RecordFilters availableOwners={records.map(r => r.owner).filter(Boolean) as string[]} />
+        <RecordFilters
+          availableOwners={records.map(r => r.owner).filter(Boolean) as string[]}
+          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['records'] })}
+        />
 
         <div className="flex-1 min-h-0 p-4">
           <RecordGrid

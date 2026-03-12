@@ -1,4 +1,4 @@
-import { Search, X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { Search, X, ChevronLeft, ChevronRight, Trash2, RefreshCw } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useFilterStore } from '@/stores/filterStore'
@@ -178,6 +178,7 @@ function DateFilter() {
 
 interface RecordFiltersProps {
   availableOwners?: string[]
+  onRefresh?: () => void
 }
 
 const TEXT_FILTER_FIELDS = [
@@ -189,7 +190,7 @@ const TEXT_FILTER_FIELDS = [
   { value: 'transaction_id', label: 'ID Trans.' },
 ] as const
 
-export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
+export function RecordFilters({ availableOwners = [], onRefresh }: RecordFiltersProps) {
   const {
     selectedAreas, sign, stageFilter, textFilter, textFilterField,
     yearFilter, ownerFilter, nextactionFilter, expiredFilter, projectCodeFilter,
@@ -308,6 +309,18 @@ export function RecordFilters({ availableOwners = [] }: RecordFiltersProps) {
           <Trash2 className="h-3.5 w-3.5" />
           {includeDeleted ? 'Nascondi eliminati' : 'Mostra eliminati'}
         </Button>
+
+        {onRefresh && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1"
+            onClick={onRefresh}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Aggiorna
+          </Button>
+        )}
 
         {hasAnyFilter && (
           <Button variant="ghost" size="sm" className="h-8" onClick={resetFilters}>

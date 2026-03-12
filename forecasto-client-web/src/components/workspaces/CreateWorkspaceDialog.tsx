@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { addYears, format, parseISO } from 'date-fns'
 import { AxiosError } from 'axios'
 import {
   Dialog,
@@ -14,9 +15,30 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useUiStore } from '@/stores/uiStore'
 import { toast } from '@/hooks/useToast'
+import { bankAccountsApi } from '@/api/bank-accounts'
+import { recordsApi } from '@/api/records'
+import { workspacesApi } from '@/api/workspaces'
+import type { RecordCreate, Area } from '@/types/record'
+import demoRecords from '@/data/workspacedemo.json'
+import demoSetup from '@/data/workspacedemo_setup.json'
+
+const DEMO_BASE_YEAR = 2026
+
+// type → area mapping derived from the demo data structure
+const TYPE_AREA_MAP: Record<string, Area> = {
+  '0': 'actual',
+  '1': 'orders',
+  '2': 'prospect',
+}
+
+function shiftDate(dateStr: string, yearOffset: number): string {
+  if (!dateStr) return dateStr
+  return format(addYears(parseISO(dateStr), yearOffset), 'yyyy-MM-dd')
+}
 
 const schema = z.object({
   name: z.string().min(1, 'Nome obbligatorio').max(100, 'Nome troppo lungo'),
@@ -27,8 +49,9 @@ type FormData = z.infer<typeof schema>
 
 export function CreateWorkspaceDialog() {
   const { createWorkspaceDialogOpen, setCreateWorkspaceDialogOpen } = useUiStore()
-  const { createWorkspace } = useWorkspaceStore()
+  const { createWorkspace, updateWorkspace } = useWorkspaceStore()
   const [isLoading, setIsLoading] = useState(false)
+  const [loadDemo, setLoadDemo] = useState(false)
 
   const {
     register,
@@ -43,14 +66,89 @@ export function CreateWorkspaceDialog() {
   const onSubmit = async (data: FormData) => {
     setIsLoading(true)
     try {
-      await createWorkspace(data.name, data.description)
+      const workspace = await createWorkspace(data.name, data.description)
+      if (!workspace) throw new Error('Workspace non creato')
+
+      if (loadDemo) {
+        // 1. Compute year offset
+        const currentYear = new Date().getFullYear()
+        const yearOffset = currentYear - DEMO_BASE_YEAR
+
+        // 2. Shift all dates
+        const shifted = (demoRecords as Record<string, string>[]).map(r => ({
+          ...r,
+          date_cashflow: shiftDate(r.date_cashflow, yearOffset),
+          date_offer: shiftDate(r.date_offer, yearOffset),
+          review_date: r.review_date ? shiftDate(r.review_date, yearOffset) : r.review_date,
+        }))
+
+        // 3. Earliest cashflow date (for initial balance)
+        const minDate = shifted.reduce((min, r) => r.date_cashflow < min ? r.date_cashflow : min, shifted[0].date_cashflow)
+
+        // 4. Create bank account
+        const setup = demoSetup as { InitialBalance: number; Account: { Name: string; Bank: string }; VATID: string }
+        const bankAccount = await bankAccountsApi.create({
+          name: setup.Account.Name,
+          bank_name: setup.Account.Bank,
+        })
+
+        // 5. Associate bank account to workspace
+        await bankAccountsApi.setWorkspaceAccount(workspace.id, bankAccount.id)
+
+        // 6. Set initial balance (snapshot at earliest date)
+        await bankAccountsApi.addBalance(workspace.id, bankAccount.id, {
+          balance_date: minDate,
+          balance: setup.InitialBalance,
+          source: 'manual',
+          note: 'Saldo iniziale demo',
+        })
+
+        // 7. Set workspace vat_number in settings
+        await workspacesApi.update(workspace.id, {
+          settings: { vat_number: setup.VATID },
+        })
+        await updateWorkspace(workspace.id, { settings: { vat_number: setup.VATID } })
+
+        // 8. Build RecordCreate array
+        const records: RecordCreate[] = shifted.map(r => ({
+          area: TYPE_AREA_MAP[r.type] ?? 'actual',
+          type: r.type,
+          account: r.account,
+          reference: r.reference,
+          note: r.note || undefined,
+          date_cashflow: r.date_cashflow,
+          date_offer: r.date_offer,
+          amount: r.amount,
+          vat: r.vat || undefined,
+          vat_deduction: r.vat_deduction || undefined,
+          total: r.total,
+          stage: r.stage || '0',
+          transaction_id: r.transaction_id || '',
+          project_code: r.project_code || undefined,
+          owner: r.owner || undefined,
+          review_date: r.review_date || undefined,
+          bank_account_id: bankAccount.id,
+        }))
+
+        // 9. Bulk import records
+        await recordsApi.bulkCreate(workspace.id, records)
+
+        toast({
+          title: 'Workspace demo pronto',
+          description: `"${data.name}" creato con ${records.length} record demo e saldo iniziale di €${setup.InitialBalance.toLocaleString('it-IT')}.`,
+          variant: 'success',
+        })
+      } else {
+        toast({
+          title: 'Workspace creato',
+          description: `Il workspace "${data.name}" è stato creato con successo.`,
+          variant: 'success',
+        })
+      }
+
       reset()
+      setLoadDemo(false)
       setCreateWorkspaceDialogOpen(false)
-      toast({
-        title: 'Workspace creato',
-        description: `Il workspace "${data.name}" è stato creato con successo.`,
-        variant: 'success',
-      })
     } catch (error) {
       const axiosError = error as AxiosError<{ error?: string; message?: string }>
       const message = axiosError.response?.data?.error
@@ -68,6 +166,7 @@ export function CreateWorkspaceDialog() {
 
   const handleClose = () => {
     reset()
+    setLoadDemo(false)
     setCreateWorkspaceDialogOpen(false)
   }
 
@@ -104,13 +203,26 @@ export function CreateWorkspaceDialog() {
                 <p className="text-sm text-destructive">{errors.description.message}</p>
               )}
             </div>
+            <div className="flex items-center gap-2 rounded-md border p-3 bg-muted/30">
+              <Checkbox
+                id="load-demo"
+                checked={loadDemo}
+                onCheckedChange={(v) => setLoadDemo(!!v)}
+              />
+              <div className="grid gap-0.5">
+                <Label htmlFor="load-demo" className="cursor-pointer">Imposta con i dati demo</Label>
+                <p className="text-xs text-muted-foreground">
+                  Carica record di esempio, conto bancario demo e saldo iniziale per esplorare l&apos;app.
+                </p>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose}>
               Annulla
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Creazione...' : 'Crea Workspace'}
+              {isLoading ? (loadDemo ? 'Caricamento dati demo...' : 'Creazione...') : 'Crea Workspace'}
             </Button>
           </DialogFooter>
         </form>
