@@ -12,7 +12,7 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table'
 import { useState } from 'react'
-import { ArrowUpDown, ArrowUp, ArrowDown, Trash, ArrowRight, Split, Copy, Merge, Calendar, Download, Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus, FolderOutput, Pencil, RotateCcw } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown, Trash, ArrowRight, Split, Copy, Merge, Calendar, Download, Upload, Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus, FolderOutput, Pencil, RotateCcw } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -563,7 +563,7 @@ export function RecordGrid({
                   disabled={!hasSelection}
                   className="h-8 w-8 p-0"
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  <Upload className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Esporta CSV</TooltipContent>

@@ -22,12 +22,21 @@ export interface SdiSupplierMapping {
   vat_deduction: number
 }
 
+export interface ExcelColumnMappingEntry {
+  columns_fingerprint: string // JSON.stringify(sortedColumnNames)
+  mapping: Record<string, string> // forecasto_field -> colonna_excel
+  defaults: Record<string, string> // forecasto_field -> valore fisso di default
+  amount_mode: 'single' | 'two_columns'
+  last_used: string // ISO date
+}
+
 export interface WorkspaceSettings {
   currency: string
   timezone: string
   fiscal_year_start_month: number
   vat_number?: string
   sdi_supplier_mappings?: Record<string, SdiSupplierMapping>
+  excel_column_mappings?: ExcelColumnMappingEntry[]
 }
 
 export interface WorkspaceCreate {

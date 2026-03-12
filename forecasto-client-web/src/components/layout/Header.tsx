@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LogOut, Settings, User, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy } from 'lucide-react'
+import { LogOut, Settings, User, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy, ArrowUpDown, FileJson } from 'lucide-react'
 import logoIcon from '@/assets/logo-icon.png'
 import logoText from '@/assets/logo-text.png'
 import { Link, useLocation } from 'react-router-dom'
@@ -24,6 +24,8 @@ import { toast } from '@/hooks/useToast'
 import { useQueryClient } from '@tanstack/react-query'
 import { ImportDialog } from '@/components/records/ImportDialog'
 import { SdiImportDialog } from '@/components/records/SdiImportDialog'
+import { ExcelImportDialog } from '@/components/records/ExcelImportDialog'
+import { useFilterStore } from '@/stores/filterStore'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { PendingInvitation, WorkspaceMember } from '@/types/workspace'
 import type { Area } from '@/types/record'
@@ -39,8 +41,11 @@ export function Header() {
   const queryClient = useQueryClient()
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
   const [isAccepting, setIsAccepting] = useState<string | null>(null)
+  const { selectedAreas } = useFilterStore()
+  const primaryArea = selectedAreas[0] ?? 'actual'
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [showSdiImportDialog, setShowSdiImportDialog] = useState(false)
+  const [showExcelImportDialog, setShowExcelImportDialog] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
   const primaryWorkspace = getPrimaryWorkspace()
@@ -245,71 +250,58 @@ export function Header() {
           </Button>
         </nav>
 
-        {/* Import/Export Buttons */}
-        <div className="flex items-center gap-1">
-          <Tooltip>
+        {/* Import/Export Menu */}
+        <Tooltip>
+          <DropdownMenu>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowImportDialog(true)}
-                disabled={!canImportExport || !canImport(currentMember)}
-              >
-                <Download className="h-5 w-5" />
-              </Button>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  disabled={!canImportExport}
+                >
+                  <ArrowUpDown className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent>
-              {!canImportExport
-                ? 'Seleziona un workspace'
-                : !canImport(currentMember)
-                  ? 'Non hai permessi di importazione JSON'
-                  : `Importa JSON in ${primaryWorkspace?.name}`
-              }
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Importa</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setShowExcelImportDialog(true)}
+                disabled={!canImport(currentMember)}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Excel / CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={() => setShowSdiImportDialog(true)}
-                disabled={!canImportExport || !canImportSdi(currentMember)}
+                disabled={!canImportSdi(currentMember)}
               >
-                <FileSpreadsheet className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {!canImportExport
-                ? 'Seleziona un workspace'
-                : !canImportSdi(currentMember)
-                  ? 'Non hai permessi di importazione fatture'
-                  : 'Importa fatture SDI (XML)'
-              }
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Fatture SDI (XML)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setShowImportDialog(true)}
+                disabled={!canImport(currentMember)}
+              >
+                <FileJson className="h-4 w-4 mr-2" />
+                JSON
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Esporta</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
                 onClick={handleExport}
-                disabled={!canImportExport || isExporting || !canExport(currentMember)}
+                disabled={isExporting || !canExport(currentMember)}
               >
-                <Upload className="h-5 w-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {!canImportExport
-                ? 'Seleziona un workspace'
-                : !canExport(currentMember)
-                  ? 'Non hai permessi di esportazione'
-                  : `Esporta da ${primaryWorkspace?.name}`
-              }
-            </TooltipContent>
-          </Tooltip>
-        </div>
+                <Upload className="h-4 w-4 mr-2" />
+                {isExporting ? 'Esportazione...' : `Esporta JSON`}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <TooltipContent>Importa / Esporta</TooltipContent>
+        </Tooltip>
 
         {/* Help / Tour Button */}
         <Tooltip>
@@ -504,6 +496,21 @@ export function Header() {
           workspaceName={primaryWorkspace.name}
           workspaceVatNumber={primaryWorkspace.settings?.vat_number || ''}
           workspaceSettings={primaryWorkspace.settings as Record<string, unknown> || {}}
+          onImportComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ['records'] })
+          }}
+        />
+      )}
+
+      {/* Excel/CSV Import Dialog */}
+      {primaryWorkspace && (
+        <ExcelImportDialog
+          open={showExcelImportDialog}
+          onOpenChange={setShowExcelImportDialog}
+          workspaceId={primaryWorkspace.id}
+          workspaceName={primaryWorkspace.name}
+          workspaceSettings={primaryWorkspace.settings}
+          currentArea={primaryArea}
           onImportComplete={() => {
             queryClient.invalidateQueries({ queryKey: ['records'] })
           }}
