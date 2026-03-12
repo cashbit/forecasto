@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -22,6 +23,7 @@ import { toast } from '@/hooks/useToast'
 import { bankAccountsApi } from '@/api/bank-accounts'
 import { recordsApi } from '@/api/records'
 import { workspacesApi } from '@/api/workspaces'
+import { useFilterStore } from '@/stores/filterStore'
 import type { RecordCreate, Area } from '@/types/record'
 import demoRecords from '@/data/workspacedemo.json'
 import demoSetup from '@/data/workspacedemo_setup.json'
@@ -50,6 +52,8 @@ type FormData = z.infer<typeof schema>
 export function CreateWorkspaceDialog() {
   const { createWorkspaceDialogOpen, setCreateWorkspaceDialogOpen } = useUiStore()
   const { createWorkspace, updateWorkspace } = useWorkspaceStore()
+  const { resetFilters, selectSingleArea } = useFilterStore()
+  const queryClient = useQueryClient()
   const [isLoading, setIsLoading] = useState(false)
   const [loadDemo, setLoadDemo] = useState(false)
 
@@ -138,6 +142,11 @@ export function CreateWorkspaceDialog() {
           description: `"${data.name}" creato con ${records.length} record demo e saldo iniziale di €${setup.InitialBalance.toLocaleString('it-IT')}.`,
           variant: 'success',
         })
+
+        // Reset filters, go to actual, refresh records
+        resetFilters()
+        selectSingleArea('actual')
+        queryClient.invalidateQueries({ queryKey: ['records'] })
       } else {
         toast({
           title: 'Workspace creato',
