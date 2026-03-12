@@ -8,6 +8,7 @@ import { CashflowPage } from '@/pages/CashflowPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { SupportPage } from '@/pages/SupportPage'
+import { SkillsPage } from '@/pages/SkillsPage'
 import { AdminLayout, AdminDashboard, RegistrationCodesPage, UsersPage, ActivatedCodesReportPage, BillingSummaryPage } from '@/pages/admin'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -35,6 +36,10 @@ export const router = createBrowserRouter([
   {
     path: '/support',
     element: <SupportPage />,
+  },
+  {
+    path: '/skill',
+    element: <SkillsPage />,
   },
   {
     path: '/login',
