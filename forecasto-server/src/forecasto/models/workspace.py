@@ -22,7 +22,7 @@ class Workspace(Base, UUIDMixin, TimestampMixin):
     """Workspace containing financial data for a fiscal year."""
 
     __tablename__ = "workspaces"
-    __table_args__ = (UniqueConstraint("name", "fiscal_year", name="uq_workspace_name_year"),)
+    __table_args__ = (UniqueConstraint("owner_id", "name", "fiscal_year", name="uq_workspace_owner_name_year"),)
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

@@ -34,11 +34,12 @@ class WorkspaceService:
 
     async def create_workspace(self, data: WorkspaceCreate, owner: User) -> Workspace:
         """Create a new workspace."""
-        # Check unique name + fiscal_year
+        # Check unique name + fiscal_year per owner
         result = await self.db.execute(
             select(Workspace).where(
                 Workspace.name == data.name,
                 Workspace.fiscal_year == data.fiscal_year,
+                Workspace.owner_id == owner.id,
             )
         )
         if result.scalar_one_or_none():
