@@ -143,7 +143,7 @@ export function CashflowChart({ data, height = 400, bankAccounts, onBarClick }: 
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={chartData}>
+      <ComposedChart data={chartData} style={{ outline: 'none' }}>
         {balanceSegments.map((seg, i) => (
           <ReferenceArea
             key={i}
