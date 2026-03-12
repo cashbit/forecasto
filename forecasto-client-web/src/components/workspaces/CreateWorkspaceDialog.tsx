@@ -131,7 +131,7 @@ export function CreateWorkspaceDialog() {
         }))
 
         // 9. Bulk import records
-        await recordsApi.bulkCreate(workspace.id, records)
+        await recordsApi.bulkImport(workspace.id, records)
 
         toast({
           title: 'Workspace demo pronto',

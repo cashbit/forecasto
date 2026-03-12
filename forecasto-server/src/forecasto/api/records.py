@@ -150,10 +150,21 @@ async def bulk_import_records(
 
     # Import all records
     service = RecordService(db)
-    created = []
+    created_ids = []
     for data in records:
         record = await service.create_record(workspace_id, data, current_user, member=member)
-        created.append(record)
+        created_ids.append(record.id)
+
+    # Re-fetch with eager-loaded relationships to avoid lazy-load MissingGreenlet
+    await db.flush()
+    from sqlalchemy import select as sa_select
+    from forecasto.models.record import Record as RecordModel
+    result = await db.execute(
+        sa_select(RecordModel)
+        .options(*service._audit_options)
+        .where(RecordModel.id.in_(created_ids))
+    )
+    created = list(result.scalars().all())
 
     return {
         "success": True,
@@ -186,10 +197,21 @@ async def bulk_import_sdi_records(
 
     # Import all records
     service = RecordService(db)
-    created = []
+    created_ids = []
     for data in records:
         record = await service.create_record(workspace_id, data, current_user, member=member)
-        created.append(record)
+        created_ids.append(record.id)
+
+    # Re-fetch with eager-loaded relationships to avoid lazy-load MissingGreenlet
+    await db.flush()
+    from sqlalchemy import select as sa_select
+    from forecasto.models.record import Record as RecordModel
+    result = await db.execute(
+        sa_select(RecordModel)
+        .options(*service._audit_options)
+        .where(RecordModel.id.in_(created_ids))
+    )
+    created = list(result.scalars().all())
 
     return {
         "success": True,
