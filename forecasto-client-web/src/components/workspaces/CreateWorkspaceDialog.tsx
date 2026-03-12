@@ -143,10 +143,9 @@ export function CreateWorkspaceDialog() {
           variant: 'success',
         })
 
-        // Reset filters, go to actual, refresh records
+        // Reset filters and go to actual
         resetFilters()
         selectSingleArea('actual')
-        queryClient.invalidateQueries({ queryKey: ['records'] })
       } else {
         toast({
           title: 'Workspace creato',
@@ -158,6 +157,13 @@ export function CreateWorkspaceDialog() {
       reset()
       setLoadDemo(false)
       setCreateWorkspaceDialogOpen(false)
+
+      // Refetch records after dialog closes so DashboardPage is active
+      if (loadDemo) {
+        setTimeout(() => {
+          queryClient.refetchQueries({ queryKey: ['records'] })
+        }, 100)
+      }
     } catch (error) {
       const axiosError = error as AxiosError<{ error?: string; message?: string }>
       const message = axiosError.response?.data?.error
