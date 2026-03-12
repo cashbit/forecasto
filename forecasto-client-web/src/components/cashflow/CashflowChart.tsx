@@ -63,6 +63,10 @@ export function CashflowChart({ data, height = 400, bankAccounts, onBarClick }: 
     }))
   }, [data, bankAccounts])
 
+  // Render ReferenceArea only after ResponsiveContainer has measured real dimensions
+  // (fixes ReferenceArea not rendering on first paint with Recharts)
+  const [containerReady, setContainerReady] = useState(false)
+
   // Track which lines are hidden via legend clicks
   const [hiddenLines, setHiddenLines] = useState<Set<string>>(new Set())
 
@@ -142,8 +146,8 @@ export function CashflowChart({ data, height = 400, bankAccounts, onBarClick }: 
   }, [accountInfos])
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={chartData} style={{ outline: 'none' }}>
+    <ResponsiveContainer width="100%" height={height} onResize={() => setContainerReady(true)}>
+      <ComposedChart key={containerReady ? 1 : 0} data={chartData} style={{ outline: 'none' }}>
         {balanceSegments.map((seg, i) => (
           <ReferenceArea
             key={i}
