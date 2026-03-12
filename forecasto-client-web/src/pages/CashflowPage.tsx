@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Wallet, TrendingUp, TrendingDown, PiggyBank, Anchor } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Wallet, TrendingUp, TrendingDown, PiggyBank, ChevronDown, ChevronUp, Download } from 'lucide-react'
 import { startOfMonth, endOfMonth, addMonths, format } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { BalanceSnapshotsDialog } from '@/components/cashflow/BalanceSnapshotsDi
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { AmountDisplay } from '@/components/common/AmountDisplay'
 import { useCashflow } from '@/hooks/useCashflow'
-import type { CashflowParams } from '@/types/cashflow'
+import type { CashflowParams, CashflowEntry } from '@/types/cashflow'
 
 interface SummaryCardProps {
   title: string
@@ -37,33 +37,51 @@ function SummaryCard({ title, value, icon, className }: SummaryCardProps) {
   )
 }
 
+function exportCsv(data: CashflowEntry[]) {
+  const header = ['Data', 'Entrate', 'Uscite', 'Netto', 'Saldo']
+  const rows = data.map((e) => [
+    e.date,
+    e.inflows.toFixed(2),
+    e.outflows.toFixed(2),
+    e.net.toFixed(2),
+    e.running_balance.toFixed(2),
+  ])
+  const csv = [header, ...rows].map((r) => r.join(';')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'cashflow.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export function CashflowPage() {
   const [params, setParams] = useState<CashflowParams>({
     from_date: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
-    to_date: format(endOfMonth(addMonths(new Date(), 2)), 'yyyy-MM-dd'),
-    areas: ['actual', 'orders'],
+    to_date: format(endOfMonth(addMonths(new Date(), 5)), 'yyyy-MM-dd'),
+    areas: ['actual'],
+    area_stage: ['actual:0', 'actual:1'],
     group_by: 'day',
   })
   const [snapshotsOpen, setSnapshotsOpen] = useState(false)
+  const [tableOpen, setTableOpen] = useState(false)
+  const [chartHeight, setChartHeight] = useState(() => Math.max(300, window.innerHeight - 440))
+
+  const updateHeight = useCallback(() => {
+    setChartHeight(Math.max(300, window.innerHeight - 440))
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('resize', updateHeight)
+    return () => window.removeEventListener('resize', updateHeight)
+  }, [updateHeight])
 
   const { cashflow, summary, initialBalance, isLoading } = useCashflow(params)
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-end gap-4">
-        <div className="flex-1">
-          <CashflowFilters params={params} onChange={setParams} />
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mb-0 shrink-0"
-          onClick={() => setSnapshotsOpen(true)}
-        >
-          <Anchor className="h-3.5 w-3.5 mr-1.5" />
-          Saldi a Data
-        </Button>
-      </div>
+      <CashflowFilters params={params} onChange={setParams} onSnapshotsOpen={() => setSnapshotsOpen(true)} />
 
       <BalanceSnapshotsDialog
         open={snapshotsOpen}
@@ -104,17 +122,17 @@ export function CashflowPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center h-[280px]">
+            <div className="flex items-center justify-center" style={{ height: chartHeight }}>
               <LoadingSpinner size="lg" />
             </div>
           ) : cashflow.length > 0 ? (
             <CashflowChart
               data={cashflow}
-              height={280}
+              height={chartHeight}
               bankAccounts={initialBalance?.by_account}
             />
           ) : (
-            <div className="flex items-center justify-center h-[280px] text-muted-foreground">
+            <div className="flex items-center justify-center text-muted-foreground" style={{ height: chartHeight }}>
               Nessun dato disponibile per il periodo selezionato
             </div>
           )}
@@ -122,7 +140,36 @@ export function CashflowPage() {
       </Card>
 
       {/* Detail Table */}
-      {!isLoading && cashflow.length > 0 && <CashflowTable data={cashflow} />}
+      {!isLoading && cashflow.length > 0 && (
+        <Card>
+          <CardHeader
+            className="flex flex-row items-center justify-between py-3 px-4 cursor-pointer select-none"
+            onClick={() => setTableOpen((o) => !o)}
+          >
+            <CardTitle className="text-sm font-medium">Dettaglio per Data</CardTitle>
+            <div className="flex items-center gap-2">
+              {tableOpen && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={(e) => { e.stopPropagation(); exportCsv(cashflow) }}
+                >
+                  <Download className="h-3.5 w-3.5 mr-1" />
+                  CSV
+                </Button>
+              )}
+              {tableOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </div>
+          </CardHeader>
+          {tableOpen && (
+            <CardContent className="p-0">
+              <CashflowTable data={cashflow} />
+            </CardContent>
+          )}
+        </Card>
+      )}
     </div>
   )
 }

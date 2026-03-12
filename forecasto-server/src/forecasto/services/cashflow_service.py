@@ -7,7 +7,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.models.bank_account import BankAccount, BankAccountBalance
@@ -291,11 +291,20 @@ class CashflowService:
             Record.deleted_at.is_(None),
         )
 
-        if params.areas:
+        if params.area_stage:
+            area_stages_map: dict[str, list[str]] = defaultdict(list)
+            for pair in params.area_stage:
+                area, stage = pair.split(":")
+                area_stages_map[area].append(stage)
+            conditions = [
+                and_(Record.area == area, Record.stage.in_(stages))
+                for area, stages in area_stages_map.items()
+            ]
+            query = query.where(or_(*conditions))
+        elif params.areas:
             query = query.where(Record.area.in_(params.areas))
-
-        if params.stages:
-            query = query.where(Record.stage.in_(params.stages))
+            if params.stages:
+                query = query.where(Record.stage.in_(params.stages))
 
         if params.bank_account_id:
             query = query.where(Record.bank_account_id == params.bank_account_id)
@@ -331,10 +340,20 @@ class CashflowService:
         if after_date is not None:
             query = query.where(Record.date_cashflow > after_date)
 
-        if params.areas:
+        if params.area_stage:
+            area_stages_map2: dict[str, list[str]] = defaultdict(list)
+            for pair in params.area_stage:
+                area, stage = pair.split(":")
+                area_stages_map2[area].append(stage)
+            conditions2 = [
+                and_(Record.area == area, Record.stage.in_(stages))
+                for area, stages in area_stages_map2.items()
+            ]
+            query = query.where(or_(*conditions2))
+        elif params.areas:
             query = query.where(Record.area.in_(params.areas))
-        if params.stages:
-            query = query.where(Record.stage.in_(params.stages))
+            if params.stages:
+                query = query.where(Record.stage.in_(params.stages))
         if params.sign_filter == "in":
             query = query.where(Record.amount > 0)
         elif params.sign_filter == "out":

@@ -37,6 +37,7 @@ class CashflowRequest(BaseModel):
     to_date: date
     areas: list[str] | None = None
     stages: list[str] | None = None
+    area_stage: list[str] | None = None  # format: "area:stage", e.g. "actual:0", "orders:1"
     bank_account_id: str | None = None
     group_by: str = "day"  # day, week, month
     sign_filter: str | None = None  # in, out, all

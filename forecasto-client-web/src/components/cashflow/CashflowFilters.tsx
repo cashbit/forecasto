@@ -8,26 +8,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { AREAS, AREA_LABELS } from '@/lib/constants'
+import { AREA_LABELS } from '@/lib/constants'
 import type { CashflowParams } from '@/types/cashflow'
 import type { Area } from '@/types/record'
 import { cn } from '@/lib/utils'
+import { XCircle, CheckCircle2, Anchor } from 'lucide-react'
+
+const DISPLAY_ORDER: Area[] = ['actual', 'orders', 'prospect', 'budget']
 
 interface CashflowFiltersProps {
   params: CashflowParams
   onChange: (params: CashflowParams) => void
+  onSnapshotsOpen: () => void
 }
 
-export function CashflowFilters({ params, onChange }: CashflowFiltersProps) {
-  const handleAreaToggle = (area: Area) => {
-    const isSelected = params.areas.includes(area)
-    const newAreas = isSelected
-      ? params.areas.filter((a) => a !== area)
-      : [...params.areas, area]
-    // Ensure at least one area is selected
-    if (newAreas.length > 0) {
-      onChange({ ...params, areas: newAreas as Area[] })
-    }
+export function CashflowFilters({ params, onChange, onSnapshotsOpen }: CashflowFiltersProps) {
+  const isStageActive = (area: Area, stage: '0' | '1') => {
+    const pairs = params.area_stage ?? []
+    return pairs.includes(`${area}:${stage}`)
+  }
+
+  const handleStageToggle = (area: Area, stage: '0' | '1') => {
+    const pair = `${area}:${stage}`
+    const current = params.area_stage ?? []
+    const active = current.includes(pair)
+
+    const newAreaStage = active
+      ? current.filter((p) => p !== pair)
+      : [...current, pair]
+
+    // Ensure at least one pair remains
+    if (newAreaStage.length === 0) return
+
+    const newAreas = [...new Set(newAreaStage.map((p) => p.split(':')[0]))] as Area[]
+    onChange({ ...params, area_stage: newAreaStage, areas: newAreas })
   }
 
   return (
@@ -71,26 +85,61 @@ export function CashflowFilters({ params, onChange }: CashflowFiltersProps) {
 
       <div className="space-y-2">
         <Label>Aree</Label>
-        <div className="flex gap-1">
-          {AREAS.map((area) => {
-            const isSelected = params.areas.includes(area)
-            return (
-              <Button
-                key={area}
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleAreaToggle(area)}
-                className={cn(
-                  'transition-colors',
-                  isSelected && 'bg-primary text-primary-foreground hover:bg-primary/90'
-                )}
-              >
+        <div className="flex gap-2">
+          {DISPLAY_ORDER.map((area) => (
+            <div key={area} className="flex flex-col items-center gap-1">
+              <span className="text-xs text-muted-foreground font-medium">
                 {AREA_LABELS[area]}
-              </Button>
-            )
-          })}
+              </span>
+              <div className="flex gap-0.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleStageToggle(area, '1')}
+                  className={cn(
+                    'h-7 w-7 p-0 transition-colors',
+                    isStageActive(area, '1')
+                      ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200'
+                      : 'text-muted-foreground'
+                  )}
+                  title={`${AREA_LABELS[area]} - Pagato/approvato`}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleStageToggle(area, '0')}
+                  className={cn(
+                    'h-7 w-7 p-0 transition-colors',
+                    isStageActive(area, '0')
+                      ? 'bg-red-100 text-red-700 border-red-300 hover:bg-red-200'
+                      : 'text-muted-foreground'
+                  )}
+                  title={`${AREA_LABELS[area]} - Non pagato/approvato`}
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>&nbsp;</Label>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7"
+          onClick={onSnapshotsOpen}
+        >
+          <Anchor className="h-3.5 w-3.5 mr-1.5" />
+          Saldi a Data
+        </Button>
       </div>
     </div>
   )

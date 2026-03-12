@@ -7,6 +7,7 @@ export interface CashflowParams {
   group_by: 'day' | 'week' | 'month'
   bank_account_id?: string
   project_code?: string
+  area_stage?: string[]  // format: "area:stage", e.g. "actual:0", "orders:1"
 }
 
 export interface AccountCashflowEntry {

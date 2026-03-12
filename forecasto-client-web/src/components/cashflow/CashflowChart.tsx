@@ -10,6 +10,7 @@ import {
   Tooltip,
   Legend,
   ReferenceLine,
+  ReferenceArea,
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
 import { it } from 'date-fns/locale'
@@ -82,7 +83,6 @@ export function CashflowChart({ data, height = 400, bankAccounts }: CashflowChar
       const flat: Record<string, unknown> = {
         ...entry,
         date: entry.date,
-        dateLabel: format(parseISO(entry.date), 'dd/MM', { locale: it }),
       }
 
       // Add per-account running_balance as flat keys
@@ -98,6 +98,34 @@ export function CashflowChart({ data, height = 400, bankAccounts }: CashflowChar
       return flat
     })
   }, [data, accountInfos])
+
+  // Compute background segments based on running_balance sign
+  const balanceSegments = useMemo(() => {
+    if (chartData.length === 0) return []
+    const segments: { x1: string; x2: string; positive: boolean }[] = []
+    let segStart = 0
+    let segPositive = ((chartData[0].running_balance as number) ?? 0) >= 0
+
+    for (let i = 1; i < chartData.length; i++) {
+      const bal = (chartData[i].running_balance as number) ?? 0
+      const isPositive = bal >= 0
+      if (isPositive !== segPositive) {
+        segments.push({
+          x1: chartData[segStart].date as string,
+          x2: chartData[i - 1].date as string,
+          positive: segPositive,
+        })
+        segStart = i
+        segPositive = isPositive
+      }
+    }
+    segments.push({
+      x1: chartData[segStart].date as string,
+      x2: chartData[chartData.length - 1].date as string,
+      positive: segPositive,
+    })
+    return segments
+  }, [chartData])
 
   // Build label mapping for tooltip/legend
   const labelMap = useMemo(() => {
@@ -115,10 +143,21 @@ export function CashflowChart({ data, height = 400, bankAccounts }: CashflowChar
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={chartData}>
+        {balanceSegments.map((seg, i) => (
+          <ReferenceArea
+            key={i}
+            x1={seg.x1}
+            x2={seg.x2}
+            fill={seg.positive ? '#16A34A' : '#DC2626'}
+            fillOpacity={0.08}
+            stroke="none"
+          />
+        ))}
         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
         <ReferenceLine y={0} stroke="#888" strokeDasharray="3 3" />
         <XAxis
-          dataKey="dateLabel"
+          dataKey="date"
+          tickFormatter={(v: string) => format(parseISO(v), 'dd/MM', { locale: it })}
           tick={{ fontSize: 12 }}
           tickLine={false}
           axisLine={false}
@@ -134,7 +173,7 @@ export function CashflowChart({ data, height = 400, bankAccounts }: CashflowChar
             formatCurrency(value as number),
             labelMap[name as string] || String(name),
           ]}
-          labelFormatter={(label) => `Data: ${label}`}
+          labelFormatter={(label: string) => `Data: ${format(parseISO(label), 'dd/MM/yyyy', { locale: it })}`}
           contentStyle={{
             backgroundColor: 'hsl(var(--background))',
             border: '1px solid hsl(var(--border))',
