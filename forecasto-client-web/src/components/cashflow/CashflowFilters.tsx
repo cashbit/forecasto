@@ -83,61 +83,51 @@ export function CashflowFilters({ params, onChange, onSnapshotsOpen }: CashflowF
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label>Aree</Label>
-        <div className="flex gap-2">
-          {DISPLAY_ORDER.map((area) => (
-            <div key={area} className="flex flex-col items-center gap-1">
-              <span className="text-xs text-muted-foreground font-medium">
-                {AREA_LABELS[area]}
-              </span>
-              <div className="flex gap-0.5">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleStageToggle(area, '1')}
-                  className={cn(
-                    'h-7 w-7 p-0 transition-colors',
-                    isStageActive(area, '1')
-                      ? 'bg-green-100 text-green-700 border-green-300 hover:bg-green-200'
-                      : 'text-muted-foreground'
-                  )}
-                  title={`${AREA_LABELS[area]} - Pagato/approvato`}
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleStageToggle(area, '0')}
-                  className={cn(
-                    'h-7 w-7 p-0 transition-colors',
-                    isStageActive(area, '0')
-                      ? 'bg-red-100 text-red-700 border-red-300 hover:bg-red-200'
-                      : 'text-muted-foreground'
-                  )}
-                  title={`${AREA_LABELS[area]} - Non pagato/approvato`}
-                >
-                  <XCircle className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          ))}
+      {DISPLAY_ORDER.map((area) => (
+        <div key={area} className="space-y-2">
+          <Label className="font-semibold">{AREA_LABELS[area]}</Label>
+          <div className="flex gap-0.5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleStageToggle(area, '1')}
+              className={cn(
+                'h-9 w-9 p-0 transition-colors',
+                isStageActive(area, '1')
+                  ? 'bg-foreground text-background border-foreground hover:bg-foreground/90'
+                  : 'text-muted-foreground'
+              )}
+              title={`${AREA_LABELS[area]} - Pagato/approvato`}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleStageToggle(area, '0')}
+              className={cn(
+                'h-9 w-9 p-0 transition-colors',
+                isStageActive(area, '0')
+                  ? 'bg-foreground text-background border-foreground hover:bg-foreground/90'
+                  : 'text-muted-foreground'
+              )}
+              title={`${AREA_LABELS[area]} - Non pagato/approvato`}
+            >
+              <XCircle className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </div>
+      ))}
 
       <div className="space-y-2">
         <Label>&nbsp;</Label>
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          className="h-7"
+          className="h-9"
           onClick={onSnapshotsOpen}
         >
-          <Anchor className="h-3.5 w-3.5 mr-1.5" />
+          <Anchor className="h-4 w-4 mr-1.5" />
           Saldi a Data
         </Button>
       </div>

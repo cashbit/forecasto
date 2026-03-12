@@ -39,9 +39,10 @@ interface CashflowChartProps {
   data: CashflowEntry[]
   height?: number
   bankAccounts?: Record<string, AccountBalance>
+  onBarClick?: (entry: CashflowEntry) => void
 }
 
-export function CashflowChart({ data, height = 400, bankAccounts }: CashflowChartProps) {
+export function CashflowChart({ data, height = 400, bankAccounts, onBarClick }: CashflowChartProps) {
   // Discover which accounts are present in the data
   const accountInfos = useMemo<AccountInfo[]>(() => {
     if (!bankAccounts) return []
@@ -195,6 +196,8 @@ export function CashflowChart({ data, height = 400, bankAccounts }: CashflowChar
           name="inflows"
           radius={[4, 4, 0, 0]}
           hide={hiddenLines.has('inflows')}
+          onClick={onBarClick ? (data) => onBarClick(data as unknown as CashflowEntry) : undefined}
+          style={{ cursor: onBarClick ? 'pointer' : 'default' }}
         />
         <Bar
           dataKey="outflows"
@@ -202,6 +205,8 @@ export function CashflowChart({ data, height = 400, bankAccounts }: CashflowChar
           name="outflows"
           radius={[4, 4, 0, 0]}
           hide={hiddenLines.has('outflows')}
+          onClick={onBarClick ? (data) => onBarClick(data as unknown as CashflowEntry) : undefined}
+          style={{ cursor: onBarClick ? 'pointer' : 'default' }}
         />
         <Line
           type="monotone"

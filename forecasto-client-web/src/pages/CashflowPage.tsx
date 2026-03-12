@@ -7,6 +7,7 @@ import { CashflowChart } from '@/components/cashflow/CashflowChart'
 import { CashflowTable } from '@/components/cashflow/CashflowTable'
 import { CashflowFilters } from '@/components/cashflow/CashflowFilters'
 import { BalanceSnapshotsDialog } from '@/components/cashflow/BalanceSnapshotsDialog'
+import { CashflowDrilldownPanel } from '@/components/cashflow/CashflowDrilldownPanel'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { AmountDisplay } from '@/components/common/AmountDisplay'
 import { useCashflow } from '@/hooks/useCashflow'
@@ -66,6 +67,7 @@ export function CashflowPage() {
   })
   const [snapshotsOpen, setSnapshotsOpen] = useState(false)
   const [tableOpen, setTableOpen] = useState(false)
+  const [drilldownEntry, setDrilldownEntry] = useState<CashflowEntry | null>(null)
   const [chartHeight, setChartHeight] = useState(() => Math.max(300, window.innerHeight - 440))
 
   const updateHeight = useCallback(() => {
@@ -130,6 +132,7 @@ export function CashflowPage() {
               data={cashflow}
               height={chartHeight}
               bankAccounts={initialBalance?.by_account}
+              onBarClick={setDrilldownEntry}
             />
           ) : (
             <div className="flex items-center justify-center text-muted-foreground" style={{ height: chartHeight }}>
@@ -169,6 +172,13 @@ export function CashflowPage() {
             </CardContent>
           )}
         </Card>
+      )}
+      {drilldownEntry && (
+        <CashflowDrilldownPanel
+          entry={drilldownEntry}
+          params={params}
+          onClose={() => setDrilldownEntry(null)}
+        />
       )}
     </div>
   )
