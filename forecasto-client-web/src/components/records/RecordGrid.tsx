@@ -12,7 +12,7 @@ import {
   type VisibilityState,
 } from '@tanstack/react-table'
 import { useState } from 'react'
-import { ArrowUpDown, ArrowUp, ArrowDown, Trash, ArrowRight, Split, Copy, Merge, Calendar, Download, Upload, Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus, FolderOutput, Pencil, RotateCcw } from 'lucide-react'
+import { ArrowUpDown, ArrowUp, ArrowDown, Trash, ArrowRight, Split, Copy, Merge, Calendar, Download, Upload, Check, CheckCircle, X, User, LayoutList, WrapText, Eye, EyeOff, ChevronLeft, ChevronRight, Plus, FolderOutput, Pencil, RotateCcw, BarChart2 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -65,6 +65,8 @@ interface RecordGridProps {
   onRestoreRecord?: (record: Record) => void
   visitedRecordIds?: Set<string>
   activeRecordId?: string | null
+  showAnalysis?: boolean
+  onToggleAnalysis?: () => void
 }
 
 export function RecordGrid({
@@ -85,6 +87,8 @@ export function RecordGrid({
   onRestoreRecord,
   visitedRecordIds,
   activeRecordId,
+  showAnalysis,
+  onToggleAnalysis,
 }: RecordGridProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
@@ -749,6 +753,27 @@ export function RecordGrid({
                 <TooltipContent>{showProject ? 'Nascondi colonna Progetto' : 'Mostra colonna Progetto'}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            {onToggleAnalysis !== undefined && (
+              <>
+                <div className="w-px h-4 bg-border mx-1" />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant={showAnalysis ? 'default' : 'outline'}
+                        size="sm"
+                        className="h-7 px-2 text-xs gap-1"
+                        onClick={onToggleAnalysis}
+                      >
+                        <BarChart2 className="h-3.5 w-3.5" />
+                        Analisi
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Vista analisi (tabella pivot)</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </>
+            )}
           </div>
         </div>
       </div>

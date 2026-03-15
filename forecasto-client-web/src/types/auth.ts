@@ -8,6 +8,7 @@ export interface User {
   is_active: boolean
   created_at: string
   updated_at: string
+  ui_preferences?: Record<string, unknown>
 }
 
 export interface LoginRequest {

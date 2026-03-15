@@ -49,6 +49,7 @@ class User(Base, UUIDMixin, TimestampMixin):
             "invitation_received": True,
         },
     )
+    ui_preferences: Mapped[dict] = mapped_column(JSON, default=lambda: {})
 
     # Admin and registration fields
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

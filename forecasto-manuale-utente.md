@@ -121,7 +121,9 @@ Esempi di viste composite:
 
 ### Impostazioni Utente
 
-Le preferenze personali (nome, email, password, lingua) sono accessibili tramite la voce **Impostazioni** nel menu utente in alto a destra. Non esiste una voce separata «Profilo»: tutto è centralizzato in un'unica schermata.
+Le preferenze personali (nome, email, password) sono accessibili tramite la voce **Impostazioni** nel menu utente in alto a destra. Non esiste una voce separata «Profilo»: tutto è centralizzato in un'unica schermata.
+
+Le **impostazioni della Vista Analisi** (dimensioni righe/colonne, sorgente data) vengono salvate nel profilo utente tramite il pulsante **Memorizza** nella toolbar dell'Analisi (vedi sezione *Vista Analisi — Tabella Pivot*). Queste preferenze sono persistenti e vengono ripristinate automaticamente ogni volta che si apre la Vista Analisi.
 
 ### Membri e Permessi
 
@@ -243,6 +245,7 @@ La griglia è la vista principale di ogni area. Permette di visualizzare, filtra
 | **Dimensione pagina** | Selettore 50 / 100 / 500 / Tutti. Default 100. Navigazione tra le pagine con i pulsanti freccia. |
 | **Vista compatta / estesa** | Modalità compatta: testo troncato con ellissi. Modalità estesa: testo a capo per leggere contenuti lunghi. |
 | **Colonne visibili** | Selettore per mostrare/nascondere: N. sequenziale, Responsabile, Codice Progetto, Area (solo in vista multi-area). |
+| **Vista Analisi** | Pulsante **Analisi** (icona grafico) all'estrema destra della toolbar, dopo il selettore "Progetto". Attiva la tabella pivot. Cliccarlo di nuovo (o premere "Lista voci" nell'Analisi) riporta alla griglia normale. |
 | **Evidenziazioni** | Scaduto (sfondo arancione): stage 0 con data cashflow ≤ oggi. Selezionato: grigio. Visitato: tinta leggera. Eliminato: opacità ridotta. |
 | **Riga di totale** | In fondo alla griglia: totali di Imponibile e Totale per tutti i record. Con selezione attiva mostra anche il subtotale della selezione. |
 
@@ -393,3 +396,69 @@ Importazione diretta da file `.json` per scenari di backup, migrazione da altri 
 | **`total`** | Numero decimale (lordo IVA) |
 
 Valori di default applicati se assenti: IVA = 22%, Detr. IVA = 100%, Stage = 0, `transaction_id` = generato automaticamente.
+
+---
+
+## Vista Analisi — Tabella Pivot
+
+La **Vista Analisi** trasforma le voci filtrate in una **tabella pivot interattiva**, permettendo di aggregare e confrontare i dati lungo due dimensioni a scelta. È accessibile direttamente dalla griglia voci tramite il pulsante **Analisi** nella toolbar.
+
+### Accesso e Commutazione
+
+Il pulsante **Analisi** (icona grafico a barre) si trova all'estrema destra della toolbar della griglia, dopo il selettore "Progetto". Cliccarlo sostituisce la griglia con la tabella pivot. Per tornare alla lista voci:
+- Cliccare il pulsante **Lista voci** nella toolbar dell'Analisi, oppure
+- Cliccare nuovamente il pulsante **Analisi** nella toolbar (che rimane attivo/evidenziato mentre la vista Analisi è aperta)
+
+La vista Analisi rispetta tutti i filtri attivi (workspace, area, periodo, testo, responsabile, ecc.): la tabella mostra esattamente le voci che sarebbero visibili nella griglia con gli stessi filtri.
+
+### Configurazione della Tabella Pivot
+
+Nella toolbar dell'Analisi sono disponibili tre controlli:
+
+| Controllo | Descrizione |
+|---|---|
+| **Righe** | Selettore della dimensione da mostrare sulle righe. Default: Conto. |
+| **Colonne** | Selettore della dimensione da mostrare sulle colonne. Default: Anno-Mese. |
+| **Data da** | Indica quale campo data usare per derivare le dimensioni temporali: **Cashflow** (Data Cashflow) o **Ordine** (Data Offerta). |
+
+### Dimensioni Disponibili
+
+| Dimensione | Descrizione |
+|---|---|
+| **Conto** | Raggruppamento per `account` (cliente / fornitore / contropartita). |
+| **Riferimento** | Raggruppamento per `reference` (causale, numero fattura, ecc.). |
+| **Progetto** | Raggruppamento per `project_code`. Voci senza codice progetto appaiono come «(nessuno)». |
+| **Anno-Mese** | Periodo nel formato `YYYY-MM`, derivato dalla data selezionata (Cashflow o Ordine). |
+| **Anno** | Anno nel formato `YYYY`. |
+| **Conto Bancario** | Raggruppamento per conto bancario associato alla voce. |
+| **Responsabile** | Raggruppamento per campo `owner`. |
+| **Area** | Area della voce (Budget, Prospect, Ordini, Actual). Utile in vista multi-area. |
+| **Workspace (P.IVA)** | Raggruppamento per workspace (con P.IVA se configurata). Utile con più workspace selezionati. |
+
+### Lettura della Tabella
+
+| Elemento | Descrizione |
+|---|---|
+| **Cella** | Somma del campo **Totale** (lordo IVA) di tutte le voci con quella combinazione riga × colonna. |
+| **—** | Cella vuota: nessuna voce per quella combinazione. |
+| **Colonna Totale** | Ultima colonna a destra: somma di tutte le colonne per quella riga. |
+| **Riga Totale** | Ultima riga in fondo (sfondo evidenziato): somma di tutte le righe per quella colonna. |
+| **Grand Total** | Cella in basso a destra: somma di tutte le voci nella vista. |
+
+Gli importi sono visualizzati in verde (positivi / entrate) e in rosso (negativi / uscite), coerentemente con il resto dell'interfaccia.
+
+### Drill-down: Analisi delle Voci Sottostanti
+
+Dalla tabella pivot è possibile accedere alle singole voci in tre modalità:
+
+| Interazione | Comportamento |
+|---|---|
+| **Doppio clic su una cella** | Apre il pannello laterale con le voci che appartengono a quella specifica combinazione riga × colonna. |
+| **Clic sull'intestazione di colonna** | Apre il pannello laterale con tutte le voci di quella colonna (indipendentemente dalla riga). |
+| **Clic sull'etichetta di riga** | Apre il pannello laterale con tutte le voci di quella riga (indipendentemente dalla colonna). |
+
+Il pannello laterale mostra l'elenco delle voci ordinate cronologicamente con Data, Conto, Riferimento, Responsabile e Totale. Cliccando su una voce si accede al dettaglio completo; dal dettaglio è possibile aprire il modulo di modifica inline.
+
+### Memorizzare le Impostazioni
+
+Il pulsante **Memorizza** (icona floppy disk) nella toolbar salva le impostazioni correnti — dimensione righe, dimensione colonne, sorgente data — nel **profilo utente** sul server. Al prossimo accesso alla Vista Analisi, le impostazioni verranno ripristinate automaticamente. La memorizzazione è per utente, non per workspace: le stesse impostazioni si applicano a tutti i workspace.

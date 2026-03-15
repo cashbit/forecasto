@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { RecordGrid } from '@/components/records/RecordGrid'
+import { RecordAnalysisView } from '@/components/records/RecordAnalysisView'
 import { RecordFilters } from '@/components/records/RecordFilters'
 import { RecordDetail } from '@/components/records/RecordDetail'
 import { RecordForm } from '@/components/records/RecordForm'
@@ -41,6 +42,8 @@ export function DashboardPage() {
   const { records, isLoading, createRecord, updateRecord, deleteRecord, transferRecord, restoreRecord, primaryWorkspaceId } = useRecords()
   const queryClient = useQueryClient()
   const { registerDashboardActions } = useTourContext()
+
+  const [showAnalysis, setShowAnalysis] = useState(false)
 
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
@@ -538,25 +541,35 @@ export function DashboardPage() {
         />
 
         <div className="flex-1 min-h-0 p-4">
-          <RecordGrid
-            records={records}
-            isLoading={isLoading}
-            onSelectRecord={setSelectedRecord}
-            onSplitRecord={setSplitRecord}
-            onCloneRecord={setCloneRecord}
-            onBulkDelete={handleBulkDelete}
-            onBulkMerge={(recs) => { setBulkRecords(recs); setShowBulkMerge(true) }}
-            onBulkMoveDates={(recs) => { setBulkRecords(recs); setShowBulkMoveDates(true) }}
-            onBulkSetDay={(recs) => { setBulkRecords(recs); setShowBulkSetDay(true) }}
-            onBulkExport={handleBulkExport}
-            onBulkTransfer={(recs) => { setBulkRecords(recs); setShowBulkTransfer(true) }}
-            onBulkSetStage={(recs) => { setBulkRecords(recs); setShowBulkStage(true) }}
-            onBulkMoveWorkspace={(recs) => { setBulkRecords(recs); setShowBulkMoveWorkspace(true) }}
-            onBulkEdit={(recs) => { setBulkRecords(recs); setShowBulkEdit(true) }}
-            onRestoreRecord={handleRestoreRecord}
-            visitedRecordIds={visitedRecordIds}
-            activeRecordId={editingRecord?.id || selectedRecord?.id}
-          />
+          {showAnalysis ? (
+            <RecordAnalysisView
+              records={records}
+              isLoading={isLoading}
+              onToggleAnalysis={() => setShowAnalysis(false)}
+            />
+          ) : (
+            <RecordGrid
+              records={records}
+              isLoading={isLoading}
+              onSelectRecord={setSelectedRecord}
+              onSplitRecord={setSplitRecord}
+              onCloneRecord={setCloneRecord}
+              onBulkDelete={handleBulkDelete}
+              onBulkMerge={(recs) => { setBulkRecords(recs); setShowBulkMerge(true) }}
+              onBulkMoveDates={(recs) => { setBulkRecords(recs); setShowBulkMoveDates(true) }}
+              onBulkSetDay={(recs) => { setBulkRecords(recs); setShowBulkSetDay(true) }}
+              onBulkExport={handleBulkExport}
+              onBulkTransfer={(recs) => { setBulkRecords(recs); setShowBulkTransfer(true) }}
+              onBulkSetStage={(recs) => { setBulkRecords(recs); setShowBulkStage(true) }}
+              onBulkMoveWorkspace={(recs) => { setBulkRecords(recs); setShowBulkMoveWorkspace(true) }}
+              onBulkEdit={(recs) => { setBulkRecords(recs); setShowBulkEdit(true) }}
+              onRestoreRecord={handleRestoreRecord}
+              visitedRecordIds={visitedRecordIds}
+              activeRecordId={editingRecord?.id || selectedRecord?.id}
+              showAnalysis={showAnalysis}
+              onToggleAnalysis={() => setShowAnalysis(true)}
+            />
+          )}
         </div>
       </div>
 

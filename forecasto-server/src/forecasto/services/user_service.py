@@ -31,6 +31,8 @@ class UserService:
             user.name = data.name
         if data.notification_preferences is not None:
             user.notification_preferences = data.notification_preferences
+        if data.ui_preferences is not None:
+            user.ui_preferences = data.ui_preferences
 
         return user
 

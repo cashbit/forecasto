@@ -26,7 +26,7 @@ export const authApi = {
     return response.data
   },
 
-  updateProfile: async (data: { name?: string }): Promise<User> => {
+  updateProfile: async (data: { name?: string; ui_preferences?: Record<string, unknown> }): Promise<User> => {
     const response = await apiClient.patch<User>('/users/me', data)
     return response.data
   },
