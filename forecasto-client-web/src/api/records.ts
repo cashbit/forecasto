@@ -72,7 +72,7 @@ export const recordsApi = {
 
   getFieldValues: async (
     workspaceId: string,
-    field: 'account' | 'reference' | 'project_code',
+    field: 'account' | 'reference' | 'project_code' | 'owner',
     q?: string
   ): Promise<string[]> => {
     const params: Record<string, string> = { field }

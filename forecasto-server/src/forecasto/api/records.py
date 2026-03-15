@@ -109,12 +109,12 @@ async def get_field_values(
         tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
     ],
     db: Annotated[AsyncSession, Depends(get_db)],
-    field: str = Query(..., description="Campo: account, reference, project_code"),
+    field: str = Query(..., description="Campo: account, reference, project_code, owner"),
     q: str | None = Query(None, description="Stringa di ricerca opzionale"),
     limit: int = Query(20, ge=1, le=100),
 ):
     """Return distinct values for a field in the workspace (autocomplete)."""
-    allowed = {"account", "reference", "project_code"}
+    allowed = {"account", "reference", "project_code", "owner"}
     if field not in allowed:
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail=f"Field '{field}' not supported. Allowed: {sorted(allowed)}")

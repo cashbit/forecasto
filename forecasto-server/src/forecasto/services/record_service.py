@@ -126,7 +126,7 @@ class RecordService:
         limit: int = 20,
     ) -> list[str]:
         """Return distinct non-empty values for a given field in the workspace."""
-        allowed = {"account", "reference", "project_code"}
+        allowed = {"account", "reference", "project_code", "owner"}
         if field not in allowed:
             raise ValueError(f"Field '{field}' not allowed for autocomplete")
 

@@ -399,7 +399,14 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
           {/* Responsabile */}
           <div className="space-y-1">
             <Label htmlFor="owner">Responsabile</Label>
-            <Input id="owner" {...register('owner')} placeholder="Nome" />
+            <AutocompleteInput
+              id="owner"
+              field="owner"
+              workspaceIds={selectedWorkspaceIds}
+              value={watch('owner') ?? ''}
+              onChange={v => setValue('owner', v)}
+              placeholder="Nome"
+            />
           </div>
 
           {/* Prossima Azione */}

@@ -191,7 +191,7 @@ Una **Voce** (Record) è l'unità base di Forecasto. Ogni voce rappresenta un mo
 | **ID Transazione** | `transaction_id` | Identificativo esterno univoco (codice banca, numero documento, UUID). Obbligatorio alla creazione. Vedi la convenzione di prefissazione nel capitolo *Ciclo di Vita di una Voce*. |
 | **Codice Progetto** | `project_code` | Codice progetto o centro di costo. Facoltativo. Consente filtri, raggruppamenti per progetto e analisi di marginalità. Supporta **autocompletamento** dai valori già inseriti nel workspace. |
 
-> **Autocompletamento workspace-aware** — I campi Conto, Riferimento e Codice Progetto mostrano un dropdown di suggerimenti mentre si digita. I valori proposti provengono direttamente dai record già presenti nel workspace (non dalla cronologia del browser). Se sono selezionati più workspace contemporaneamente, i suggerimenti vengono aggregati da tutti. Il campo rimane sempre a testo libero: si può digitare qualsiasi valore anche se non è in lista.
+> **Autocompletamento workspace-aware** — I campi Conto, Riferimento, Codice Progetto e Responsabile mostrano un dropdown di suggerimenti mentre si digita. I valori proposti provengono direttamente dai record già presenti nel workspace (non dalla cronologia del browser). Se sono selezionati più workspace contemporaneamente, i suggerimenti vengono aggregati da tutti. Il campo rimane sempre a testo libero: si può digitare qualsiasi valore anche se non è in lista.
 
 ### Importi
 
@@ -216,7 +216,7 @@ Una **Voce** (Record) è l'unità base di Forecasto. Ogni voce rappresenta un mo
 | Campo | Chiave DB | Descrizione |
 |---|---|---|
 | **Stato** | `stage` | Stage binario (0 o 1). Il significato dipende dall'area: es. in Actual = Non pagato / Pagato. |
-| **Responsabile** | `owner` | Persona incaricata di gestire o seguire la voce. Testo libero. |
+| **Responsabile** | `owner` | Persona incaricata di gestire o seguire la voce. Testo libero. Supporta **autocompletamento** dai nomi già inseriti nel workspace. |
 | **Prossima Azione** | `nextaction` | Descrizione dell'azione da compiere. Evidenziata in ambra nella vista dettaglio. |
 | **Conto Bancario** | `bank_account_id` | Collega la voce a un conto bancario specifico del workspace. |
 

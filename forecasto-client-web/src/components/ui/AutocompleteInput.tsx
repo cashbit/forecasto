@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Command, CommandList, CommandItem } from '@/components/ui/command'
 import { recordsApi } from '@/api/records'
 
-type AutocompleteField = 'account' | 'reference' | 'project_code'
+type AutocompleteField = 'account' | 'reference' | 'project_code' | 'owner'
 
 interface AutocompleteInputProps {
   workspaceIds: string[]
