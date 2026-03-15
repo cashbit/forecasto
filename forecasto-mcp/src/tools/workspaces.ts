@@ -28,14 +28,13 @@ export function registerWorkspaceTools(
 
   server.tool(
     "create_workspace",
-    "Create a new Forecasto workspace for a fiscal year.",
+    "Create a new Forecasto workspace.",
     {
       name: z.string().describe("Workspace name"),
-      fiscal_year: z.number().int().optional().describe("Fiscal year (defaults to current year)"),
       description: z.string().optional().describe("Optional description"),
     },
-    async ({ name, fiscal_year, description }) => {
-      const data = await getClient().post("/api/v1/workspaces", { name, fiscal_year, description });
+    async ({ name, description }) => {
+      const data = await getClient().post("/api/v1/workspaces", { name, description });
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
     },
   );

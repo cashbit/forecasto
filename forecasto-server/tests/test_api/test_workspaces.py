@@ -14,14 +14,12 @@ async def test_create_workspace(authenticated_client: AsyncClient):
         "/api/v1/workspaces",
         json={
             "name": "New Workspace",
-            "fiscal_year": 2026,
         },
     )
     assert response.status_code == 201
     data = response.json()
     assert data["success"] is True
     assert data["workspace"]["name"] == "New Workspace"
-    assert data["workspace"]["fiscal_year"] == 2026
 
 @pytest.mark.asyncio
 async def test_list_workspaces(authenticated_client: AsyncClient, test_workspace):

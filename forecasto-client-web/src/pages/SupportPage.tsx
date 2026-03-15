@@ -27,7 +27,7 @@ const faqs = [
   {
     question: "Quali sono le differenze tra Budget, Prospect, Ordini e Actual?",
     answer:
-      "Le quattro aree rappresentano fasi diverse del ciclo finanziario: Budget è la pianificazione previsionale, Prospect raccoglie le opportunità commerciali non ancora confermate, Ordini contiene i contratti confermati ma non ancora fatturati, Actual registra le transazioni reali avvenute.",
+      "Le quattro aree rappresentano fasi diverse del ciclo finanziario: Budget può essere usato come piano previsionale di entrate/uscite per un periodo oppure come raccolta di opportunità commerciali ancora in fase iniziale (prima che diventino trattative Prospect); Prospect raccoglie le trattative commerciali in corso non ancora confermate; Ordini contiene i contratti confermati ma non ancora fatturati; Actual registra le transazioni reali avvenute.",
   },
   {
     question: "Come invito altri utenti al mio workspace?",

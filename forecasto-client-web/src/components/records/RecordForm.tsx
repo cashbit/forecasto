@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { AutocompleteInput } from '@/components/ui/AutocompleteInput'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -73,7 +74,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
   const recordArea = record?.area || area
   const nextArea = NEXT_AREA[recordArea]
   const stages = STAGES[area] || []
-  const { checkPermission } = useWorkspaceStore()
+  const { checkPermission, selectedWorkspaceIds } = useWorkspaceStore()
   const { user } = useAuthStore()
 
   // Check permissions for create/edit
@@ -89,6 +90,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
     handleSubmit,
     setValue,
     watch,
+    trigger,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -293,14 +295,28 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
           {/* Conto */}
           <div className="space-y-1">
             <Label htmlFor="account">Conto</Label>
-            <Input id="account" {...register('account')} />
+            <AutocompleteInput
+              id="account"
+              field="account"
+              workspaceIds={selectedWorkspaceIds}
+              value={watch('account') ?? ''}
+              onChange={v => setValue('account', v, { shouldValidate: true })}
+              onBlur={() => trigger('account')}
+            />
             {errors.account && <p className="text-sm text-destructive">{errors.account.message}</p>}
           </div>
 
           {/* Riferimento */}
           <div className="space-y-1">
             <Label htmlFor="reference">Riferimento</Label>
-            <Input id="reference" {...register('reference')} />
+            <AutocompleteInput
+              id="reference"
+              field="reference"
+              workspaceIds={selectedWorkspaceIds}
+              value={watch('reference') ?? ''}
+              onChange={v => setValue('reference', v, { shouldValidate: true })}
+              onBlur={() => trigger('reference')}
+            />
             {errors.reference && <p className="text-sm text-destructive">{errors.reference.message}</p>}
           </div>
 
@@ -314,7 +330,14 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
           {/* Codice Progetto */}
           <div className="space-y-1">
             <Label htmlFor="project_code">Codice Progetto</Label>
-            <Input id="project_code" {...register('project_code')} placeholder="es. PROJ-001" />
+            <AutocompleteInput
+              id="project_code"
+              field="project_code"
+              workspaceIds={selectedWorkspaceIds}
+              value={watch('project_code') ?? ''}
+              onChange={v => setValue('project_code', v)}
+              placeholder="es. PROJ-001"
+            />
           </div>
 
           {/* Data Cashflow + Data Offerta (grid 2 col) */}

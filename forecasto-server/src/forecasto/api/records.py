@@ -102,6 +102,28 @@ async def list_records(
         result["has_more"] = (offset + len(records)) < total
     return result
 
+@router.get("/{workspace_id}/records/field-values", response_model=dict)
+async def get_field_values(
+    workspace_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    field: str = Query(..., description="Campo: account, reference, project_code"),
+    q: str | None = Query(None, description="Stringa di ricerca opzionale"),
+    limit: int = Query(20, ge=1, le=100),
+):
+    """Return distinct values for a field in the workspace (autocomplete)."""
+    allowed = {"account", "reference", "project_code"}
+    if field not in allowed:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=f"Field '{field}' not supported. Allowed: {sorted(allowed)}")
+
+    service = RecordService(db)
+    values = await service.get_field_values(workspace_id, field, q=q, limit=limit)
+    return {"success": True, "values": values}
+
+
 @router.post("/{workspace_id}/records", response_model=dict, status_code=201)
 async def create_record(
     workspace_id: str,

@@ -69,4 +69,18 @@ export const recordsApi = {
     const response = await apiClient.post<{ success: boolean; record: Record }>(`/workspaces/${workspaceId}/records/${recordId}/restore`)
     return response.data.record
   },
+
+  getFieldValues: async (
+    workspaceId: string,
+    field: 'account' | 'reference' | 'project_code',
+    q?: string
+  ): Promise<string[]> => {
+    const params: Record<string, string> = { field }
+    if (q) params.q = q
+    const response = await apiClient.get<{ success: boolean; values: string[] }>(
+      `/workspaces/${workspaceId}/records/field-values`,
+      { params }
+    )
+    return response.data.values
+  },
 }

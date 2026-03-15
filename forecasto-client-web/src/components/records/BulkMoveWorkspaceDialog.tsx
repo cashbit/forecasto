@@ -59,7 +59,7 @@ export function BulkMoveWorkspaceDialog({
               <SelectContent>
                 {availableWorkspaces.map((ws) => (
                   <SelectItem key={ws.id} value={ws.id}>
-                    {ws.name}{ws.fiscal_year ? ` (${ws.fiscal_year})` : ''}
+                    {ws.name}
                   </SelectItem>
                 ))}
               </SelectContent>

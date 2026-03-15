@@ -68,7 +68,6 @@ async def test_workspace(db_session: AsyncSession, test_user: User):
     """Create a test workspace."""
     workspace = Workspace(
         name="Test Workspace",
-        fiscal_year=2026,
         owner_id=test_user.id,
     )
     db_session.add(workspace)

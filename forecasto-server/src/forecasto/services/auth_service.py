@@ -192,10 +192,8 @@ class AuthService:
             logger.warning(f"ActiveCampaign SIGNEDUP event failed for {email}: {e}")
 
         # Create default workspace for the user
-        current_year = datetime.utcnow().year
         workspace = Workspace(
             name=f"Workspace di {name}",
-            fiscal_year=current_year,
             owner_id=user.id,
             email_whitelist=[],
             settings={},

@@ -118,6 +118,37 @@ class RecordService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def get_field_values(
+        self,
+        workspace_id: str,
+        field: str,
+        q: str | None = None,
+        limit: int = 20,
+    ) -> list[str]:
+        """Return distinct non-empty values for a given field in the workspace."""
+        allowed = {"account", "reference", "project_code"}
+        if field not in allowed:
+            raise ValueError(f"Field '{field}' not allowed for autocomplete")
+
+        col = getattr(Record, field)
+        stmt = (
+            select(col)
+            .where(
+                Record.workspace_id == workspace_id,
+                Record.deleted_at.is_(None),
+                col.isnot(None),
+                col != "",
+            )
+            .distinct()
+            .order_by(col)
+            .limit(limit)
+        )
+        if q:
+            stmt = stmt.where(col.ilike(f"%{q}%"))
+
+        result = await self.db.execute(stmt)
+        return [row[0] for row in result.fetchall()]
+
     async def create_record(
         self,
         workspace_id: str,

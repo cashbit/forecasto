@@ -43,15 +43,11 @@ class AreaPermissions(BaseModel):
     prospect: str = "write"
     budget: str = "write"
 
-def _current_year() -> int:
-    return datetime.now().year
-
 class WorkspaceCreate(BaseModel):
     """Workspace creation request."""
 
     name: str
     description: str | None = None
-    fiscal_year: int = Field(default_factory=_current_year)
     email_whitelist: list[str] | None = None
     settings: dict | None = None
 
@@ -60,7 +56,6 @@ class WorkspaceUpdate(BaseModel):
 
     name: str | None = None
     description: str | None = None
-    fiscal_year: int | None = None
     is_archived: bool | None = None
     settings: dict | None = None
 
@@ -70,7 +65,6 @@ class WorkspaceResponse(BaseModel):
     id: str
     name: str
     description: str | None = None
-    fiscal_year: int
     is_archived: bool
     settings: dict
     email_whitelist: list[str]
@@ -85,7 +79,6 @@ class WorkspaceWithRole(BaseModel):
     id: str
     name: str
     description: str | None = None
-    fiscal_year: int
     is_archived: bool
     settings: dict
     role: str

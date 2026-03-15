@@ -3,7 +3,6 @@ export interface Workspace {
   name: string
   description?: string
   owner_id: string
-  fiscal_year?: number
   is_archived?: boolean
   settings: WorkspaceSettings
   created_at: string

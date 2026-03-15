@@ -34,23 +34,21 @@ class WorkspaceService:
 
     async def create_workspace(self, data: WorkspaceCreate, owner: User) -> Workspace:
         """Create a new workspace."""
-        # Check unique name + fiscal_year per owner
+        # Check unique name per owner
         result = await self.db.execute(
             select(Workspace).where(
                 Workspace.name == data.name,
-                Workspace.fiscal_year == data.fiscal_year,
                 Workspace.owner_id == owner.id,
             )
         )
         if result.scalar_one_or_none():
             raise ValidationException(
-                f"Workspace '{data.name}' for fiscal year {data.fiscal_year} already exists"
+                f"Workspace '{data.name}' already exists"
             )
 
         workspace = Workspace(
             name=data.name,
             description=data.description,
-            fiscal_year=data.fiscal_year,
             owner_id=owner.id,
             email_whitelist=data.email_whitelist or [],
             settings=data.settings or {},

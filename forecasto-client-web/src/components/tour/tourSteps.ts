@@ -108,7 +108,7 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
       elementSelector: '[data-tour="area-tabs"]',
       popover: {
         title: 'Le 4 Aree',
-        description: 'Budget = previsioni | Prospect = trattative | Orders = ordini confermati | Actual = fatturato e incassato. Ogni record avanza da sinistra a destra.',
+        description: 'Budget = previsioni o opportunità iniziali | Prospect = trattative in corso | Orders = ordini confermati | Actual = fatturato e incassato. Ogni record avanza da sinistra a destra.',
         side: 'bottom',
       },
     },
@@ -119,7 +119,7 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
       elementSelector: '[data-tour="tab-budget"]',
       popover: {
         title: 'Area Budget',
-        description: 'Iniziamo dal Budget: qui inserisci le previsioni di entrata e uscita future.',
+        description: 'Iniziamo dal Budget: puoi usarlo come piano previsionale di entrate/uscite, oppure come prima stazione del funnel commerciale per raccogliere opportunità ancora in fase iniziale.',
         side: 'bottom',
       },
       flashSelector: '[data-tour="tab-budget"]',
@@ -131,7 +131,7 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
       elementSelector: '[data-tour="btn-new-record"]',
       popover: {
         title: 'Crea un Nuovo Record',
-        description: 'Premi questo pulsante per inserire una nuova previsione.',
+        description: 'Premi questo pulsante per inserire una nuova voce — che sia una previsione di budget o un\'opportunità commerciale nascente.',
         side: 'bottom',
       },
       beforeStep: async () => {
@@ -198,7 +198,7 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
       elementSelector: '#transaction_id',
       popover: {
         title: 'ID Transazione',
-        description: 'Un identificativo del documento. In fase Budget usiamo un codice previsione: "PREV-2026-001".',
+        description: 'Un identificativo del documento. In fase Budget può essere un codice previsione (es. "PREV-2026-001") o un codice opportunità (es. "OPP-2026-001").',
         side: 'left',
       },
       beforeStep: async () => {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LogOut, Settings, User, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy, ArrowUpDown, FileJson } from 'lucide-react'
+import { LogOut, Settings, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy, ArrowUpDown, FileJson } from 'lucide-react'
 import logoIcon from '@/assets/logo-icon.png'
 import logoText from '@/assets/logo-text.png'
 import { Link, useLocation } from 'react-router-dom'
@@ -435,12 +435,6 @@ export function Header() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to="/settings">
-                <User className="mr-2 h-4 w-4" />
-                Profilo
-              </Link>
-            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link to="/settings">
                 <Settings className="mr-2 h-4 w-4" />

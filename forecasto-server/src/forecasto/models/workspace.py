@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,14 +19,13 @@ if TYPE_CHECKING:
     from forecasto.models.user import User
 
 class Workspace(Base, UUIDMixin, TimestampMixin):
-    """Workspace containing financial data for a fiscal year."""
+    """Workspace containing financial data."""
 
     __tablename__ = "workspaces"
-    __table_args__ = (UniqueConstraint("owner_id", "name", "fiscal_year", name="uq_workspace_owner_name_year"),)
+    __table_args__ = (UniqueConstraint("owner_id", "name", name="uq_workspace_owner_name"),)
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    fiscal_year: Mapped[int] = mapped_column(Integer, nullable=False)
     owner_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id"), nullable=False, index=True
     )
