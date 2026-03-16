@@ -7,7 +7,7 @@ import logging
 import re
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import case, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -124,6 +124,8 @@ class RecordService:
         field: str,
         q: str | None = None,
         limit: int = 20,
+        sign: str | None = None,
+        account_filter: str | None = None,
     ) -> list[str]:
         """Return distinct non-empty values for a given field in the workspace."""
         allowed = {"account", "reference", "project_code", "owner"}
@@ -145,6 +147,31 @@ class RecordService:
         )
         if q:
             stmt = stmt.where(col.ilike(f"%{q}%"))
+        if sign and field == "account":
+            # Show only accounts where the requested sign is dominant
+            sign_weight = (
+                func.sum(case((Record.amount >= 0, 1), else_=-1))
+                if sign == "in"
+                else func.sum(case((Record.amount < 0, 1), else_=-1))
+            )
+            dominant_accounts = (
+                select(Record.account)
+                .where(
+                    Record.workspace_id == workspace_id,
+                    Record.deleted_at.is_(None),
+                    Record.account.isnot(None),
+                    Record.account != "",
+                )
+                .group_by(Record.account)
+                .having(sign_weight > 0)
+            )
+            stmt = stmt.where(col.in_(dominant_accounts))
+        elif sign == "in":
+            stmt = stmt.where(Record.amount >= 0)
+        elif sign == "out":
+            stmt = stmt.where(Record.amount < 0)
+        if account_filter and field == "reference":
+            stmt = stmt.where(Record.account == account_filter)
 
         result = await self.db.execute(stmt)
         return [row[0] for row in result.fetchall()]

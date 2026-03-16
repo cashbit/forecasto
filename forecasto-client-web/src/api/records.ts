@@ -73,10 +73,14 @@ export const recordsApi = {
   getFieldValues: async (
     workspaceId: string,
     field: 'account' | 'reference' | 'project_code' | 'owner',
-    q?: string
+    q?: string,
+    sign?: 'in' | 'out',
+    accountFilter?: string,
   ): Promise<string[]> => {
     const params: Record<string, string> = { field }
     if (q) params.q = q
+    if (sign) params.sign = sign
+    if (accountFilter) params.account_filter = accountFilter
     const response = await apiClient.get<{ success: boolean; values: string[] }>(
       `/workspaces/${workspaceId}/records/field-values`,
       { params }

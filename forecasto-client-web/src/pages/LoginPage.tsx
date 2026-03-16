@@ -37,7 +37,8 @@ export function LoginPage() {
     setError('')
     try {
       await login(data.email, data.password)
-      navigate('/dashboard')
+      const isMobile = window.matchMedia('(max-width: 768px)').matches
+      navigate(isMobile ? '/mobile' : '/dashboard')
     } catch {
       setError('Credenziali non valide')
     }

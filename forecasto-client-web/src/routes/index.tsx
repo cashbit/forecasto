@@ -10,6 +10,8 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 import { SupportPage } from '@/pages/SupportPage'
 import { SkillsPage } from '@/pages/SkillsPage'
 import { AdminLayout, AdminDashboard, RegistrationCodesPage, UsersPage, ActivatedCodesReportPage, BillingSummaryPage } from '@/pages/admin'
+import { MobileLayout } from '@/pages/mobile/MobileLayout'
+import { MobileQuickEntry } from '@/pages/mobile/MobileQuickEntry'
 import { useAuthStore } from '@/stores/authStore'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -92,6 +94,17 @@ export const router = createBrowserRouter([
       { path: 'users', element: <UsersPage /> },
       { path: 'reports/activations', element: <ActivatedCodesReportPage /> },
       { path: 'reports/billing', element: <BillingSummaryPage /> },
+    ],
+  },
+  {
+    path: '/mobile',
+    element: (
+      <ProtectedRoute>
+        <MobileLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <MobileQuickEntry /> },
     ],
   },
   { path: '*', element: <NotFoundPage /> },

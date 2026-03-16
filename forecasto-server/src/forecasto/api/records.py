@@ -112,6 +112,8 @@ async def get_field_values(
     field: str = Query(..., description="Campo: account, reference, project_code, owner"),
     q: str | None = Query(None, description="Stringa di ricerca opzionale"),
     limit: int = Query(20, ge=1, le=100),
+    sign: str | None = Query(None, description="Filtro segno: in | out"),
+    account_filter: str | None = Query(None, description="Filtra reference per account"),
 ):
     """Return distinct values for a field in the workspace (autocomplete)."""
     allowed = {"account", "reference", "project_code", "owner"}
@@ -120,7 +122,7 @@ async def get_field_values(
         raise HTTPException(status_code=400, detail=f"Field '{field}' not supported. Allowed: {sorted(allowed)}")
 
     service = RecordService(db)
-    values = await service.get_field_values(workspace_id, field, q=q, limit=limit)
+    values = await service.get_field_values(workspace_id, field, q=q, limit=limit, sign=sign, account_filter=account_filter)
     return {"success": True, "values": values}
 
 
