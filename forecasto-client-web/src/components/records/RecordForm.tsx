@@ -125,7 +125,6 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
   const selectedSign = watch('sign')
 
   // Track which field (vat or total) was last manually edited
-  const [lastEdited, setLastEdited] = useState<'vat' | 'total'>('total')
   const [noteExpanded, setNoteExpanded] = useState(false)
 
   const { data: bankAccounts = [] } = useQuery({
@@ -152,36 +151,30 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
     setValue('total', (a * (1 + v / 100)).toFixed(2))
   }
 
-  // Recalculate vat from amount + total
-  const calcVatFromTotal = (amount: string, total: string) => {
-    const a = parseFloat(amount) || 0
+  // Recalculate amount from total + vat%
+  const calcAmountFromTotal = (total: string, vat: string) => {
     const t = parseFloat(total) || 0
-    if (a <= 0) { setValue('vat', '0'); return }
-    setValue('vat', (((t - a) / a) * 100).toFixed(0))
+    const v = parseFloat(vat) || 0
+    if (t === 0) return
+    setValue('amount', (t / (1 + v / 100)).toFixed(2))
   }
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
     setValue('amount', val)
-    if (lastEdited === 'vat') {
-      calcTotalFromVat(val, watch('vat'))
-    } else {
-      calcVatFromTotal(val, watch('total'))
-    }
+    calcTotalFromVat(val, watch('vat'))
   }
 
   const handleVatChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
     setValue('vat', val)
-    setLastEdited('vat')
     calcTotalFromVat(watch('amount'), val)
   }
 
   const handleTotalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
     setValue('total', val)
-    setLastEdited('total')
-    calcVatFromTotal(watch('amount'), val)
+    calcAmountFromTotal(val, watch('vat'))
   }
 
   const processFormData = (data: FormData) => {
