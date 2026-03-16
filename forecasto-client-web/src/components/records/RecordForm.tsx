@@ -412,7 +412,14 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
           {/* Prossima Azione */}
           <div className="space-y-1">
             <Label htmlFor="nextaction">Prossima Azione</Label>
-            <Input id="nextaction" {...register('nextaction')} placeholder="Azione" />
+            <AutocompleteInput
+              id="nextaction"
+              field="nextaction"
+              workspaceIds={selectedWorkspaceIds}
+              value={watch('nextaction') ?? ''}
+              onChange={v => setValue('nextaction', v)}
+              placeholder="Azione"
+            />
           </div>
 
           {/* Prossima Revisione */}

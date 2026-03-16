@@ -109,14 +109,14 @@ async def get_field_values(
         tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
     ],
     db: Annotated[AsyncSession, Depends(get_db)],
-    field: str = Query(..., description="Campo: account, reference, project_code, owner"),
+    field: str = Query(..., description="Campo: account, reference, project_code, owner, nextaction"),
     q: str | None = Query(None, description="Stringa di ricerca opzionale"),
     limit: int = Query(20, ge=1, le=100),
     sign: str | None = Query(None, description="Filtro segno: in | out"),
     account_filter: str | None = Query(None, description="Filtra reference per account"),
 ):
     """Return distinct values for a field in the workspace (autocomplete)."""
-    allowed = {"account", "reference", "project_code", "owner"}
+    allowed = {"account", "reference", "project_code", "owner", "nextaction"}
     if field not in allowed:
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail=f"Field '{field}' not supported. Allowed: {sorted(allowed)}")
@@ -143,6 +143,19 @@ async def create_record(
     service = RecordService(db)
     # Pass member for granular permission check
     record = await service.create_record(workspace_id, data, current_user, member=member)
+
+    # Re-fetch with eager-loaded relationships to avoid lazy-load MissingGreenlet
+    # (async SQLAlchemy does not support lazy loading; bank_account and audit relations
+    # must be explicitly loaded before _record_to_response accesses them)
+    from sqlalchemy import select as sa_select
+    from forecasto.models.record import Record as RecordModel
+    await db.flush()
+    result = await db.execute(
+        sa_select(RecordModel)
+        .options(*service._audit_options)
+        .where(RecordModel.id == record.id)
+    )
+    record = result.scalar_one()
 
     return {
         "success": True,

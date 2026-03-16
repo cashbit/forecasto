@@ -151,6 +151,14 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
         note: record.note,
         date_cashflow: inst.date,
         date_offer: record.date_offer,
+        review_date: (() => {
+          if (!record.review_date) return undefined
+          const base = new Date(record.review_date)
+          if (intervalUnit === 'days')       base.setDate(base.getDate() + index * intervalValue)
+          else if (intervalUnit === 'weeks') base.setDate(base.getDate() + index * intervalValue * 7)
+          else                               base.setMonth(base.getMonth() + index * intervalValue)
+          return base.toISOString().split('T')[0]
+        })(),
         owner: record.owner,
         nextaction: record.nextaction,
         amount: inst.amount.toString(),

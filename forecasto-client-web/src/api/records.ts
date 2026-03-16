@@ -72,7 +72,7 @@ export const recordsApi = {
 
   getFieldValues: async (
     workspaceId: string,
-    field: 'account' | 'reference' | 'project_code' | 'owner',
+    field: 'account' | 'reference' | 'project_code' | 'owner' | 'nextaction',
     q?: string,
     sign?: 'in' | 'out',
     accountFilter?: string,
