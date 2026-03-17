@@ -23,6 +23,7 @@ class RecordCreate(BaseModel):
     amount: Decimal
     vat: Decimal = Decimal("0")
     vat_deduction: Decimal = Decimal("100")
+    vat_month: str | None = None
     total: Decimal
     stage: str
     transaction_id: str | None = None
@@ -53,6 +54,7 @@ class RecordUpdate(BaseModel):
     amount: Decimal | None = None
     vat: Decimal | None = None
     vat_deduction: Decimal | None = None
+    vat_month: str | None = None
     total: Decimal | None = None
     stage: str | None = None
     transaction_id: str | None = None
@@ -87,6 +89,7 @@ class RecordResponse(BaseModel):
     amount: Decimal
     vat: Decimal
     vat_deduction: Decimal
+    vat_month: str | None = None
     total: Decimal
     stage: str
     transaction_id: str | None = None

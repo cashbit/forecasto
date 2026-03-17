@@ -35,6 +35,7 @@ const schema = z.object({
   project_code: z.string().optional(),
   vat: z.string().optional(),
   vat_deduction: z.string().optional(),
+  vat_month: z.string().optional(),
   bank_account_id: z.string().optional(),
   sign: z.enum(['in', 'out'], { message: 'Seleziona entrata o uscita' }),
 })
@@ -115,6 +116,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
       nextaction: record?.nextaction || '',
       review_date: record?.review_date?.split('T')[0] || '',
       vat_deduction: record?.vat_deduction ? parseFloat(record.vat_deduction).toFixed(0) : '100',
+      vat_month: record?.vat_month || '',
       project_code: record?.project_code || '',
       bank_account_id: record?.bank_account_id || '',
       sign: record?.amount ? (parseFloat(record.amount) >= 0 ? 'in' : 'out') : undefined,
@@ -190,7 +192,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
     const vatDeduction = data.vat_deduction || '100'
 
     // Remove sign and vat from data (UI-only fields); normalize bank_account_id empty string to undefined
-    const { sign, vat: _vat, vat_deduction: _vatDed, review_date, bank_account_id, ...submitData } = data
+    const { sign, vat: _vat, vat_deduction: _vatDed, vat_month, review_date, bank_account_id, ...submitData } = data
 
     // In create mode: '' → undefined (don't send field)
     // In update mode: '' → null (explicitly clear the field on server)
@@ -198,32 +200,32 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
       ? bank_account_id
       : record ? null : undefined
 
-    return { submitData, signedAmount, signedTotal, vat, vatDeduction, review_date, bank_account_id: normalizedBankAccountId }
+    return { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth: vat_month || undefined, review_date, bank_account_id: normalizedBankAccountId }
   }
 
   const handleFormSubmit = (data: FormData) => {
-    const { submitData, signedAmount, signedTotal, vat, vatDeduction, review_date, bank_account_id } = processFormData(data)
+    const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, review_date, bank_account_id } = processFormData(data)
 
     if (record) {
-      onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, review_date: review_date || undefined, bank_account_id } as RecordUpdate)
+      onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, review_date: review_date || undefined, bank_account_id } as RecordUpdate)
     } else {
       // Add default type for new records
-      onSubmit({ ...submitData, area, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, review_date: review_date || undefined, bank_account_id, type: 'standard' } as RecordCreate)
+      onSubmit({ ...submitData, area, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, review_date: review_date || undefined, bank_account_id, type: 'standard' } as RecordCreate)
     }
   }
 
   const handleReviewClick = (days: number) => {
     handleSubmit((data: FormData) => {
-      const { submitData, signedAmount, signedTotal, vat, vatDeduction, bank_account_id } = processFormData(data)
-      onReview?.(days, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, bank_account_id } as RecordUpdate)
+      const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, bank_account_id } = processFormData(data)
+      onReview?.(days, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, bank_account_id } as RecordUpdate)
     })()
   }
 
   const handlePromoteClick = (toArea: Area) => {
     if (!record) return
     handleSubmit((data: FormData) => {
-      const { submitData, signedAmount, signedTotal, vat, vatDeduction, bank_account_id } = processFormData(data)
-      onPromote?.(record.id, toArea, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, bank_account_id } as RecordUpdate)
+      const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, bank_account_id } = processFormData(data)
+      onPromote?.(record.id, toArea, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, bank_account_id } as RecordUpdate)
     })()
   }
 
@@ -347,8 +349,8 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
             </div>
           </div>
 
-          {/* Imponibile + IVA% + Totale + Detr.% (una riga) */}
-          <div className="grid grid-cols-[1fr_4rem_1fr_4rem] gap-2">
+          {/* Imponibile + IVA% + Totale */}
+          <div className="grid grid-cols-[1fr_4rem_1fr] gap-2">
             <div className="space-y-1">
               <Label htmlFor="amount">Imponibile</Label>
               <Input id="amount" type="number" step="0.01" value={watch('amount')} onChange={handleAmountChange} />
@@ -363,9 +365,17 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
               <Input id="total" type="number" step="0.01" value={watch('total')} onChange={handleTotalChange} />
               {errors.total && <p className="text-sm text-destructive">{errors.total.message}</p>}
             </div>
+          </div>
+
+          {/* Detrazione IVA + Mese IVA */}
+          <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <Label htmlFor="vat_deduction">Detr.%</Label>
-              <Input id="vat_deduction" type="number" step="1" min="0" max="100" {...register('vat_deduction')} className="px-1 text-center" />
+              <Label htmlFor="vat_deduction">Detrazione IVA %</Label>
+              <Input id="vat_deduction" type="number" step="1" min="0" max="100" {...register('vat_deduction')} className="text-center" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="vat_month">Mese IVA</Label>
+              <Input id="vat_month" type="month" {...register('vat_month')} />
             </div>
           </div>
 

@@ -147,7 +147,7 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
         area: record.area,
         type: record.type,
         account: record.account,
-        reference: `${record.reference} (${index + 1}/${installments.length})`,
+        reference: record.reference,
         note: record.note,
         date_cashflow: inst.date,
         date_offer: record.date_offer,
@@ -165,7 +165,7 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
         vat: Math.abs(inst.total - inst.amount).toFixed(2),
         total: inst.total.toString(),
         stage: record.stage,
-        transaction_id: record.transaction_id ? `${record.transaction_id}-${index + 1}` : `${isClone ? 'CLONE' : 'SPLIT'}-${Date.now()}-${index + 1}`,
+        transaction_id: `(${index + 1}/${installments.length})${record.transaction_id ? ' ' + record.transaction_id : ''}`,
         bank_account_id: record.bank_account_id,
         project_code: record.project_code,
       }))

@@ -220,6 +220,7 @@ class RecordService:
             amount=data.amount,
             vat=data.vat,
             vat_deduction=data.vat_deduction,
+            vat_month=data.vat_month,
             total=data.total,
             stage=data.stage,
             transaction_id=data.transaction_id,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { LogOut, Settings, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy, ArrowUpDown, FileJson } from 'lucide-react'
+import { LogOut, Settings, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy, ArrowUpDown, FileJson, Calculator } from 'lucide-react'
 import logoIcon from '@/assets/logo-icon.png'
 import logoText from '@/assets/logo-text.png'
 import { Link, useLocation } from 'react-router-dom'
@@ -25,6 +25,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ImportDialog } from '@/components/records/ImportDialog'
 import { SdiImportDialog } from '@/components/records/SdiImportDialog'
 import { ExcelImportDialog } from '@/components/records/ExcelImportDialog'
+import { VatCalculationDialog } from '@/components/records/VatCalculationDialog'
 import { useFilterStore } from '@/stores/filterStore'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { PendingInvitation, WorkspaceMember } from '@/types/workspace'
@@ -46,6 +47,7 @@ export function Header() {
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [showSdiImportDialog, setShowSdiImportDialog] = useState(false)
   const [showExcelImportDialog, setShowExcelImportDialog] = useState(false)
+  const [showVatDialog, setShowVatDialog] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
   const primaryWorkspace = getPrimaryWorkspace()
@@ -160,6 +162,7 @@ export function Header() {
             amount: record.amount,
             vat: record.vat,
             vat_deduction: record.vat_deduction || '100',
+            vat_month: record.vat_month || undefined,
             total: record.total,
             stage: record.stage,
             transaction_id: record.transaction_id || '',
@@ -297,6 +300,13 @@ export function Header() {
               >
                 <Upload className="h-4 w-4 mr-2" />
                 {isExporting ? 'Esportazione...' : `Esporta JSON`}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Strumenti</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setShowVatDialog(true)}>
+                <Calculator className="h-4 w-4 mr-2" />
+                Calcolo IVA Periodica
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -510,6 +520,15 @@ export function Header() {
           }}
         />
       )}
+
+      {/* VAT Calculation Dialog */}
+      <VatCalculationDialog
+        open={showVatDialog}
+        onOpenChange={setShowVatDialog}
+        onComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ['records'] })
+        }}
+      />
     </header>
   )
 }

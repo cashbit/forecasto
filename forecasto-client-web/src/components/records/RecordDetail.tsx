@@ -98,9 +98,15 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
           </div>
         </div>
 
-        <div>
-          <p className="text-sm text-muted-foreground">Totale</p>
-          <AmountDisplay amount={record.total} className="text-xl font-bold" />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Totale</p>
+            <AmountDisplay amount={record.total} className="text-xl font-bold" />
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Mese IVA</p>
+            <p className="text-lg font-medium">{record.vat_month || record.date_cashflow?.slice(0, 7) || '-'}</p>
+          </div>
         </div>
 
         <Separator />

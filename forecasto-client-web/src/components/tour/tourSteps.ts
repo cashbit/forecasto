@@ -549,11 +549,11 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
         }
         await delay(3000)
 
-        // Track the new split record IDs (SplitDialog creates references like "... (1/2)")
+        // Track the new split record IDs (SplitDialog creates transaction_ids like "(1/2) ...")
         const records = (ctx.dashboardActions.getRecords?.() || []) as Record<string, unknown>[]
         const splitRecords = records.filter(r =>
           (r.account as string) === 'Cliente Demo SpA' &&
-          (r.reference as string)?.includes('/')
+          (r.transaction_id as string)?.match(/^\(\d+\/\d+\)/)
         )
         const splitIds = splitRecords.map(r => r.id as string)
         ctx.setTourSplitRecordIds(splitIds)
@@ -571,10 +571,10 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
         side: 'left',
       },
       beforeStep: async () => {
-        // SplitDialog creates references like "Progetto Sito Web (1/2)"
+        // SplitDialog creates transaction_ids like "(1/2) ..."
         const deposit = await waitForRecord(
           () => ctx.dashboardActions.getRecords?.() || [],
-          (r) => (r.reference as string)?.includes('1/2'),
+          (r) => (r.transaction_id as string)?.startsWith('(1/'),
         )
         if (deposit) {
           ctx.dashboardActions.selectRecord?.(deposit)

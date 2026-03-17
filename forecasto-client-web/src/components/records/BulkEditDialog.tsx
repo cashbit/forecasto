@@ -24,6 +24,7 @@ const FIELD_LABELS: Record<string, string> = {
   owner: 'Responsabile',
   nextaction: 'Prossima Azione',
   review_date: 'Prossima Revisione',
+  vat_month: 'Mese IVA',
   note: 'Note',
 }
 
@@ -39,6 +40,7 @@ interface BulkEditFormState {
   amount: string
   vat: string
   total: string
+  vat_month: string
   stage: string
   owner: string
   nextaction: string
@@ -58,6 +60,7 @@ const EMPTY_FORM: BulkEditFormState = {
   amount: '',
   vat: '',
   total: '',
+  vat_month: '',
   stage: '',
   owner: '',
   nextaction: '',
@@ -162,6 +165,7 @@ export function BulkEditDialog({
     if (form.vat.trim() && form.amount.trim()) {
       changes.vat = form.vat
     }
+    if (form.vat_month.trim()) changes.vat_month = form.vat_month.trim()
 
     return changes
   }
@@ -311,6 +315,12 @@ export function BulkEditDialog({
                   <Label htmlFor="bulk-total">Totale</Label>
                   <Input id="bulk-total" type="number" step="0.01" value={form.total} onChange={e => handleTotalChange(e.target.value)} />
                 </div>
+              </div>
+
+              {/* Mese IVA */}
+              <div className="space-y-1">
+                <Label htmlFor="bulk-vat_month">Mese IVA</Label>
+                <Input id="bulk-vat_month" type="month" value={form.vat_month} onChange={e => setField('vat_month', e.target.value)} />
               </div>
 
               {/* Stato */}
