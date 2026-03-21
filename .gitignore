@@ -55,3 +55,7 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Large media files (tutorials)
+Tutorial Forecasto/
+forecasto-client-web/public/tutorial/*.mp4

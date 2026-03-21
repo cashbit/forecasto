@@ -100,6 +100,9 @@ export function registerRecordTools(
       transaction_id: z.string().optional().describe("External transaction ID"),
       bank_account_id: z.string().optional().describe("Bank account UUID to associate"),
       project_code: z.string().optional().describe("Project code to associate"),
+      owner: z.string().optional().describe("Owner (uppercase, e.g. 'CARLO')"),
+      nextaction: z.string().optional().describe("Next action description"),
+      review_date: z.string().optional().describe("Review date (YYYY-MM-DD)"),
       vat_month: z.string().optional().describe("VAT month (YYYY-MM). Defaults to month of date_cashflow if not set"),
     },
     async ({ workspace_id, ...body }) => {
@@ -227,7 +230,7 @@ export function registerRecordTools(
       })).describe("Array of records to create"),
     },
     async ({ workspace_id, records }) => {
-      const data = await getClient().post(`/api/v1/workspaces/${workspace_id}/records/bulk-import`, { records });
+      const data = await getClient().post(`/api/v1/workspaces/${workspace_id}/records/bulk-import`, records);
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
     },
   );

@@ -53,7 +53,7 @@ if [ "$DEPLOY_CLIENT" = true ]; then
   echo ""
 
   echo ">>> Syncing frontend build to httpdocs..."
-  rsync -avz --delete \
+  rsync -avz --delete --chmod=Du=rwx,Dg=rx,Do=rx,Fu=rw,Fg=r,Fo=r \
       --exclude '.htaccess' \
       "$LOCAL_DIR/forecasto-client-web/dist/" "$SERVER:$REMOTE_HTDOCS/"
   echo "Frontend deployed."
@@ -63,6 +63,11 @@ if [ "$DEPLOY_CLIENT" = true ]; then
   scp "$LOCAL_DIR/deploy/htaccess" "$SERVER:$REMOTE_HTDOCS/.htaccess"
   ssh "$SERVER" "chown forecasto:psacln $REMOTE_HTDOCS/.htaccess"
   echo ".htaccess deployed."
+  echo ""
+
+  echo ">>> Fixing httpdocs permissions (nginx requires o+r)..."
+  ssh "$SERVER" "find $REMOTE_HTDOCS -type d -exec chmod 755 {} + && find $REMOTE_HTDOCS -type f -exec chmod 644 {} + && chmod 600 $REMOTE_HTDOCS/.htaccess"
+  echo "Permissions fixed."
   echo ""
 fi
 

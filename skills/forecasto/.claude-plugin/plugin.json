@@ -1,0 +1,8 @@
+{
+  "name": "forecasto",
+  "version": "1.0.0",
+  "description": "Skill per interagire con Forecasto tramite MCP. Guida Claude nella lettura, creazione, aggiornamento e analisi di record finanziari, cashflow, IVA e conti bancari.",
+  "author": {
+    "name": "TechMakers SRL"
+  }
+}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, ChevronUp, Mail, LifeBuoy, BookOpen, ArrowLeft, LogIn } from 'lucide-react'
+import { ChevronDown, ChevronUp, Mail, LifeBuoy, ArrowLeft, LogIn, PlayCircle } from 'lucide-react'
 import logoText from '@/assets/logo-text.png'
 import logoIcon from '@/assets/logo-icon.png'
 import { Button } from '@/components/ui/button'
@@ -61,28 +61,14 @@ const faqs = [
   },
 ]
 
-const docs = [
-  {
-    title: "Guida introduttiva",
-    description: "Inizia a usare Forecasto in pochi minuti",
-    href: "#",
-  },
-  {
-    title: "Gestione workspace",
-    description: "Come creare, configurare e condividere workspace",
-    href: "#",
-  },
-  {
-    title: "Import ed export",
-    description: "Come importare fatture XML e file JSON",
-    href: "#",
-  },
-  {
-    title: "Guida al cashflow",
-    description: "Come interpretare i grafici e le proiezioni",
-    href: "#",
-  },
+const tutorialParts = [
+  { label: "Parte 1 — Forecasto", desc: "Le 4 aree, cashflow, pivot, Revisione Zero, import/export, workspace e conti bancari" },
+  { label: "Parte 2 — Prerequisiti", desc: "Cosa serve per usare Forecasto con Claude AI" },
+  { label: "Parte 3 — Configurazione", desc: "Download skill, installazione e connettore MCP" },
+  { label: "Parte 4 — Claude in azione", desc: "Convertire offerte e usare Forecasto via chat" },
+  { label: "Parte 5 — Import dati", desc: "Convertire file Excel/CSV con la skill di preparazione" },
 ]
+
 
 function FaqItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false)
@@ -160,6 +146,35 @@ export function SupportPage() {
           )}
         </div>
 
+        {/* Tutorial */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <PlayCircle className="h-5 w-5 text-primary" />
+              Tutorial interattivo
+            </CardTitle>
+            <CardDescription>
+              Guida completa a Forecasto — dalla creazione dei record all'uso con Claude AI
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <ul className="space-y-2">
+              {tutorialParts.map((p) => (
+                <li key={p.label} className="flex gap-3 text-sm">
+                  <span className="font-medium text-foreground shrink-0">{p.label}:</span>
+                  <span className="text-muted-foreground">{p.desc}</span>
+                </li>
+              ))}
+            </ul>
+            <Button asChild className="w-full sm:w-auto">
+              <a href="/tutorial/" target="_blank" rel="noopener noreferrer">
+                <PlayCircle className="mr-2 h-4 w-4" />
+                Apri il tutorial
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* FAQ */}
         <Card>
           <CardHeader>
@@ -174,33 +189,6 @@ export function SupportPage() {
             ))}
           </CardContent>
         </Card>
-
-        {/* Documentazione — nascosta temporaneamente, da completare */}
-        {false && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <BookOpen className="h-5 w-5 text-primary" />
-              Documentazione
-            </CardTitle>
-            <CardDescription>Guide e risorse per usare al meglio Forecasto</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {docs.map((doc) => (
-                <a
-                  key={doc.title}
-                  href={doc.href}
-                  className="block p-3 rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors"
-                >
-                  <p className="font-medium text-sm">{doc.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{doc.description}</p>
-                </a>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-        )}
 
         {/* Contatti */}
         <Card>
