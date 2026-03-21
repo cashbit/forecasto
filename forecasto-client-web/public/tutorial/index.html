@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tutorial Forecasto — Guida Completa</title>
+  <style>
+    :root {
+      --purple-dark: #4a1d96;
+      --purple-mid: #6d28d9;
+      --purple-light: #8b5cf6;
+      --purple-bg: #f5f3ff;
+      --green-accent: #10b981;
+      --orange-accent: #f59e0b;
+      --red-accent: #ef4444;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-900);
+      line-height: 1.6;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    .header {
+      background: linear-gradient(135deg, var(--purple-dark) 0%, var(--purple-mid) 50%, var(--purple-light) 100%);
+      padding: 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(74, 29, 150, 0.3);
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .header-logo img { display: block; }
+    .header-nav {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+    .header-nav a {
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      font-size: 14px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .header-nav a:hover, .header-nav a.active {
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+    }
+
+    /* ── Hero ────────────────────────────────── */
+    .hero {
+      background: linear-gradient(180deg, var(--purple-bg) 0%, var(--gray-50) 100%);
+      padding: 60px 24px 48px;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--purple-dark);
+      margin-bottom: 12px;
+    }
+    .hero p {
+      font-size: 18px;
+      color: var(--gray-500);
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* ── Table of Contents ───────────────────── */
+    .toc {
+      max-width: 1100px;
+      margin: 0 auto 48px;
+      padding: 0 24px;
+    }
+    .toc-card {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .toc-card h2 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--gray-700);
+    }
+    .toc-sections {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
+    }
+    .toc-section h3 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--purple-mid);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .toc-section ol {
+      list-style: none;
+      counter-reset: toc-counter;
+    }
+    .toc-section ol li {
+      counter-increment: toc-counter;
+      padding: 5px 0;
+    }
+    .toc-section ol li a {
+      color: var(--gray-700);
+      text-decoration: none;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: color 0.2s;
+    }
+    .toc-section ol li a:hover { color: var(--purple-mid); }
+    .toc-section ol li a::before {
+      content: counter(toc-counter);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--purple-bg);
+      color: var(--purple-mid);
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .badge-missing {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      background: var(--orange-accent);
+      color: #fff;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    /* ── Content area ────────────────────────── */
+    .content {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ── Part divider ────────────────────────── */
+    .part-divider {
+      margin: 56px 0 32px;
+      padding: 20px 28px;
+      background: linear-gradient(135deg, var(--purple-dark), var(--purple-mid));
+      border-radius: 12px;
+      color: #fff;
+    }
+    .part-divider h2 {
+      font-size: 22px;
+      font-weight: 800;
+    }
+    .part-divider p {
+      font-size: 14px;
+      opacity: 0.85;
+      margin-top: 4px;
+    }
+
+    /* ── Step card ────────────────────────────── */
+    .step-card {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      margin-bottom: 28px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+      transition: box-shadow 0.2s;
+    }
+    .step-card:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .step-number {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--purple-mid);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .step-header-text h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+    .step-header-text .step-duration {
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-top: 2px;
+    }
+    .step-body {
+      padding: 24px 28px;
+    }
+    .step-body p {
+      font-size: 15px;
+      color: var(--gray-700);
+      margin-bottom: 16px;
+    }
+    .step-body ul {
+      margin: 0 0 16px 20px;
+      font-size: 14px;
+      color: var(--gray-700);
+    }
+    .step-body ul li { margin-bottom: 6px; }
+
+    /* ── Video container ─────────────────────── */
+    .video-container {
+      position: relative;
+      width: 100%;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--gray-900);
+      margin-top: 8px;
+    }
+    .video-container video {
+      width: 100%;
+      display: block;
+      border-radius: 8px;
+    }
+
+    /* ── Missing video placeholder ────────────── */
+    .video-placeholder {
+      width: 100%;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-200) 100%);
+      border: 2px dashed var(--orange-accent);
+      padding: 48px 24px;
+      text-align: center;
+      margin-top: 8px;
+    }
+    .video-placeholder .placeholder-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+    .video-placeholder .placeholder-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--orange-accent);
+      margin-bottom: 4px;
+    }
+    .video-placeholder .placeholder-desc {
+      font-size: 13px;
+      color: var(--gray-500);
+    }
+
+    /* ── Callout boxes ────────────────────────── */
+    .callout {
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 14px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .callout-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .callout-info {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+    }
+    .callout-warning {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      color: #92400e;
+    }
+    .callout-success {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+    }
+    .callout-tip {
+      background: var(--purple-bg);
+      border: 1px solid #ddd6fe;
+      color: var(--purple-dark);
+    }
+
+    /* ── Key concepts (Le 4 Aree) ────────────── */
+    .areas-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .area-card {
+      text-align: center;
+      padding: 16px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--gray-200);
+    }
+    .area-card .area-icon { font-size: 28px; margin-bottom: 6px; }
+    .area-card .area-name { font-size: 14px; font-weight: 700; }
+    .area-card .area-desc { font-size: 11px; color: var(--gray-500); margin-top: 4px; }
+    .area-card.budget { border-color: #93c5fd; background: #eff6ff; }
+    .area-card.prospect { border-color: #c4b5fd; background: var(--purple-bg); }
+    .area-card.orders { border-color: #6ee7b7; background: #ecfdf5; }
+    .area-card.actual { border-color: #fca5a5; background: #fef2f2; }
+    .area-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 8px 0 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray-500);
+    }
+    .area-flow span { color: var(--purple-mid); }
+
+    /* ── Footer ──────────────────────────────── */
+    .footer {
+      background: var(--gray-900);
+      color: rgba(255,255,255,0.6);
+      text-align: center;
+      padding: 32px 24px;
+      font-size: 13px;
+    }
+    .footer a { color: var(--purple-light); text-decoration: none; }
+
+    /* ── Responsive ──────────────────────────── */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 26px; }
+      .areas-grid { grid-template-columns: repeat(2, 1fr); }
+      .toc-sections { grid-template-columns: 1fr; }
+      .step-header { padding: 16px 20px; }
+      .step-body { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════ HEADER ═══ -->
+  <header class="header">
+    <div class="header-inner">
+      <a class="header-logo" href="https://forecasto.it">
+        <img src="/logo-icon.png" alt="Forecasto" style="height:32px;width:auto;">
+        <img src="/logo-text.png" alt="Forecasto" style="height:22px;width:auto;">
+      </a>
+      <nav class="header-nav">
+        <a href="https://app.forecasto.it/support">Supporto</a>
+        <a href="https://forecasto.it">forecasto.it</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════ HERO ═══ -->
+  <section class="hero">
+    <h1>Guida Completa a Forecasto</h1>
+    <p>Impara a usare Forecasto per gestire la tua liquidit&agrave;, poi scopri come automatizzare tutto con Claude AI.</p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ TOC ═══ -->
+  <div class="toc">
+    <div class="toc-card">
+      <h2>Contenuti del Tutorial</h2>
+      <div class="toc-sections">
+
+        <div class="toc-section">
+          <h3>Parte 1 — Forecasto</h3>
+          <ol style="counter-reset: toc-counter 0">
+            <li><a href="#step-1">Le 4 Aree e Creazione Record</a></li>
+            <li><a href="#step-2">Visualizzare il Cashflow</a></li>
+            <li><a href="#step-3">Cashflow Multi-Workspace</a></li>
+            <li><a href="#step-4">Analisi e Tabella Pivot</a></li>
+            <li><a href="#step-5">Revisione Zero dei Record</a></li>
+            <li><a href="#step-6">Importazione ed Esportazione</a></li>
+            <li><a href="#step-7">Creazione Workspace</a></li>
+            <li><a href="#step-8">Invito Membri nel Workspace</a></li>
+            <li><a href="#step-9">Gestione Conti Bancari</a></li>
+          </ol>
+        </div>
+
+        <div class="toc-section">
+          <h3>Parte 2 — Prerequisiti per l'Integrazione AI</h3>
+          <ol style="counter-reset: toc-counter 9">
+            <li><a href="#step-10">Scaricare e installare Claude</a></li>
+          </ol>
+          <h3 style="margin-top:16px">Parte 3 — Configurazione Integrazione AI</h3>
+          <ol style="counter-reset: toc-counter 10">
+            <li><a href="#step-11">Scaricare la Skill da Forecasto</a></li>
+            <li><a href="#step-12">Installare la Skill in Claude</a></li>
+            <li><a href="#step-13">Aggiungere il Connettore MCP</a></li>
+            <li><a href="#step-14">Verificare la Connessione</a></li>
+          </ol>
+        </div>
+
+        <div class="toc-section">
+          <h3>Parte 4 — Forecasto in Azione con Claude</h3>
+          <ol style="counter-reset: toc-counter 14">
+            <li><a href="#step-15">Da offerta a record Forecasto</a></li>
+            <li><a href="#step-16">Usare Forecasto con Claude Chat</a></li>
+          </ol>
+          <h3 style="margin-top:16px">Parte 5 — Importazione Dati</h3>
+          <ol style="counter-reset: toc-counter 16">
+            <li><a href="#step-17">Skill Preparazione Import</a></li>
+          </ol>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ CONTENT ═══ -->
+  <div class="content">
+
+    <!-- ════════════════ PARTE 1 — FORECASTO ════════════════ -->
+    <div class="part-divider">
+      <h2>Parte 1 — Forecasto: Come Funziona</h2>
+      <p>Scopri tutte le funzionalit&agrave; di Forecasto dall'interfaccia web.</p>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="step-card" id="step-1">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <div class="step-header-text">
+          <h3>Le 4 Aree e Creazione Record</h3>
+          <div class="step-duration">Video &middot; 3 minuti e 30 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Forecasto organizza tutti i dati finanziari in <strong>4 aree</strong> che rappresentano il ciclo di vita di ogni opportunit&agrave;:</p>
+        <div class="areas-grid">
+          <div class="area-card budget">
+            <div class="area-icon">&#128203;</div>
+            <div class="area-name">Budget</div>
+            <div class="area-desc">Previsioni e lead iniziali</div>
+          </div>
+          <div class="area-card prospect">
+            <div class="area-icon">&#128200;</div>
+            <div class="area-name">Prospect</div>
+            <div class="area-desc">Offerte in valutazione</div>
+          </div>
+          <div class="area-card orders">
+            <div class="area-icon">&#9989;</div>
+            <div class="area-name">Orders</div>
+            <div class="area-desc">Ordini confermati</div>
+          </div>
+          <div class="area-card actual">
+            <div class="area-icon">&#128176;</div>
+            <div class="area-name">Actual</div>
+            <div class="area-desc">Transazioni effettive</div>
+          </div>
+        </div>
+        <div class="area-flow">
+          <span>Budget</span> &rarr; <span>Prospect</span> &rarr; <span>Orders</span> &rarr; <span>Actual</span>
+        </div>
+        <p>In questo video vedrai l'intero ciclo: creare un record, compilare i campi, spostarlo tra le aree, suddividerlo in <strong>rate</strong> e infine promuoverlo fino ad <strong>Actual</strong> con numero di fattura.</p>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Registrazione creazione record e panoramica.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-card" id="step-2">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <div class="step-header-text">
+          <h3>Visualizzare il Cashflow</h3>
+          <div class="step-duration">Video &middot; 2 minuti e 20 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>La vista <strong>Cashflow</strong> &egrave; il cuore di Forecasto: mostra l'andamento della liquidit&agrave; nel tempo con un grafico e una tabella giornaliera.</p>
+        <ul>
+          <li><strong>Grafico</strong>: visualizza entrate (verde), uscite (rosso) e saldo totale (linea).</li>
+          <li><strong>Filtri</strong>: seleziona il periodo, raggruppa per giorno/settimana/mese, e attiva/disattiva le aree (Actual, Orders, Prospect, Budget).</li>
+          <li><strong>Tabella dettaglio</strong>: sotto il grafico, trovi il dettaglio giorno per giorno con entrate, uscite, netto e saldo progressivo.</li>
+        </ul>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Registrazione visualizzazione clashflow.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-card" id="step-3">
+      <div class="step-header">
+        <div class="step-number">3</div>
+        <div class="step-header-text">
+          <h3>Cashflow Multi-Workspace</h3>
+          <div class="step-duration">Video &middot; 1 minuto</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Se gestisci <strong>pi&ugrave; aziende o progetti</strong> con workspace separati, puoi visualizzare il cashflow consolidato di tutti su un unico grafico.</p>
+        <ul>
+          <li>Nella vista Cashflow, apri il pannello laterale con l'elenco dei workspace.</li>
+          <li>Seleziona i workspace che vuoi confrontare.</li>
+          <li>Il grafico mostrer&agrave; i diversi conti bancari sovrapposti per un confronto immediato.</li>
+        </ul>
+        <div class="callout callout-tip">
+          <span class="callout-icon">&#128161;</span>
+          <div>Questa funzione &egrave; particolarmente utile per avere una <strong>vista d'insieme</strong> sulla liquidit&agrave; complessiva quando si gestiscono pi&ugrave; societ&agrave;.</div>
+        </div>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Visualizzazione cashflow di più workspace.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-card" id="step-4">
+      <div class="step-header">
+        <div class="step-number">4</div>
+        <div class="step-header-text">
+          <h3>Analisi e Tabella Pivot</h3>
+          <div class="step-duration">Video &middot; 35 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Forecasto include una funzione di <strong>Analisi</strong> con tabella pivot integrata, per aggregare e incrociare i dati dei record in modo flessibile.</p>
+        <ul>
+          <li>Dalla Dashboard, clicca sul pulsante <strong>Analisi</strong> nella toolbar in alto a destra della griglia (accanto ai filtri per Responsabile e Progetto).</li>
+          <li>Si aprir&agrave; una <strong>tabella pivot</strong> che ti permette di raggruppare i dati per conto, responsabile, progetto, periodo o qualsiasi combinazione.</li>
+          <li>Usa i pivot per ottenere viste aggregate come: totale uscite per fornitore, entrate per mese, distribuzione per responsabile, ecc.</li>
+        </ul>
+        <div class="callout callout-tip">
+          <span class="callout-icon">&#128161;</span>
+          <div>La tabella pivot &egrave; disponibile in ciascuna delle 4 aree (Budget, Prospect, Orders, Actual) e opera sui record filtrati in quel momento.</div>
+        </div>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Analisi e Tabella Pivot.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="step-card" id="step-5">
+      <div class="step-header">
+        <div class="step-number">5</div>
+        <div class="step-header-text">
+          <h3>Revisione Zero dei Record</h3>
+          <div class="step-duration">Video &middot; 40 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>La <strong>Revisione Zero</strong> &egrave; il processo di controllo periodico: verifichi che le azioni pianificate sui record siano state eseguite e ripianifichi la prossima revisione.</p>
+        <p>Per accedere alla Revisione Zero, clicca su <strong>"Revisione Zero"</strong> nel menu in alto a sinistra della dashboard, accanto al nome del workspace.</p>
+        <ul>
+          <li>Ogni record ha un campo <strong>Prossima Azione</strong> e una <strong>Data Revisione</strong>.</li>
+          <li>Quando la data di revisione scade, il record appare nella coda di revisione.</li>
+          <li>Puoi usare i pulsanti rapidi: <strong>Rivedi 7gg</strong> (ripianifica tra una settimana) o <strong>Rivedi 15gg</strong> (tra due settimane).</li>
+          <li>Se il record &egrave; pronto, puoi spostarlo all'area successiva (es. <strong>&rarr; Actual</strong>).</li>
+        </ul>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Esempio di Revisione Zero.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="step-card" id="step-6">
+      <div class="step-header">
+        <div class="step-number">6</div>
+        <div class="step-header-text">
+          <h3>Importazione ed Esportazione</h3>
+          <div class="step-duration">Video &middot; 35 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Forecasto supporta diversi formati per importare ed esportare dati, rendendo semplice la migrazione da altri sistemi o il backup dei dati.</p>
+        <ul>
+          <li><strong>Importa da Excel/CSV</strong>: carica un file con i tuoi record e mappali ai campi di Forecasto.</li>
+          <li><strong>Importa Fatture SDI (XML)</strong>: importa direttamente le fatture elettroniche nel formato XML del Sistema di Interscambio.</li>
+          <li><strong>Importa JSON</strong>: per integrazioni tecniche o migrazione da altri sistemi.</li>
+          <li><strong>Esporta JSON</strong>: scarica tutti i record del workspace in formato JSON per backup o analisi esterne.</li>
+        </ul>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Importazione ed esportazione.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="step-card" id="step-7">
+      <div class="step-header">
+        <div class="step-number">7</div>
+        <div class="step-header-text">
+          <h3>Creazione Workspace</h3>
+          <div class="step-duration">Video &middot; 16 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Un <strong>workspace</strong> rappresenta tipicamente un'azienda, un progetto o un'unit&agrave; operativa separata. Ogni workspace ha i propri record, conti bancari e utenti.</p>
+        <ul>
+          <li>Nella sidebar a sinistra della Dashboard, clicca il pulsante <strong>+ Nuovo</strong>.</li>
+          <li>Nella finestra "Nuovo Workspace", inserisci il <strong>nome</strong> (es. "Budget 2026") e una <strong>descrizione</strong> opzionale.</li>
+          <li>Puoi attivare <em>"Imposta con i dati demo"</em> per avere record di esempio, conti bancari demo e un saldo iniziale gi&agrave; preimpostato &mdash; utile per esplorare Forecasto senza partire da zero.</li>
+          <li>Clicca <strong>Crea Workspace</strong> e il nuovo spazio apparir&agrave; immediatamente nella sidebar.</li>
+        </ul>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Creazione workspace.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 7 -->
+    <div class="step-card" id="step-8">
+      <div class="step-header">
+        <div class="step-number">8</div>
+        <div class="step-header-text">
+          <h3>Invito Membri nel Workspace</h3>
+          <div class="step-duration">Video &middot; 20 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Una volta creato il workspace, puoi <strong>invitare altri membri</strong> del team a collaborare, configurando permessi granulari per ciascuno.</p>
+        <ul>
+          <li>Vai su <strong>Impostazioni</strong> (icona ingranaggio) &rarr; tab <strong>Membri</strong>.</li>
+          <li>Vedrai la sezione <em>"Membri del Workspace"</em> con la descrizione di chi ha accesso al workspace corrente.</li>
+          <li>Clicca <strong>Gestisci Membri</strong> per aggiungere nuovi utenti, rimuovere quelli esistenti o modificare i permessi.</li>
+        </ul>
+        <div class="callout callout-info">
+          <span class="callout-icon">&#128712;</span>
+          <div>I permessi sono <strong>granulari per workspace</strong>: puoi dare a un collaboratore l'accesso solo alle aree che gli competono, ad esempio solo Orders e Actual per chi si occupa della fatturazione.</div>
+        </div>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Invito membri in workspace.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 8 -->
+    <div class="step-card" id="step-9">
+      <div class="step-header">
+        <div class="step-number">9</div>
+        <div class="step-header-text">
+          <h3>Gestione Conti Bancari</h3>
+          <div class="step-duration">Video &middot; 27 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>I <strong>conti bancari</strong> in Forecasto permettono di associare ogni record a uno specifico conto, per una vista accurata della liquidit&agrave; su ogni conto.</p>
+        <ul>
+          <li>Vai su <strong>Impostazioni</strong> (icona ingranaggio) &rarr; tab <strong>Conti Bancari</strong>.</li>
+          <li>Vedrai l'elenco dei conti gi&agrave; configurati (es. "DEMO ACCOUNT") con valuta e opzione per disattivare.</li>
+          <li>Clicca <strong>+ Aggiungi Conto</strong> per crearne uno nuovo: inserisci nome, banca e valuta.</li>
+          <li>Ogni conto pu&ograve; essere <strong>modificato</strong> (icona matita) o <strong>disattivato</strong> senza eliminare i record associati.</li>
+        </ul>
+        <div class="callout callout-tip">
+          <span class="callout-icon">&#128161;</span>
+          <div>I conti bancari sono <strong>personali</strong> e condivisi tra tutti i workspace. Una volta creato un conto, sar&agrave; disponibile in qualsiasi workspace tu gestisca.</div>
+        </div>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Gestione conti bancari.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PARTE 2 — PREREQUISITI ════════════════ -->
+    <div class="part-divider">
+      <h2>Parte 2 — Prerequisiti per l'Integrazione AI</h2>
+      <p>Prima di collegare Claude a Forecasto, assicurati di avere tutto il necessario.</p>
+    </div>
+
+    <!-- Step 9 -->
+    <div class="step-card" id="step-10">
+      <div class="step-header">
+        <div class="step-number">10</div>
+        <div class="step-header-text">
+          <h3>Scaricare e installare Claude</h3>
+          <div class="step-duration">Prerequisito &middot; ~5 minuti</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Forecasto si integra con <strong>Claude</strong>, l'assistente AI di Anthropic. Prima di procedere con la configurazione, assicurati di averlo installato.</p>
+        <ul>
+          <li>Vai su <a href="https://claude.ai/download" target="_blank" style="color:var(--purple-mid)">claude.ai/download</a> e scarica la versione per il tuo sistema operativo (Windows o Mac).</li>
+          <li>Installa l'applicazione e crea un account Anthropic (o accedi se ne hai gi&agrave; uno).</li>
+          <li>Assicurati di avere un piano <strong>Pro</strong>, <strong>Team</strong> o <strong>Enterprise</strong> per accedere ai Connettori.</li>
+        </ul>
+        <div class="callout callout-warning">
+          <span class="callout-icon">&#9888;&#65039;</span>
+          <div>I <strong>Connettori</strong> (necessari per collegare Forecasto) sono disponibili solo nei piani Pro, Team ed Enterprise. Con il piano gratuito non sar&agrave; possibile completare la configurazione.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PARTE 3 — CONFIGURAZIONE ════════════════ -->
+    <div class="part-divider">
+      <h2>Parte 3 — Configurazione Integrazione AI</h2>
+      <p>Collega Forecasto a Claude in pochi passaggi.</p>
+    </div>
+
+    <!-- Step 10 -->
+    <div class="step-card" id="step-11">
+      <div class="step-header">
+        <div class="step-number">11</div>
+        <div class="step-header-text">
+          <h3>Scaricare la Skill da Forecasto</h3>
+          <div class="step-duration">Video &middot; 14 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Le <strong>Skill</strong> sono file di istruzioni che insegnano a Claude come interagire con Forecasto. Dalla pagina dedicata puoi scaricarle tutte e tenerle a portata di mano.</p>
+        <ul>
+          <li>Apri <a href="https://app.forecasto.it/skill" target="_blank" style="color:var(--purple-mid)">app.forecasto.it/skill</a> nel browser.</li>
+          <li>Scarica <strong>forecasto.skill</strong> — la skill principale per gestire record, cashflow e revisioni.</li>
+          <li>Scarica anche <strong>forecasto-import.skill</strong> — la skill per preparare l'importazione di file Excel o CSV.</li>
+        </ul>
+        <div class="callout callout-info">
+          <span class="callout-icon">&#128712;</span>
+          <div>Nel video qui sotto vengono scaricate <strong>entrambe le skill</strong>. La skill principale (<code>forecasto.skill</code>) si installa subito al passo successivo; quella di importazione (<code>forecasto-import.skill</code>) servirà allo <a href="#step-17" style="color:var(--purple-mid);font-weight:600">Step 17</a> quando importerai dati da un file Excel o CSV.</div>
+        </div>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Download skill.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 11 -->
+    <div class="step-card" id="step-12">
+      <div class="step-header">
+        <div class="step-number">12</div>
+        <div class="step-header-text">
+          <h3>Installare la Skill in Claude</h3>
+          <div class="step-duration">Video &middot; 13 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Ora che hai scaricato il file <code>.skill</code>, devi caricarlo nelle impostazioni di Claude affinch&eacute; venga riconosciuto.</p>
+        <ul>
+          <li>Apri <strong>Claude</strong> sul tuo computer.</li>
+          <li>Vai nelle <strong>Impostazioni</strong> e trova la sezione dedicata alle Skill.</li>
+          <li>Carica il file <code>forecasto.skill</code> che hai scaricato al passaggio precedente.</li>
+        </ul>
+        <div class="callout callout-tip">
+          <span class="callout-icon">&#128161;</span>
+          <div>Dopo aver caricato la skill, &egrave; consigliato aprire una <strong>nuova conversazione</strong> per assicurarsi che Claude la riconosca correttamente.</div>
+        </div>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Dove mettere la skill.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 12 -->
+    <div class="step-card" id="step-13">
+      <div class="step-header">
+        <div class="step-number">13</div>
+        <div class="step-header-text">
+          <h3>Aggiungere il Connettore Forecasto (MCP)</h3>
+          <div class="step-duration">Video &middot; 34 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Il <strong>Connettore MCP</strong> &egrave; il ponte che permette a Claude di leggere e scrivere dati direttamente su Forecasto. Senza questo passaggio, Claude avr&agrave; le istruzioni (la Skill) ma non potr&agrave; accedere ai tuoi dati.</p>
+
+        <p style="margin-top:16px;font-weight:700;font-size:15px">&#128194; Piano Team</p>
+        <div class="callout callout-warning">
+          <span class="callout-icon">&#9888;&#65039;</span>
+          <div>Con il piano Team, il connettore MCP va aggiunto <strong>una sola volta dall'amministratore</strong>. Solo dopo i membri dell'azienda potranno collegarlo autonomamente senza reinserire i dati.</div>
+        </div>
+        <p style="margin-top:12px;font-weight:600">Amministratore — aggiunta del connettore (solo la prima volta):</p>
+        <ul>
+          <li>Vai su <a href="https://claude.ai" target="_blank" style="color:var(--purple-mid)">claude.ai</a> &rarr; <strong>Impostazioni &rarr; Connettori</strong>.</li>
+          <li>Clicca su <strong>"Aggiungi server MCP"</strong>.</li>
+          <li>Inserisci esattamente questi dati:<br>
+            <strong>Nome:</strong> <code>Forecasto</code><br>
+            <strong>URL:</strong> <code>https://app.forecasto.it/mcp</code>
+          </li>
+          <li>Clicca <strong>Salva</strong>.</li>
+        </ul>
+        <p style="margin-top:12px;font-weight:600">Membri del team — collegamento (dopo che l'amministratore ha aggiunto il connettore):</p>
+        <ul>
+          <li>Vai su <strong>Impostazioni &rarr; Connettori</strong>.</li>
+          <li>Trova <strong>"Forecasto"</strong> nell'elenco e clicca <strong>Collega</strong>.</li>
+          <li>Inserisci le tue credenziali Forecasto (email e password) e conferma.</li>
+        </ul>
+
+        <p style="margin-top:16px;font-weight:700;font-size:15px">&#128196; Piano Pro</p>
+        <p>Con il piano Pro puoi aggiungere e collegare il connettore in autonomia, senza bisogno di un amministratore.</p>
+        <ul>
+          <li>Vai su <a href="https://claude.ai" target="_blank" style="color:var(--purple-mid)">claude.ai</a> &rarr; <strong>Impostazioni &rarr; Connettori</strong>.</li>
+          <li>Clicca su <strong>"Aggiungi server MCP"</strong>.</li>
+          <li>Inserisci:<br>
+            <strong>Nome:</strong> <code>Forecasto</code><br>
+            <strong>URL:</strong> <code>https://app.forecasto.it/mcp</code>
+          </li>
+          <li>Clicca <strong>Salva</strong>, poi <strong>Collega</strong> e inserisci le tue credenziali Forecasto.</li>
+        </ul>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Connettore Forecasto.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 13 -->
+    <div class="step-card" id="step-14">
+      <div class="step-header">
+        <div class="step-number">14</div>
+        <div class="step-header-text">
+          <h3>Verificare la Connessione</h3>
+          <div class="step-duration">Video &middot; 42 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Ultimo step della configurazione: verifica che tutto funzioni correttamente chiedendo a Claude di elencare i tuoi workspace.</p>
+        <ul>
+          <li>Apri una nuova conversazione in Claude.</li>
+          <li>Scrivi: <strong>"Lista i workspace Forecasto disponibili"</strong>.</li>
+          <li>Se la configurazione &egrave; corretta, Claude ti mostrer&agrave; l'elenco dei workspace associati al tuo account.</li>
+        </ul>
+        <div class="callout callout-success">
+          <span class="callout-icon">&#9989;</span>
+          <div>Se vedi i tuoi workspace, congratulazioni! La configurazione &egrave; completata e sei pronto per usare Forecasto con Claude.</div>
+        </div>
+        <div class="callout callout-warning">
+          <span class="callout-icon">&#9888;&#65039;</span>
+          <div>Se ricevi un errore, controlla la sezione <a href="https://app.forecasto.it/skill" target="_blank" style="color:inherit;text-decoration:underline"><strong>Risoluzione dei problemi</strong></a> nella pagina Skill di Forecasto.</div>
+        </div>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Verifica connesione a Forecasto.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PARTE 4 — CLAUDE IN AZIONE ════════════════ -->
+    <div class="part-divider">
+      <h2>Parte 4 — Forecasto + Claude in Azione</h2>
+      <p>Ora che tutto &egrave; configurato, scopri come Claude lavora con Forecasto nella pratica.</p>
+    </div>
+
+    <!-- Step 14 -->
+    <div class="step-card" id="step-15">
+      <div class="step-header">
+        <div class="step-number">15</div>
+        <div class="step-header-text">
+          <h3>Da un'offerta a un record Forecasto</h3>
+          <div class="step-duration">Video &middot; 2 minuti e 13 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Ecco un esempio pratico di come Claude pu&ograve; automatizzare il tuo lavoro: gli dai un documento con un'offerta e lui crea direttamente il record in Forecasto.</p>
+        <ul>
+          <li>Carica o incolla in Claude il contenuto di un'<strong>offerta commerciale</strong> (PDF, testo, email).</li>
+          <li>Chiedi a Claude di <strong>aggiungere l'offerta in Forecasto</strong>: ad esempio <em>"Aggiungi questa offerta come prospect nel workspace demos"</em>.</li>
+          <li>Claude estrarr&agrave; automaticamente i dati chiave (cliente, importo, IVA, date) e creer&agrave; il record nell'area corretta con tutti i campi compilati.</li>
+          <li>Puoi poi verificare il record direttamente nella dashboard di Forecasto.</li>
+        </ul>
+        <div class="callout callout-tip">
+          <span class="callout-icon">&#128161;</span>
+          <div>Questo workflow funziona con qualsiasi tipo di documento: offerte, preventivi, fatture, ordini. Claude capisce il contesto e assegna l'area giusta automaticamente.</div>
+        </div>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Mandare offerta in forecasto con Claude.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 15 -->
+    <div class="step-card" id="step-16">
+      <div class="step-header">
+        <div class="step-number">16</div>
+        <div class="step-header-text">
+          <h3>Usare Forecasto con Claude Chat</h3>
+          <div class="step-duration">Video &middot; 1 minuto e 19 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Oltre ad aggiungere dati, Claude pu&ograve; <strong>interrogare Forecasto in linguaggio naturale</strong>: chiedere elenchi di record, stato del cashflow, analisi e molto altro.</p>
+        <ul>
+          <li>Apri una conversazione in Claude.</li>
+          <li>Scrivi una richiesta come: <em>"Leggi il workspace 'demos' e dimmi in orders i primi 10 record."</em></li>
+          <li>Claude attiver&agrave; automaticamente l'integrazione <strong>Forecasto APP</strong>, legger&agrave; la skill e restituir&agrave; i dati richiesti direttamente nella conversazione.</li>
+        </ul>
+        <div class="callout callout-tip">
+          <span class="callout-icon">&#128161;</span>
+          <div>Puoi chiedere qualsiasi cosa: elenchi di record, previsioni di cashflow, creazione di nuovi record, trasferimenti tra aree, analisi dei dati. Claude capisce il contesto e usa i tool giusti automaticamente.</div>
+        </div>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Uso di forecasto con Claude.mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PARTE 5 — IMPORTAZIONE DATI ════════════════ -->
+    <div class="part-divider">
+      <h2>Parte 5 — Importazione Dati con Claude</h2>
+      <p>Ora che Forecasto e Claude sono operativi, scopri come importare dati in massa dai tuoi file.</p>
+    </div>
+
+    <!-- Step 16 -->
+    <div class="step-card" id="step-17">
+      <div class="step-header">
+        <div class="step-number">17</div>
+        <div class="step-header-text">
+          <h3>Skill Preparazione Import</h3>
+          <div class="step-duration">Video &middot; 3 minuti e 24 secondi</div>
+        </div>
+      </div>
+      <div class="step-body">
+        <p>Forecasto offre una <strong>skill dedicata all'importazione</strong> che guida Claude nel convertire file Excel o CSV nel formato corretto per Forecasto.</p>
+        <ul>
+          <li>Dalla pagina <a href="https://app.forecasto.it/skill" target="_blank" style="color:var(--purple-mid)">app.forecasto.it/skill</a>, scarica <strong>forecasto-prep-import.md</strong>.</li>
+          <li>Caricala in Claude come hai fatto con la skill principale (<a href="#step-12" style="color:var(--purple-mid)">vedi Step 12</a>).</li>
+          <li>Quando dai a Claude un file Excel o CSV, questa skill gli permette di: <strong>mappare automaticamente le colonne</strong> ai campi di Forecasto, <strong>calcolare IVA e totali</strong>, e <strong>assegnare l'area corretta</strong> (Budget, Prospect, Orders o Actual).</li>
+          <li>Il risultato &egrave; un file pronto per l'importazione diretta in Forecasto tramite la funzione Import (<a href="#step-6" style="color:var(--purple-mid)">vedi Step 6</a>).</li>
+        </ul>
+        <div class="callout callout-info">
+          <span class="callout-icon">&#128712;</span>
+          <div>Questa skill &egrave; particolarmente utile per chi migra da un altro sistema o riceve dati contabili in formati diversi da quello di Forecasto.</div>
+        </div>
+        <div class="video-container">
+          <video controls preload="metadata" muted>
+            <source src="Importazione da Claude di un excel .mp4" type="video/mp4">
+            Il tuo browser non supporta il tag video.
+          </video>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════ FOOTER ═══ -->
+  <footer class="footer">
+    <p>&copy; 2026 Forecasto &mdash; <a href="https://app.forecasto.it">app.forecasto.it</a> &nbsp;|&nbsp; Per assistenza: <a href="mailto:support@forecasto.it">support@forecasto.it</a></p>
+  </footer>
+
+</body>
+</html>
