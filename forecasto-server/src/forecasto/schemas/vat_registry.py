@@ -13,6 +13,7 @@ class VatRegistryCreate(BaseModel):
 
     name: str
     vat_number: str
+    bank_account_id: str | None = None
 
 
 class VatRegistryUpdate(BaseModel):
@@ -20,6 +21,7 @@ class VatRegistryUpdate(BaseModel):
 
     name: str | None = None
     vat_number: str | None = None
+    bank_account_id: str | None = None
 
 
 class VatRegistryResponse(BaseModel):
@@ -29,6 +31,7 @@ class VatRegistryResponse(BaseModel):
     owner_id: str
     name: str
     vat_number: str
+    bank_account_id: str | None = None
     created_at: datetime
     updated_at: datetime
 

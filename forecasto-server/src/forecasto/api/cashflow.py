@@ -156,6 +156,7 @@ async def get_vat_simulation(
             vat_registry_id=reg_id,
             vat_number=registry.vat_number,
             name=registry.name,
+            bank_account_id=registry.bank_account_id,
             entries=entries,
             total_debito=total_debito,
             total_credito=total_credito,

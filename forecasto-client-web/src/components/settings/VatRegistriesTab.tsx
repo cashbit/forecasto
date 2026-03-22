@@ -14,13 +14,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { toast } from '@/hooks/useToast'
 import { vatRegistryApi } from '@/api/vatRegistry'
+import { useUserBankAccounts } from '@/hooks/useBankAccounts'
 import type { VatRegistry, VatBalance } from '@/types/vat'
 
 interface RegistryFormData {
   name: string
   vat_number: string
+  bank_account_id?: string
 }
 
 interface BalanceFormData {
@@ -37,14 +46,18 @@ export function VatRegistriesTab() {
   const [balanceDialogOpen, setBalanceDialogOpen] = useState(false)
   const [editingBalance, setEditingBalance] = useState<VatBalance | null>(null)
   const [balanceRegistryId, setBalanceRegistryId] = useState<string | null>(null)
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<string | undefined>(undefined)
 
   const { data: registries = [], isLoading } = useQuery({
     queryKey: ['vat-registries'],
     queryFn: vatRegistryApi.list,
   })
 
+  const { accounts: bankAccounts } = useUserBankAccounts()
+
   const createMutation = useMutation({
-    mutationFn: (data: RegistryFormData) => vatRegistryApi.create(data),
+    mutationFn: (data: RegistryFormData) =>
+      vatRegistryApi.create({ ...data, bank_account_id: data.bank_account_id || null }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vat-registries'] })
       toast({ title: 'Partita IVA creata', variant: 'success' })
@@ -55,7 +68,7 @@ export function VatRegistriesTab() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: RegistryFormData }) =>
-      vatRegistryApi.update(id, data),
+      vatRegistryApi.update(id, { ...data, bank_account_id: data.bank_account_id || null }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vat-registries'] })
       toast({ title: 'Partita IVA aggiornata', variant: 'success' })
@@ -74,7 +87,7 @@ export function VatRegistriesTab() {
   })
 
   const registryForm = useForm<RegistryFormData>({
-    defaultValues: { name: '', vat_number: '' },
+    defaultValues: { name: '', vat_number: '', bank_account_id: undefined },
   })
 
   const balanceForm = useForm<BalanceFormData>({
@@ -83,21 +96,28 @@ export function VatRegistriesTab() {
 
   const openCreateDialog = () => {
     setEditingRegistry(null)
-    registryForm.reset({ name: '', vat_number: '' })
+    registryForm.reset({ name: '', vat_number: '', bank_account_id: undefined })
+    setSelectedBankAccountId(undefined)
     setDialogOpen(true)
   }
 
   const openEditDialog = (registry: VatRegistry) => {
     setEditingRegistry(registry)
-    registryForm.reset({ name: registry.name, vat_number: registry.vat_number })
+    registryForm.reset({
+      name: registry.name,
+      vat_number: registry.vat_number,
+      bank_account_id: registry.bank_account_id ?? undefined,
+    })
+    setSelectedBankAccountId(registry.bank_account_id ?? undefined)
     setDialogOpen(true)
   }
 
   const handleRegistrySubmit = (data: RegistryFormData) => {
+    const payload = { ...data, bank_account_id: selectedBankAccountId }
     if (editingRegistry) {
-      updateMutation.mutate({ id: editingRegistry.id, data })
+      updateMutation.mutate({ id: editingRegistry.id, data: payload })
     } else {
-      createMutation.mutate(data)
+      createMutation.mutate(payload)
     }
   }
 
@@ -236,6 +256,11 @@ export function VatRegistriesTab() {
                       balanceId: b.id,
                     })
                   }
+                  bankAccountName={
+                    registry.bank_account_id
+                      ? bankAccounts.find((a) => a.id === registry.bank_account_id)?.name
+                      : undefined
+                  }
                 />
               ))}
             </div>
@@ -272,6 +297,35 @@ export function VatRegistriesTab() {
                 placeholder="es. IT01234567890"
                 {...registryForm.register('vat_number', { required: true })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reg-bank">Conto bancario versamenti IVA</Label>
+              <Select
+                value={selectedBankAccountId ?? '__none__'}
+                onValueChange={(val) => {
+                  const v = val === '__none__' ? undefined : val
+                  setSelectedBankAccountId(v)
+                  registryForm.setValue('bank_account_id', v)
+                }}
+              >
+                <SelectTrigger id="reg-bank">
+                  <SelectValue placeholder="Nessun conto selezionato" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Nessun conto —</SelectItem>
+                  {bankAccounts
+                    .filter((a) => a.is_active !== false)
+                    .map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                        {a.bank_name ? ` — ${a.bank_name}` : ''}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                I versamenti IVA vengono scalati da questo conto nel cashflow
+              </p>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
@@ -368,6 +422,7 @@ function RegistryRow({
   onAddBalance,
   onEditBalance,
   onDeleteBalance,
+  bankAccountName,
 }: {
   registry: VatRegistry
   isExpanded: boolean
@@ -377,6 +432,7 @@ function RegistryRow({
   onAddBalance: () => void
   onEditBalance: (b: VatBalance) => void
   onDeleteBalance: (b: VatBalance) => void
+  bankAccountName?: string
 }) {
   const { data: balances = [], isLoading } = useQuery({
     queryKey: ['vat-balances', registry.id],
@@ -401,6 +457,9 @@ function RegistryRow({
             <div className="font-medium truncate">{registry.name}</div>
             <div className="text-sm text-muted-foreground truncate">
               {registry.vat_number}
+              {bankAccountName && (
+                <span className="ml-2 text-xs">· {bankAccountName}</span>
+              )}
             </div>
           </div>
         </div>

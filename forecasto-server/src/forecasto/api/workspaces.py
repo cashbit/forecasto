@@ -13,6 +13,7 @@ from forecasto.dependencies import get_current_user, get_current_workspace
 from forecasto.models.user import User
 from forecasto.models.workspace import Workspace, WorkspaceMember
 from forecasto.schemas.common import SuccessResponse
+from forecasto.schemas.bank_account import BankAccountResponse
 from forecasto.schemas.workspace import (
     InvitationCreate,
     InvitationResponse,
@@ -46,6 +47,9 @@ async def list_workspaces(
             settings=ws.settings or {},
             role=member.role,
             area_permissions=member.area_permissions,
+            vat_registry_id=ws.vat_registry_id,
+            bank_account_id=ws.bank_account_id,
+            bank_accounts=[BankAccountResponse.model_validate(a) for a in ws.bank_accounts],
             can_import=member.can_import,
             can_import_sdi=member.can_import_sdi,
             can_export=member.can_export,

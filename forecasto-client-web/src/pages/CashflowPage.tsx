@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Wallet, TrendingUp, TrendingDown, PiggyBank, ChevronDown, ChevronUp, Download } from 'lucide-react'
 import { startOfMonth, endOfMonth, addMonths, format } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -106,6 +106,68 @@ export function CashflowPage() {
     staleTime: 30000,
   })
 
+  // ── IVA deduction from running balance ────────────────────────────────
+  // When VAT overlay is enabled, subtract cumulative IVA outflows from running_balance
+  // and from the per-account running_balance of the configured bank account.
+  const adjustedCashflow = useMemo(() => {
+    if (!vatFilter.enabled || !vatSimulation?.series?.length) return cashflow
+
+    // Build per-date IVA payment map: date → { total, byAccount: { accountId → amount } }
+    const ivaByDate = new Map<string, { total: number; byAccount: Record<string, number> }>()
+    for (const series of vatSimulation.series) {
+      for (const entry of series.entries) {
+        if (entry.net > 0) {
+          const current = ivaByDate.get(entry.date) ?? { total: 0, byAccount: {} }
+          current.total += entry.net
+          if (series.bank_account_id) {
+            current.byAccount[series.bank_account_id] =
+              (current.byAccount[series.bank_account_id] ?? 0) + entry.net
+          }
+          ivaByDate.set(entry.date, current)
+        }
+      }
+    }
+
+    let cumulativeIva = 0
+    const cumulativeByAccount: Record<string, number> = {}
+
+    return cashflow.map((entry) => {
+      const iva = ivaByDate.get(entry.date)
+      if (iva) {
+        cumulativeIva += iva.total
+        for (const [accountId, amount] of Object.entries(iva.byAccount)) {
+          cumulativeByAccount[accountId] = (cumulativeByAccount[accountId] ?? 0) + amount
+        }
+      }
+      if (cumulativeIva === 0) return entry
+
+      const newEntry = { ...entry, running_balance: entry.running_balance - cumulativeIva }
+      if (entry.by_account && Object.keys(cumulativeByAccount).length > 0) {
+        const newByAccount = { ...entry.by_account }
+        for (const [accountId, cumIva] of Object.entries(cumulativeByAccount)) {
+          if (newByAccount[accountId]) {
+            newByAccount[accountId] = {
+              ...newByAccount[accountId],
+              running_balance: newByAccount[accountId].running_balance - cumIva,
+            }
+          }
+        }
+        newEntry.by_account = newByAccount
+      }
+      return newEntry
+    })
+  }, [cashflow, vatFilter.enabled, vatSimulation])
+
+  // Adjusted summary: subtract total IVA outflows from final balance
+  const totalIvaOutflow = useMemo(() => {
+    if (!vatFilter.enabled || !vatSimulation?.series) return 0
+    return vatSimulation.series.reduce(
+      (acc, series) =>
+        acc + series.entries.filter((e) => e.net > 0).reduce((a, e) => a + e.net, 0),
+      0,
+    )
+  }, [vatFilter.enabled, vatSimulation])
+
   return (
     <div className="p-6 space-y-4">
       <CashflowFilters
@@ -143,7 +205,7 @@ export function CashflowPage() {
         />
         <SummaryCard
           title="Saldo Finale"
-          value={summary?.final_balance}
+          value={summary ? summary.final_balance - totalIvaOutflow : undefined}
           icon={<PiggyBank className="h-4 w-4 text-muted-foreground" />}
         />
       </div>
@@ -160,7 +222,7 @@ export function CashflowPage() {
             </div>
           ) : cashflow.length > 0 ? (
             <CashflowChart
-              data={cashflow}
+              data={adjustedCashflow}
               height={chartHeight}
               bankAccounts={initialBalance?.by_account}
               onBarClick={setDrilldownEntry}
@@ -175,7 +237,7 @@ export function CashflowPage() {
       </Card>
 
       {/* Detail Table */}
-      {!isLoading && cashflow.length > 0 && (
+      {!isLoading && adjustedCashflow.length > 0 && (
         <Card>
           <CardHeader
             className="flex flex-row items-center justify-between py-3 px-4 cursor-pointer select-none"
@@ -189,7 +251,7 @@ export function CashflowPage() {
                   variant="outline"
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={(e) => { e.stopPropagation(); exportCsv(cashflow) }}
+                  onClick={(e) => { e.stopPropagation(); exportCsv(adjustedCashflow) }}
                 >
                   <Download className="h-3.5 w-3.5 mr-1" />
                   CSV
@@ -200,7 +262,7 @@ export function CashflowPage() {
           </CardHeader>
           {tableOpen && (
             <CardContent className="p-0">
-              <CashflowTable data={cashflow} />
+              <CashflowTable data={adjustedCashflow} />
             </CardContent>
           )}
         </Card>

@@ -143,6 +143,65 @@ async def unset_workspace_bank_account(
     await service.unset_workspace_account(workspace_id)
     return {"success": True}
 
+# --- Workspace many-to-many bank account endpoints ---
+
+@router.get("/{workspace_id}/bank-accounts", response_model=dict)
+async def list_workspace_bank_accounts(
+    workspace_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """List all bank accounts associated with a workspace."""
+    service = BankAccountService(db)
+    accounts = await service.list_workspace_accounts(workspace_id)
+    return {
+        "success": True,
+        "bank_accounts": [BankAccountResponse.model_validate(a) for a in accounts],
+    }
+
+@router.post("/{workspace_id}/bank-accounts/{account_id}", response_model=dict, status_code=201)
+async def add_workspace_bank_account(
+    workspace_id: str,
+    account_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Associate a bank account with a workspace (owner only, must own the account)."""
+    _, member = workspace_data
+    _require_workspace_owner(member)
+
+    service = BankAccountService(db)
+    account = await service.get_account(account_id)
+    if account.owner_id != current_user.id:
+        raise ForbiddenException("You can only associate your own bank accounts")
+
+    account = await service.add_workspace_account(workspace_id, account_id)
+    await db.commit()
+    return {"success": True, "bank_account": BankAccountResponse.model_validate(account)}
+
+@router.delete("/{workspace_id}/bank-accounts/{account_id}", response_model=dict)
+async def remove_workspace_bank_account(
+    workspace_id: str,
+    account_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Remove a bank account association from a workspace (owner only)."""
+    _, member = workspace_data
+    _require_workspace_owner(member)
+
+    service = BankAccountService(db)
+    await service.remove_workspace_account(workspace_id, account_id)
+    await db.commit()
+    return {"success": True}
+
 # --- Balance endpoints (kept on workspace router for backward compat) ---
 
 @router.get("/{workspace_id}/bank-accounts/{account_id}/balances", response_model=dict)

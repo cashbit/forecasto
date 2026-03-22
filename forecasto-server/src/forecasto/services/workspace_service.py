@@ -28,6 +28,7 @@ class WorkspaceService:
             select(Workspace, WorkspaceMember)
             .join(WorkspaceMember, Workspace.id == WorkspaceMember.workspace_id)
             .where(WorkspaceMember.user_id == user.id)
+            .options(selectinload(Workspace.bank_accounts))
             .order_by(Workspace.name)
         )
         return list(result.all())

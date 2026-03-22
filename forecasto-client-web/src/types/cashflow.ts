@@ -133,6 +133,7 @@ export interface CashflowVatSeries {
   vat_registry_id: string
   vat_number: string
   name: string
+  bank_account_id?: string | null
   entries: CashflowVatEntry[]
   total_debito: number
   total_credito: number

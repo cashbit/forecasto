@@ -56,6 +56,7 @@ class VatRegistryService:
             owner_id=user.id,
             name=data.name,
             vat_number=data.vat_number,
+            bank_account_id=data.bank_account_id,
         )
         self.db.add(registry)
         await self.db.flush()

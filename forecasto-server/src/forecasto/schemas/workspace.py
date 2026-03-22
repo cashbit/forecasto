@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
+from forecasto.schemas.bank_account import BankAccountResponse
 
 
 class GranularPermission(BaseModel):
@@ -86,6 +87,8 @@ class WorkspaceWithRole(BaseModel):
     role: str
     area_permissions: dict
     vat_registry_id: str | None = None
+    bank_account_id: str | None = None
+    bank_accounts: list[BankAccountResponse] = []
     can_import: bool = True
     can_import_sdi: bool = True
     can_export: bool = True

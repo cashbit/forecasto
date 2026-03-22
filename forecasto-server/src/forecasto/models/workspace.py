@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Table, Text, UniqueConstraint
 from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,6 +18,16 @@ if TYPE_CHECKING:
     from forecasto.models.session import Session
     from forecasto.models.user import User
     from forecasto.models.vat_registry import VatRegistry
+
+# Junction table for many-to-many workspace <-> bank_account
+workspace_bank_accounts = Table(
+    "workspace_bank_accounts",
+    Base.metadata,
+    Column("id", String(36), primary_key=True, default=generate_uuid),
+    Column("workspace_id", String(36), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False),
+    Column("bank_account_id", String(36), ForeignKey("bank_accounts.id", ondelete="CASCADE"), nullable=False),
+    Column("created_at", DateTime, default=datetime.utcnow),
+)
 
 class Workspace(Base, UUIDMixin, TimestampMixin):
     """Workspace containing financial data."""
@@ -49,7 +59,13 @@ class Workspace(Base, UUIDMixin, TimestampMixin):
 
     # Relationships
     owner: Mapped["User"] = relationship("User")
-    bank_account: Mapped[Optional["BankAccount"]] = relationship("BankAccount", back_populates="workspaces")
+    bank_account: Mapped[Optional["BankAccount"]] = relationship("BankAccount", back_populates="workspaces", foreign_keys=[bank_account_id])
+    bank_accounts: Mapped[list["BankAccount"]] = relationship(
+        "BankAccount",
+        secondary="workspace_bank_accounts",
+        back_populates="linked_workspaces",
+        lazy="selectin",
+    )
     vat_registry: Mapped[Optional["VatRegistry"]] = relationship("VatRegistry", back_populates="workspaces")
     members: Mapped[list["WorkspaceMember"]] = relationship(
         "WorkspaceMember", back_populates="workspace", cascade="all, delete-orphan"

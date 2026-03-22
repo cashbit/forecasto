@@ -11,7 +11,8 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.models.bank_account import BankAccount, BankAccountBalance
-from forecasto.models.workspace import Workspace
+from forecasto.models.vat_registry import VatRegistry
+from forecasto.models.workspace import Workspace, workspace_bank_accounts
 from forecasto.models.record import Record
 from forecasto.schemas.cashflow import (
     AccountBalance,
@@ -37,8 +38,16 @@ class CashflowService:
         params: CashflowRequest,
     ) -> CashflowResponse:
         """Calculate cashflow projection for a workspace."""
+        # Resolve workspace's default bank account and VAT registry in one query
+        ws_result = await self.db.execute(
+            select(Workspace.bank_account_id, Workspace.vat_registry_id).where(Workspace.id == workspace_id)
+        )
+        ws_row = ws_result.first()
+        workspace_bank_account_id = ws_row[0] if ws_row else None
+        ws_vat_registry_id = ws_row[1] if ws_row else None
+
         # Get initial balances (snapshot + records in the gap before from_date)
-        initial_balance = await self._get_initial_balance(workspace_id, params)
+        initial_balance = await self._get_initial_balance(workspace_id, params, ws_vat_registry_id)
 
         # Get records in date range
         records = await self._get_records(workspace_id, params)
@@ -53,12 +62,6 @@ class CashflowService:
         snapshots_by_date = await self._get_balance_snapshots(
             workspace_id, params.from_date + timedelta(days=1), params.to_date
         )
-
-        # Resolve workspace's default bank account for records without explicit bank_account_id
-        ws_result = await self.db.execute(
-            select(Workspace.bank_account_id).where(Workspace.id == workspace_id)
-        )
-        workspace_bank_account_id = ws_result.scalar_one_or_none()
 
         # Initialize per-account running balances
         account_running_balances: dict[str, Decimal] = {}
@@ -121,23 +124,25 @@ class CashflowService:
                     running_balance=account_running_balances[acct_id],
                 )
 
-            # Apply balance snapshot if present: force running_balance to declared value
+            # Apply balance snapshots if present: for each account with a snapshot,
+            # reset its running balance to the declared value and adjust the total.
             day_snapshot_value: Decimal | None = None
             if current_date in snapshots_by_date:
-                snap = snapshots_by_date[current_date]
-                day_snapshot_value = snap.balance
-                running_balance = snap.balance
-                # Also reset the per-account balance for the account linked to this snapshot
-                if snap.bank_account_id in account_running_balances:
-                    account_running_balances[snap.bank_account_id] = snap.balance
-                    # Update the by_account entry with the corrected running_balance
-                    existing = by_account_entries.get(snap.bank_account_id)
-                    if existing:
+                for snap in snapshots_by_date[current_date]:
+                    if snap.bank_account_id in account_running_balances:
+                        old_acct_balance = account_running_balances[snap.bank_account_id]
+                        # Adjust total running balance: replace this account's old value with snapshot
+                        running_balance = running_balance - old_acct_balance + snap.balance
+                        account_running_balances[snap.bank_account_id] = snap.balance
+                        # Update the by_account entry with the corrected running_balance
+                        existing = by_account_entries.get(snap.bank_account_id)
                         by_account_entries[snap.bank_account_id] = AccountCashflowEntry(
-                            inflows=existing.inflows,
-                            outflows=existing.outflows,
+                            inflows=existing.inflows if existing else Decimal("0"),
+                            outflows=existing.outflows if existing else Decimal("0"),
                             running_balance=snap.balance,
                         )
+                    # Use the last snapshot's balance as the balance_snapshot marker on the chart
+                    day_snapshot_value = snap.balance
 
             # Track min/max
             if running_balance < min_balance.amount:
@@ -202,6 +207,7 @@ class CashflowService:
         self,
         workspace_id: str,
         params: CashflowRequest,
+        vat_registry_id: str | None = None,
     ) -> InitialBalance:
         """Get initial balance for cashflow calculation.
 
@@ -212,7 +218,7 @@ class CashflowService:
         start_date = params.from_date
         bank_account_id = params.bank_account_id
 
-        # Get bank account associated with this workspace (1-to-1)
+        # Get bank accounts associated with this workspace
         if bank_account_id:
             # Filter to specific account
             result = await self.db.execute(
@@ -221,23 +227,37 @@ class CashflowService:
                     BankAccount.is_active == True,  # noqa: E712
                 )
             )
+            accounts = list(result.scalars().all())
         else:
-            # Get the account associated with workspace via direct FK
-            ws_result = await self.db.execute(
-                select(Workspace.bank_account_id).where(Workspace.id == workspace_id)
-            )
-            ws_bank_account_id = ws_result.scalar_one_or_none()
-            if not ws_bank_account_id:
-                return InitialBalance(date=start_date, total=Decimal("0"), by_account={})
-
+            # Get ALL accounts associated with workspace via junction table
             result = await self.db.execute(
-                select(BankAccount).where(
-                    BankAccount.id == ws_bank_account_id,
+                select(BankAccount)
+                .join(workspace_bank_accounts, BankAccount.id == workspace_bank_accounts.c.bank_account_id)
+                .where(
+                    workspace_bank_accounts.c.workspace_id == workspace_id,
                     BankAccount.is_active == True,  # noqa: E712
                 )
             )
+            accounts = list(result.scalars().all())
+            if not accounts:
+                return InitialBalance(date=start_date, total=Decimal("0"), by_account={})
 
-        accounts = list(result.scalars().all())
+            # Also include the VAT registry's bank account (if not already present).
+            # This ensures IVA versamenti are deducted from the correct account line
+            # even when that account is not directly linked to the workspace.
+            if vat_registry_id:
+                existing_ids = {a.id for a in accounts}
+                vat_acc_result = await self.db.execute(
+                    select(BankAccount)
+                    .join(VatRegistry, VatRegistry.bank_account_id == BankAccount.id)
+                    .where(
+                        VatRegistry.id == vat_registry_id,
+                        BankAccount.is_active == True,  # noqa: E712
+                    )
+                )
+                vat_account = vat_acc_result.scalar_one_or_none()
+                if vat_account and vat_account.id not in existing_ids:
+                    accounts.append(vat_account)
 
         by_account = {}
         total = Decimal("0")
@@ -374,28 +394,33 @@ class CashflowService:
         workspace_id: str,
         from_date: date,
         to_date: date,
-    ) -> dict[date, BankAccountBalance]:
-        """Get BankAccountBalance snapshots within a date range for the workspace's bank account.
+    ) -> dict[date, list[BankAccountBalance]]:
+        """Get BankAccountBalance snapshots within a date range for ALL accounts in the workspace.
 
-        Returns a dict keyed by balance_date for O(1) lookup during daily iteration.
+        Returns a dict keyed by balance_date → list of snapshots (one per account).
         """
-        # Find the bank account(s) linked to this workspace
-        ws_result = await self.db.execute(
-            select(Workspace.bank_account_id).where(Workspace.id == workspace_id)
+        # Get all account IDs linked to this workspace via junction table
+        acct_result = await self.db.execute(
+            select(workspace_bank_accounts.c.bank_account_id)
+            .where(workspace_bank_accounts.c.workspace_id == workspace_id)
         )
-        ws_bank_account_id = ws_result.scalar_one_or_none()
-        if not ws_bank_account_id:
+        account_ids = [row[0] for row in acct_result.all()]
+        if not account_ids:
             return {}
 
         result = await self.db.execute(
             select(BankAccountBalance).where(
-                BankAccountBalance.bank_account_id == ws_bank_account_id,
+                BankAccountBalance.bank_account_id.in_(account_ids),
                 BankAccountBalance.balance_date >= from_date,
                 BankAccountBalance.balance_date <= to_date,
             )
         )
         snapshots = result.scalars().all()
-        return {s.balance_date: s for s in snapshots}
+        # Group by date: multiple accounts may have snapshots on the same day
+        by_date: dict[date, list[BankAccountBalance]] = {}
+        for s in snapshots:
+            by_date.setdefault(s.balance_date, []).append(s)
+        return by_date
 
     def _aggregate_entries(
         self,

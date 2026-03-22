@@ -6,6 +6,8 @@ export interface Workspace {
   is_archived?: boolean
   settings: WorkspaceSettings
   vat_registry_id?: string
+  bank_account_id?: string | null
+  bank_accounts?: import('./cashflow').BankAccount[]
   created_at: string
   updated_at: string
   // From list endpoint (WorkspaceWithRole)

@@ -138,6 +138,7 @@ class CashflowVatSeries(DecimalAsFloat):
     vat_registry_id: str
     vat_number: str
     name: str
+    bank_account_id: str | None = None
     entries: list[CashflowVatEntry]
     total_debito: Decimal
     total_credito: Decimal

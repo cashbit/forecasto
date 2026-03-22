@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.exceptions import ForbiddenException, NotFoundException, ValidationException
 from forecasto.models.bank_account import BankAccount, BankAccountBalance
+from forecasto.models.base import generate_uuid
 from forecasto.models.user import User
-from forecasto.models.workspace import Workspace
+from forecasto.models.workspace import Workspace, workspace_bank_accounts
 from forecasto.schemas.bank_account import BalanceCreate, BankAccountCreate, BankAccountUpdate
 
 class BankAccountService:
@@ -95,7 +98,7 @@ class BankAccountService:
     async def set_workspace_account(
         self, workspace_id: str, bank_account_id: str
     ) -> BankAccount:
-        """Set the bank account for a workspace (replaces any existing)."""
+        """Set the primary bank account for a workspace. Also adds to junction if not present."""
         result = await self.db.execute(
             select(Workspace).where(Workspace.id == workspace_id)
         )
@@ -107,12 +110,29 @@ class BankAccountService:
         account = await self.get_account(bank_account_id)
 
         workspace.bank_account_id = bank_account_id
+
+        # Ensure it's also in the junction table
+        exists_result = await self.db.execute(
+            select(workspace_bank_accounts).where(
+                workspace_bank_accounts.c.workspace_id == workspace_id,
+                workspace_bank_accounts.c.bank_account_id == bank_account_id,
+            )
+        )
+        if not exists_result.first():
+            await self.db.execute(
+                workspace_bank_accounts.insert().values(
+                    id=generate_uuid(),
+                    workspace_id=workspace_id,
+                    bank_account_id=bank_account_id,
+                    created_at=datetime.utcnow(),
+                )
+            )
         return account
 
     async def unset_workspace_account(
         self, workspace_id: str
     ) -> None:
-        """Remove the bank account association from a workspace."""
+        """Remove the primary bank account from a workspace (keeps junction entries)."""
         result = await self.db.execute(
             select(Workspace).where(Workspace.id == workspace_id)
         )
@@ -121,6 +141,78 @@ class BankAccountService:
             raise NotFoundException(f"Workspace {workspace_id} not found")
 
         workspace.bank_account_id = None
+
+    # --- Many-to-many workspace bank account operations ---
+
+    async def list_workspace_accounts(self, workspace_id: str) -> list[BankAccount]:
+        """List all bank accounts associated with a workspace via junction table."""
+        result = await self.db.execute(
+            select(BankAccount)
+            .join(workspace_bank_accounts, BankAccount.id == workspace_bank_accounts.c.bank_account_id)
+            .where(workspace_bank_accounts.c.workspace_id == workspace_id)
+            .order_by(BankAccount.name)
+        )
+        return list(result.scalars().all())
+
+    async def add_workspace_account(
+        self, workspace_id: str, bank_account_id: str
+    ) -> BankAccount:
+        """Associate a bank account with a workspace. If first account, also sets it as primary."""
+        result = await self.db.execute(
+            select(Workspace).where(Workspace.id == workspace_id)
+        )
+        workspace = result.scalar_one_or_none()
+        if not workspace:
+            raise NotFoundException(f"Workspace {workspace_id} not found")
+
+        account = await self.get_account(bank_account_id)
+
+        # Check for duplicate
+        exists_result = await self.db.execute(
+            select(workspace_bank_accounts).where(
+                workspace_bank_accounts.c.workspace_id == workspace_id,
+                workspace_bank_accounts.c.bank_account_id == bank_account_id,
+            )
+        )
+        if exists_result.first():
+            raise ValidationException("Conto già associato a questo workspace")
+
+        await self.db.execute(
+            workspace_bank_accounts.insert().values(
+                id=generate_uuid(),
+                workspace_id=workspace_id,
+                bank_account_id=bank_account_id,
+                created_at=datetime.utcnow(),
+            )
+        )
+
+        # If no primary account set yet, make this the primary
+        if not workspace.bank_account_id:
+            workspace.bank_account_id = bank_account_id
+
+        return account
+
+    async def remove_workspace_account(
+        self, workspace_id: str, bank_account_id: str
+    ) -> None:
+        """Remove a bank account association from a workspace. Clears primary if it was this account."""
+        result = await self.db.execute(
+            select(Workspace).where(Workspace.id == workspace_id)
+        )
+        workspace = result.scalar_one_or_none()
+        if not workspace:
+            raise NotFoundException(f"Workspace {workspace_id} not found")
+
+        await self.db.execute(
+            workspace_bank_accounts.delete().where(
+                workspace_bank_accounts.c.workspace_id == workspace_id,
+                workspace_bank_accounts.c.bank_account_id == bank_account_id,
+            )
+        )
+
+        # Clear primary if this was the primary account
+        if workspace.bank_account_id == bank_account_id:
+            workspace.bank_account_id = None
 
     # --- Balance operations ---
 

@@ -47,27 +47,14 @@ export function BalanceSnapshotsDialog({
   const [isAdding, setIsAdding] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch bank accounts for each selected workspace
-  const accountQueries = useQuery({
-    queryKey: ['workspace-bank-accounts', selectedWorkspaceIds],
-    queryFn: async (): Promise<WorkspaceAccount[]> => {
-      const results: WorkspaceAccount[] = []
-      for (const ws of selectedWorkspaces) {
-        try {
-          const account = await bankAccountsApi.getWorkspaceAccount(ws.id)
-          if (account) {
-            results.push({ workspaceId: ws.id, workspaceName: ws.name, account })
-          }
-        } catch {
-          // workspace has no account
-        }
-      }
-      return results
-    },
-    enabled: open,
-  })
-
-  const workspaceAccounts = accountQueries.data ?? []
+  // Derive workspace accounts synchronously from the store (bank_accounts is included in WorkspaceWithRole)
+  const workspaceAccounts: WorkspaceAccount[] = selectedWorkspaces.flatMap(ws =>
+    (ws.bank_accounts ?? []).map(account => ({
+      workspaceId: ws.id,
+      workspaceName: ws.name,
+      account,
+    }))
+  )
 
   // Auto-select account when there's only one
   useEffect(() => {
@@ -153,7 +140,7 @@ export function BalanceSnapshotsDialog({
   }
 
   const snapshots = snapshotsQuery.data ?? []
-  const noAccounts = !accountQueries.isLoading && !accountQueries.isFetching && workspaceAccounts.length === 0
+  const noAccounts = workspaceAccounts.length === 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

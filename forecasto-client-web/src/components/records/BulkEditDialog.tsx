@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { AutocompleteInput } from '@/components/ui/AutocompleteInput'
 import { STAGES, STAGE_LABELS_BY_AREA, SIGN_OPTIONS } from '@/lib/constants'
-import { bankAccountsApi } from '@/api/bank-accounts'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
 import type { Record, Area, RecordUpdate } from '@/types/record'
 
 const FIELD_LABELS: Record<string, string> = {
@@ -87,11 +87,13 @@ export function BulkEditDialog({
   const [form, setForm] = useState<BulkEditFormState>({ ...EMPTY_FORM })
   const [lastEdited, setLastEdited] = useState<'vat' | 'total'>('total')
 
-  const { data: bankAccounts = [] } = useQuery({
-    queryKey: ['bank-accounts'],
-    queryFn: () => bankAccountsApi.listUserAccounts(),
-    staleTime: 60000,
-  })
+  const { selectedWorkspaceIds, workspaces } = useWorkspaceStore()
+
+  // Only show accounts associated with the selected workspaces (deduplicated)
+  const bankAccounts = workspaces
+    .filter(w => selectedWorkspaceIds.includes(w.id))
+    .flatMap(w => w.bank_accounts ?? [])
+    .filter((acc, idx, arr) => arr.findIndex(a => a.id === acc.id) === idx)
 
   const stages = STAGES[currentArea] || []
 
@@ -246,7 +248,7 @@ export function BulkEditDialog({
               {/* Conto */}
               <div className="space-y-1">
                 <Label htmlFor="bulk-account">Conto</Label>
-                <Input id="bulk-account" value={form.account} onChange={e => setField('account', e.target.value)} />
+                <AutocompleteInput id="bulk-account" workspaceIds={selectedWorkspaceIds} field="account" value={form.account} onChange={val => setField('account', val)} />
               </div>
 
               {/* Conto Bancario */}
@@ -274,7 +276,7 @@ export function BulkEditDialog({
               {/* Riferimento */}
               <div className="space-y-1">
                 <Label htmlFor="bulk-reference">Riferimento</Label>
-                <Input id="bulk-reference" value={form.reference} onChange={e => setField('reference', e.target.value)} />
+                <AutocompleteInput id="bulk-reference" workspaceIds={selectedWorkspaceIds} field="reference" value={form.reference} onChange={val => setField('reference', val)} />
               </div>
 
               {/* ID Transazione */}
@@ -286,7 +288,7 @@ export function BulkEditDialog({
               {/* Codice Progetto */}
               <div className="space-y-1">
                 <Label htmlFor="bulk-project_code">Codice Progetto</Label>
-                <Input id="bulk-project_code" value={form.project_code} onChange={e => setField('project_code', e.target.value)} placeholder="es. PROJ-001" />
+                <AutocompleteInput id="bulk-project_code" workspaceIds={selectedWorkspaceIds} field="project_code" value={form.project_code} onChange={val => setField('project_code', val)} placeholder="es. PROJ-001" />
               </div>
 
               {/* Date */}
@@ -345,13 +347,13 @@ export function BulkEditDialog({
               {/* Responsabile */}
               <div className="space-y-1">
                 <Label htmlFor="bulk-owner">Responsabile</Label>
-                <Input id="bulk-owner" value={form.owner} onChange={e => setField('owner', e.target.value)} placeholder="Nome" />
+                <AutocompleteInput id="bulk-owner" workspaceIds={selectedWorkspaceIds} field="owner" value={form.owner} onChange={val => setField('owner', val)} placeholder="Nome" />
               </div>
 
               {/* Prossima Azione */}
               <div className="space-y-1">
                 <Label htmlFor="bulk-nextaction">Prossima Azione</Label>
-                <Input id="bulk-nextaction" value={form.nextaction} onChange={e => setField('nextaction', e.target.value)} placeholder="Azione" />
+                <AutocompleteInput id="bulk-nextaction" workspaceIds={selectedWorkspaceIds} field="nextaction" value={form.nextaction} onChange={val => setField('nextaction', val)} placeholder="Azione" />
               </div>
 
               {/* Prossima Revisione */}

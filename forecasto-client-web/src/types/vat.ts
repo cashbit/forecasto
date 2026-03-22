@@ -3,6 +3,7 @@ export interface VatRegistry {
   owner_id: string
   name: string
   vat_number: string
+  bank_account_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -10,11 +11,13 @@ export interface VatRegistry {
 export interface VatRegistryCreate {
   name: string
   vat_number: string
+  bank_account_id?: string | null
 }
 
 export interface VatRegistryUpdate {
   name?: string
   vat_number?: string
+  bank_account_id?: string | null
 }
 
 export interface VatBalance {

@@ -66,7 +66,7 @@ if [ "$DEPLOY_CLIENT" = true ]; then
   echo ""
 
   echo ">>> Fixing httpdocs permissions (nginx requires o+r)..."
-  ssh "$SERVER" "find $REMOTE_HTDOCS -type d -exec chmod 755 {} + && find $REMOTE_HTDOCS -type f -exec chmod 644 {} + && chmod 600 $REMOTE_HTDOCS/.htaccess"
+  ssh "$SERVER" "find $REMOTE_HTDOCS -type d -exec chmod 755 {} + && find $REMOTE_HTDOCS -type f -exec chmod 644 {} +"
   echo "Permissions fixed."
   echo ""
 fi

@@ -54,7 +54,7 @@ export function registerBankAccountTools(
 
   server.tool(
     "get_workspace_bank_account",
-    "Get the bank account currently associated with a workspace. Returns account details and current balance if available.",
+    "Get the primary bank account associated with a workspace.",
     {
       workspace_id: z.string().describe("Workspace UUID"),
     },
@@ -66,10 +66,10 @@ export function registerBankAccountTools(
 
   server.tool(
     "set_workspace_bank_account",
-    "Associate a bank account with a workspace. Only workspace owners can do this. Use list_bank_accounts to find account UUIDs.",
+    "Set the primary bank account for a workspace. Also adds it to the workspace if not already associated. Only workspace owners can do this.",
     {
       workspace_id: z.string().describe("Workspace UUID"),
-      account_id: z.string().describe("Bank account UUID to associate"),
+      account_id: z.string().describe("Bank account UUID to set as primary"),
     },
     async ({ workspace_id, account_id }) => {
       const data = await getClient().put(`/api/v1/workspaces/${workspace_id}/bank-account/${account_id}`);
@@ -79,12 +79,50 @@ export function registerBankAccountTools(
 
   server.tool(
     "remove_workspace_bank_account",
-    "Remove the bank account association from a workspace. The bank account itself is not deleted.",
+    "Remove the primary bank account designation from a workspace. The bank account remains associated but is no longer the primary.",
     {
       workspace_id: z.string().describe("Workspace UUID"),
     },
     async ({ workspace_id }) => {
       const data = await getClient().delete(`/api/v1/workspaces/${workspace_id}/bank-account`);
+      return { content: [{ type: "text" as const, text: JSON.stringify(data ?? { success: true }, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    "list_workspace_bank_accounts",
+    "List all bank accounts associated with a workspace (including non-primary ones).",
+    {
+      workspace_id: z.string().describe("Workspace UUID"),
+    },
+    async ({ workspace_id }) => {
+      const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/bank-accounts`);
+      return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    "add_workspace_bank_account",
+    "Associate a bank account with a workspace (many-to-many). If it is the first account, it also becomes the primary. Only workspace owners can do this.",
+    {
+      workspace_id: z.string().describe("Workspace UUID"),
+      account_id: z.string().describe("Bank account UUID to associate"),
+    },
+    async ({ workspace_id, account_id }) => {
+      const data = await getClient().post(`/api/v1/workspaces/${workspace_id}/bank-accounts/${account_id}`, {});
+      return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    "remove_workspace_bank_account_link",
+    "Remove a bank account association from a workspace. If it was the primary account, the primary is also cleared. Only workspace owners can do this.",
+    {
+      workspace_id: z.string().describe("Workspace UUID"),
+      account_id: z.string().describe("Bank account UUID to disassociate"),
+    },
+    async ({ workspace_id, account_id }) => {
+      const data = await getClient().delete(`/api/v1/workspaces/${workspace_id}/bank-accounts/${account_id}`);
       return { content: [{ type: "text" as const, text: JSON.stringify(data ?? { success: true }, null, 2) }] };
     },
   );

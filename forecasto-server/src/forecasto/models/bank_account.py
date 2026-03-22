@@ -38,7 +38,12 @@ class BankAccount(Base, UUIDMixin, TimestampMixin):
 
     # Relationships
     owner: Mapped[Optional["User"]] = relationship("User", foreign_keys=[owner_id])
-    workspaces: Mapped[list["Workspace"]] = relationship("Workspace", back_populates="bank_account")
+    workspaces: Mapped[list["Workspace"]] = relationship("Workspace", back_populates="bank_account", foreign_keys="Workspace.bank_account_id")
+    linked_workspaces: Mapped[list["Workspace"]] = relationship(
+        "Workspace",
+        secondary="workspace_bank_accounts",
+        back_populates="bank_accounts",
+    )
     balances: Mapped[list["BankAccountBalance"]] = relationship(
         "BankAccountBalance", back_populates="bank_account", cascade="all, delete-orphan"
     )

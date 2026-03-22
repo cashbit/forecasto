@@ -39,6 +39,26 @@ export const bankAccountsApi = {
     await apiClient.delete(`/workspaces/${workspaceId}/bank-account`)
   },
 
+  // --- Workspace many-to-many bank account endpoints ---
+
+  listWorkspaceAccounts: async (workspaceId: string): Promise<BankAccount[]> => {
+    const response = await apiClient.get<{ success: boolean; bank_accounts: BankAccount[] }>(
+      `/workspaces/${workspaceId}/bank-accounts`
+    )
+    return response.data.bank_accounts
+  },
+
+  addWorkspaceAccount: async (workspaceId: string, accountId: string): Promise<BankAccount> => {
+    const response = await apiClient.post<{ success: boolean; bank_account: BankAccount }>(
+      `/workspaces/${workspaceId}/bank-accounts/${accountId}`
+    )
+    return response.data.bank_account
+  },
+
+  removeWorkspaceAccount: async (workspaceId: string, accountId: string): Promise<void> => {
+    await apiClient.delete(`/workspaces/${workspaceId}/bank-accounts/${accountId}`)
+  },
+
   // --- Balance endpoints ---
 
   getBalances: async (workspaceId: string, accountId: string, fromDate?: string, toDate?: string): Promise<BankAccountBalance[]> => {

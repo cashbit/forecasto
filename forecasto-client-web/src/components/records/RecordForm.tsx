@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useQuery } from '@tanstack/react-query'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AutocompleteInput } from '@/components/ui/AutocompleteInput'
@@ -17,7 +17,6 @@ import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useAuthStore } from '@/stores/authStore'
 import { AlertCircle, X, ArrowRight, Maximize2, Minimize2 } from 'lucide-react'
 import { MarkdownTextarea } from '@/components/common/MarkdownTextarea'
-import { bankAccountsApi } from '@/api/bank-accounts'
 
 const schema = z.object({
   account: z.string().min(1, 'Conto obbligatorio'),
@@ -129,11 +128,9 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
   // Track which field (vat or total) was last manually edited
   const [noteExpanded, setNoteExpanded] = useState(false)
 
-  const { data: bankAccounts = [] } = useQuery({
-    queryKey: ['bank-accounts'],
-    queryFn: () => bankAccountsApi.listUserAccounts(),
-    staleTime: 60000,
-  })
+  const primaryWorkspace = useWorkspaceStore(s => s.getPrimaryWorkspace())
+  const bankAccounts = primaryWorkspace?.bank_accounts ?? []
+  const primaryBankAccountId = primaryWorkspace?.bank_account_id
 
   // Check permission based on selected sign
   const canPerformAction = selectedSign
@@ -467,6 +464,9 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
                 {bankAccounts.map((acc) => (
                   <SelectItem key={acc.id} value={acc.id}>
                     {acc.name}{acc.bank_name ? ` — ${acc.bank_name}` : ''}
+                    {acc.id === primaryBankAccountId && (
+                      <span className="ml-1 text-xs text-muted-foreground">★</span>
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>

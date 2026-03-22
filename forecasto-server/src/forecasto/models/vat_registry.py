@@ -13,6 +13,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from forecasto.models.base import Base, TimestampMixin, UUIDMixin, generate_uuid
 
 if TYPE_CHECKING:
+    from forecasto.models.bank_account import BankAccount
     from forecasto.models.user import User
     from forecasto.models.workspace import Workspace
 
@@ -30,9 +31,18 @@ class VatRegistry(Base, UUIDMixin, TimestampMixin):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     vat_number: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    bank_account_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("bank_accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Relationships
     owner: Mapped["User"] = relationship("User", foreign_keys=[owner_id])
+    bank_account: Mapped[Optional["BankAccount"]] = relationship(
+        "BankAccount", foreign_keys=[bank_account_id]
+    )
     balances: Mapped[list["VatBalance"]] = relationship(
         "VatBalance", back_populates="vat_registry", cascade="all, delete-orphan"
     )
