@@ -117,3 +117,38 @@ export interface BankAccountUpdate {
   settings?: Record<string, unknown>
 }
 
+// ── VAT Simulation types ──────────────────────────────────────────
+
+export interface CashflowVatEntry {
+  date: string
+  period: string
+  area: string
+  iva_debito: number
+  iva_credito: number
+  credit_carried: number
+  net: number
+}
+
+export interface CashflowVatSeries {
+  vat_registry_id: string
+  vat_number: string
+  name: string
+  entries: CashflowVatEntry[]
+  total_debito: number
+  total_credito: number
+  total_net: number
+}
+
+export interface CashflowVatResponse {
+  series: CashflowVatSeries[]
+}
+
+export interface CashflowVatParams {
+  workspace_ids: string[]
+  from_date: string
+  to_date: string
+  period_type: 'monthly' | 'quarterly'
+  use_summer_extension: boolean
+  area_stage?: string[]
+}
+

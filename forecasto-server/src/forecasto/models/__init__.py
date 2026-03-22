@@ -15,6 +15,7 @@ from forecasto.models.session import (
     SessionRecordLock,
 )
 from forecasto.models.user import EmailVerificationToken, RefreshToken, User
+from forecasto.models.vat_registry import VatBalance, VatRegistry
 from forecasto.models.workspace import ApiKey, Invitation, Workspace, WorkspaceMember
 
 __all__ = [
@@ -36,5 +37,7 @@ __all__ = [
     "AuditLog",
     "RegistrationCode",
     "RegistrationCodeBatch",
+    "VatRegistry",
+    "VatBalance",
 ]
 

@@ -301,13 +301,6 @@ export function Header() {
                 <Upload className="h-4 w-4 mr-2" />
                 {isExporting ? 'Esportazione...' : `Esporta JSON`}
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Strumenti</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setShowVatDialog(true)}>
-                <Calculator className="h-4 w-4 mr-2" />
-                Calcolo IVA Periodica
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <TooltipContent>Importa / Esporta</TooltipContent>

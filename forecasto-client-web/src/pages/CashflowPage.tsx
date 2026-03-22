@@ -5,13 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CashflowChart } from '@/components/cashflow/CashflowChart'
 import { CashflowTable } from '@/components/cashflow/CashflowTable'
-import { CashflowFilters } from '@/components/cashflow/CashflowFilters'
+import { CashflowFilters, type VatFilterState } from '@/components/cashflow/CashflowFilters'
 import { BalanceSnapshotsDialog } from '@/components/cashflow/BalanceSnapshotsDialog'
 import { CashflowDrilldownPanel } from '@/components/cashflow/CashflowDrilldownPanel'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { AmountDisplay } from '@/components/common/AmountDisplay'
 import { useCashflow } from '@/hooks/useCashflow'
-import type { CashflowParams, CashflowEntry } from '@/types/cashflow'
+import { useQuery } from '@tanstack/react-query'
+import { cashflowApi } from '@/api/cashflow'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { CashflowVatDetail } from '@/components/cashflow/CashflowVatDetail'
+import type { CashflowParams, CashflowEntry, CashflowVatResponse } from '@/types/cashflow'
 
 interface SummaryCardProps {
   title: string
@@ -67,8 +71,15 @@ export function CashflowPage() {
   })
   const [snapshotsOpen, setSnapshotsOpen] = useState(false)
   const [tableOpen, setTableOpen] = useState(false)
+  const [vatDetailOpen, setVatDetailOpen] = useState(false)
   const [drilldownEntry, setDrilldownEntry] = useState<CashflowEntry | null>(null)
   const [chartHeight, setChartHeight] = useState(() => Math.max(300, window.innerHeight - 440))
+  const [vatFilter, setVatFilter] = useState<VatFilterState>({
+    enabled: true,
+    periodType: 'monthly',
+    useSummerExtension: true,
+  })
+  const selectedWorkspaceIds = useWorkspaceStore(state => state.selectedWorkspaceIds)
 
   const updateHeight = useCallback(() => {
     setChartHeight(Math.max(300, window.innerHeight - 440))
@@ -81,9 +92,29 @@ export function CashflowPage() {
 
   const { cashflow, summary, initialBalance, isLoading } = useCashflow(params)
 
+  const { data: vatSimulation } = useQuery({
+    queryKey: ['cashflow-vat', selectedWorkspaceIds, params.from_date, params.to_date, vatFilter],
+    queryFn: () => cashflowApi.getVatSimulation({
+      workspace_ids: selectedWorkspaceIds,
+      from_date: params.from_date,
+      to_date: params.to_date,
+      period_type: vatFilter.periodType,
+      use_summer_extension: vatFilter.useSummerExtension,
+      area_stage: params.area_stage,
+    }),
+    enabled: vatFilter.enabled && selectedWorkspaceIds.length > 0 && !!params.from_date && !!params.to_date,
+    staleTime: 30000,
+  })
+
   return (
     <div className="p-6 space-y-4">
-      <CashflowFilters params={params} onChange={setParams} onSnapshotsOpen={() => setSnapshotsOpen(true)} />
+      <CashflowFilters
+        params={params}
+        onChange={setParams}
+        onSnapshotsOpen={() => setSnapshotsOpen(true)}
+        vatFilter={vatFilter}
+        onVatFilterChange={setVatFilter}
+      />
 
       <BalanceSnapshotsDialog
         open={snapshotsOpen}
@@ -133,6 +164,7 @@ export function CashflowPage() {
               height={chartHeight}
               bankAccounts={initialBalance?.by_account}
               onBarClick={setDrilldownEntry}
+              vatSeries={vatFilter.enabled ? vatSimulation?.series : undefined}
             />
           ) : (
             <div className="flex items-center justify-center text-muted-foreground" style={{ height: chartHeight }}>
@@ -173,6 +205,24 @@ export function CashflowPage() {
           )}
         </Card>
       )}
+      {/* VAT Detail Table */}
+      {vatFilter.enabled && vatSimulation && vatSimulation.series.length > 0 && (
+        <Card>
+          <CardHeader
+            className="flex flex-row items-center justify-between py-3 px-4 cursor-pointer select-none"
+            onClick={() => setVatDetailOpen((o) => !o)}
+          >
+            <CardTitle className="text-sm font-medium">Dettaglio IVA</CardTitle>
+            {vatDetailOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </CardHeader>
+          {vatDetailOpen && (
+            <CardContent className="p-4 pt-0">
+              <CashflowVatDetail series={vatSimulation.series} />
+            </CardContent>
+          )}
+        </Card>
+      )}
+
       {drilldownEntry && (
         <CashflowDrilldownPanel
           entry={drilldownEntry}

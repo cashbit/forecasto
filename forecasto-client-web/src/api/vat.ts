@@ -1,17 +1,15 @@
 import apiClient from './client'
 
 export interface VatCalculationRequest {
-  source_workspace_ids: string[]
-  target_workspace_id: string
+  vat_registry_id: string
   period_type: 'monthly' | 'quarterly'
-  start_month: string
-  end_month: string
-  target_area: string
+  end_month?: string
   use_summer_extension: boolean
 }
 
 export interface VatPeriodResult {
   period: string
+  area: string
   iva_debito: string
   iva_credito: string
   credit_carried: string
@@ -27,6 +25,7 @@ export interface VatCalculationResponse {
   total_credito: string
   total_net: string
   records_created: number
+  target_workspace_id: string | null
   dry_run: boolean
 }
 

@@ -23,6 +23,7 @@ from forecasto.api import (
     transfers,
     users,
     vat,
+    vat_registry,
     workspaces,
 )
 from forecasto.config import settings
@@ -111,6 +112,7 @@ app.include_router(
 )
 app.include_router(cashflow.router, prefix="/api/v1", tags=["Cashflow"])
 app.include_router(vat.router, prefix="/api/v1", tags=["VAT"])
+app.include_router(vat_registry.router, prefix="/api/v1", tags=["VAT Registry"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(partner.router, prefix="/api/v1/partner", tags=["Partner"])
 app.include_router(oauth.router, prefix="/oauth", tags=["OAuth"])

@@ -116,3 +116,35 @@ class ConsolidatedCashflowRequest(BaseModel):
     from_date: date
     to_date: date
     group_by: str = "day"
+
+
+# ── VAT Simulation schemas ─────────────────────────────────────────
+
+class CashflowVatEntry(DecimalAsFloat):
+    """Single VAT payment entry in cashflow simulation."""
+
+    date: date
+    period: str  # "2026-03" or "2026-Q1"
+    area: str
+    iva_debito: Decimal
+    iva_credito: Decimal
+    credit_carried: Decimal
+    net: Decimal  # positive = da versare (uscita)
+
+
+class CashflowVatSeries(DecimalAsFloat):
+    """VAT simulation series for one P.IVA."""
+
+    vat_registry_id: str
+    vat_number: str
+    name: str
+    entries: list[CashflowVatEntry]
+    total_debito: Decimal
+    total_credito: Decimal
+    total_net: Decimal
+
+
+class CashflowVatResponse(DecimalAsFloat):
+    """Response with VAT simulation series."""
+
+    series: list[CashflowVatSeries]

@@ -15,7 +15,7 @@ import {
 import { format, parseISO } from 'date-fns'
 import { it } from 'date-fns/locale'
 import { formatCurrency } from '@/lib/formatters'
-import type { CashflowEntry, AccountBalance } from '@/types/cashflow'
+import type { CashflowEntry, AccountBalance, CashflowVatSeries } from '@/types/cashflow'
 
 // Colors for per-account lines (distinct from the total line blue #2563EB)
 const ACCOUNT_COLORS = [
@@ -40,9 +40,10 @@ interface CashflowChartProps {
   height?: number
   bankAccounts?: Record<string, AccountBalance>
   onBarClick?: (entry: CashflowEntry) => void
+  vatSeries?: CashflowVatSeries[]
 }
 
-export function CashflowChart({ data, height = 400, bankAccounts, onBarClick }: CashflowChartProps) {
+export function CashflowChart({ data, height = 400, bankAccounts, onBarClick, vatSeries }: CashflowChartProps) {
   // Discover which accounts are present in the data
   const accountInfos = useMemo<AccountInfo[]>(() => {
     if (!bankAccounts) return []
@@ -82,12 +83,30 @@ export function CashflowChart({ data, height = 400, bankAccounts, onBarClick }: 
     })
   }
 
+  // Build IVA outflows map by date (aggregate across all series)
+  const ivaByDate = useMemo(() => {
+    const map = new Map<string, number>()
+    if (vatSeries) {
+      for (const series of vatSeries) {
+        for (const entry of series.entries) {
+          if (entry.net > 0) {
+            // net > 0 = payment outflow (shown as negative bar)
+            const current = map.get(entry.date) || 0
+            map.set(entry.date, current + (-entry.net))
+          }
+        }
+      }
+    }
+    return map
+  }, [vatSeries])
+
   // Flatten by_account data into top-level keys for Recharts
   const chartData = useMemo(() => {
     return data.map((entry) => {
       const flat: Record<string, unknown> = {
         ...entry,
         date: entry.date,
+        iva_outflows: ivaByDate.get(entry.date) || 0,
       }
 
       // Add per-account running_balance as flat keys
@@ -102,7 +121,7 @@ export function CashflowChart({ data, height = 400, bankAccounts, onBarClick }: 
 
       return flat
     })
-  }, [data, accountInfos])
+  }, [data, accountInfos, ivaByDate])
 
   // Compute background segments based on running_balance sign
   const balanceSegments = useMemo(() => {
@@ -137,6 +156,7 @@ export function CashflowChart({ data, height = 400, bankAccounts, onBarClick }: 
     const map: Record<string, string> = {
       inflows: 'Entrate',
       outflows: 'Uscite',
+      iva_outflows: 'Versamenti IVA',
       running_balance: 'Saldo Totale',
     }
     for (const account of accountInfos) {
@@ -212,6 +232,15 @@ export function CashflowChart({ data, height = 400, bankAccounts, onBarClick }: 
           onClick={onBarClick ? (data) => onBarClick(data as unknown as CashflowEntry) : undefined}
           style={{ cursor: onBarClick ? 'pointer' : 'default' }}
         />
+        {vatSeries && vatSeries.length > 0 && (
+          <Bar
+            dataKey="iva_outflows"
+            fill="#F97316"
+            name="iva_outflows"
+            radius={[4, 4, 0, 0]}
+            hide={hiddenLines.has('iva_outflows')}
+          />
+        )}
         <Line
           type="monotone"
           dataKey="running_balance"

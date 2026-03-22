@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { User, Building, Bell, Shield, Users, Landmark, Handshake } from 'lucide-react'
+import { User, Building, Bell, Shield, Users, Landmark, Handshake, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,10 +11,14 @@ import { useAuthStore } from '@/stores/authStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { MembersDialog } from '@/components/workspace/MembersDialog'
 import { BankAccountsTab } from '@/components/settings/BankAccountsTab'
+import { VatRegistriesTab } from '@/components/settings/VatRegistriesTab'
 import { PartnershipTab } from '@/components/settings/PartnershipTab'
 import { WorkspaceBankAccountsSection } from '@/components/settings/WorkspaceBankAccountsSection'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/useToast'
 import { authApi } from '@/api/auth'
+import { useQuery } from '@tanstack/react-query'
+import { vatRegistryApi } from '@/api/vatRegistry'
 
 export function SettingsPage() {
   const { user, fetchUser } = useAuthStore()
@@ -46,8 +50,16 @@ export function SettingsPage() {
     defaultValues: {
       name: primaryWorkspace?.name || '',
       description: primaryWorkspace?.description || '',
-      vat_number: primaryWorkspace?.settings?.vat_number || '',
     },
+  })
+
+  const [selectedVatRegistryId, setSelectedVatRegistryId] = useState<string>(
+    primaryWorkspace?.vat_registry_id || ''
+  )
+
+  const { data: vatRegistries = [] } = useQuery({
+    queryKey: ['vat-registries'],
+    queryFn: vatRegistryApi.list,
   })
 
   // Reset workspace form when primaryWorkspace changes (async load or workspace switch)
@@ -56,10 +68,10 @@ export function SettingsPage() {
       workspaceForm.reset({
         name: primaryWorkspace.name || '',
         description: primaryWorkspace.description || '',
-        vat_number: primaryWorkspace.settings?.vat_number || '',
       })
+      setSelectedVatRegistryId(primaryWorkspace.vat_registry_id || '')
     }
-  }, [primaryWorkspace?.id, primaryWorkspace?.name, primaryWorkspace?.description, primaryWorkspace?.settings?.vat_number])
+  }, [primaryWorkspace?.id, primaryWorkspace?.name, primaryWorkspace?.description, primaryWorkspace?.vat_registry_id])
 
   const handleProfileSave = async (data: { name: string; email: string }) => {
     setIsLoading(true)
@@ -91,16 +103,19 @@ export function SettingsPage() {
     }
   }
 
-  const handleWorkspaceSave = async (data: { name: string; description: string; vat_number: string }) => {
+  const handleWorkspaceSave = async (data: { name: string; description: string }) => {
     if (!primaryWorkspace) return
     setIsLoading(true)
     try {
+      // Find the selected registry to keep settings.vat_number in sync for SDI
+      const selectedRegistry = vatRegistries.find(r => r.id === selectedVatRegistryId)
       await updateWorkspace(primaryWorkspace.id, {
         name: data.name,
         description: data.description,
+        vat_registry_id: selectedVatRegistryId || null,
         settings: {
           ...primaryWorkspace.settings,
-          vat_number: data.vat_number || undefined,
+          vat_number: selectedRegistry?.vat_number || undefined,
         },
       })
       toast({ title: 'Workspace aggiornato', variant: 'success' })
@@ -132,6 +147,10 @@ export function SettingsPage() {
           <TabsTrigger value="bank-accounts">
             <Landmark className="mr-2 h-4 w-4" />
             Conti Bancari
+          </TabsTrigger>
+          <TabsTrigger value="vat-registries">
+            <Receipt className="mr-2 h-4 w-4" />
+            Partite IVA
           </TabsTrigger>
           {user?.is_partner && (
             <TabsTrigger value="partnership">
@@ -194,9 +213,26 @@ export function SettingsPage() {
                     <Input id="ws-description" {...workspaceForm.register('description')} />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ws-vat-number">Partita IVA</Label>
-                    <Input id="ws-vat-number" {...workspaceForm.register('vat_number')} placeholder="es. IT01234567890" />
-                    <p className="text-xs text-muted-foreground">Necessaria per l'import fatture SDI (identificazione fatture attive/passive)</p>
+                    <Label>Partita IVA</Label>
+                    <Select
+                      value={selectedVatRegistryId || '__none__'}
+                      onValueChange={(v) => setSelectedVatRegistryId(v === '__none__' ? '' : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona partita IVA..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Nessuna</SelectItem>
+                        {vatRegistries.map((r) => (
+                          <SelectItem key={r.id} value={r.id}>
+                            {r.name} ({r.vat_number})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Gestisci le partite IVA nella tab "Partite IVA". Necessaria per il calcolo IVA e l'import SDI.
+                    </p>
                   </div>
                   <Separator />
                   <div className="space-y-2">
@@ -273,6 +309,10 @@ export function SettingsPage() {
 
         <TabsContent value="bank-accounts">
           <BankAccountsTab />
+        </TabsContent>
+
+        <TabsContent value="vat-registries">
+          <VatRegistriesTab />
         </TabsContent>
 
         {user?.is_partner && (

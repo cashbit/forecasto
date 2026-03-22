@@ -73,4 +73,32 @@ export function registerCashflowTools(
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
     },
   );
+
+  server.tool(
+    "get_cashflow_vat_simulation",
+    "Calculate VAT (IVA) simulation for cashflow overlay. Returns projected IVA payments " +
+    "grouped by P.IVA, period, and area. Uses VatRegistry balances as starting points. " +
+    "One series per distinct P.IVA found across the given workspaces.",
+    {
+      workspace_ids: z.array(z.string()).describe("Workspace UUIDs to include"),
+      from_date: z.string().describe("Start date (YYYY-MM-DD)"),
+      to_date: z.string().describe("End date (YYYY-MM-DD)"),
+      period_type: z.enum(["monthly", "quarterly"]).default("monthly")
+        .describe("VAT settlement period"),
+      use_summer_extension: z.boolean().default(true)
+        .describe("Quarterly: use summer extension (Q2 Sep 16 vs Aug 16)"),
+    },
+    async ({ workspace_ids, from_date, to_date, period_type, use_summer_extension }) => {
+      const url = new URL("/api/v1/cashflow/vat-simulation", "http://x");
+      url.searchParams.set("from_date", from_date);
+      url.searchParams.set("to_date", to_date);
+      url.searchParams.set("period_type", period_type);
+      url.searchParams.set("use_summer_extension", String(use_summer_extension));
+      for (const wid of workspace_ids) {
+        url.searchParams.append("workspace_ids", wid);
+      }
+      const data = await getClient().get(`/api/v1/cashflow/vat-simulation?${url.searchParams.toString()}`);
+      return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+    },
+  );
 }

@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from forecasto.models.record import Record
     from forecasto.models.session import Session
     from forecasto.models.user import User
+    from forecasto.models.vat_registry import VatRegistry
 
 class Workspace(Base, UUIDMixin, TimestampMixin):
     """Workspace containing financial data."""
@@ -42,10 +43,14 @@ class Workspace(Base, UUIDMixin, TimestampMixin):
     bank_account_id: Mapped[Optional[str]] = mapped_column(
         String(36), ForeignKey("bank_accounts.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    vat_registry_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("vat_registries.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # Relationships
     owner: Mapped["User"] = relationship("User")
     bank_account: Mapped[Optional["BankAccount"]] = relationship("BankAccount", back_populates="workspaces")
+    vat_registry: Mapped[Optional["VatRegistry"]] = relationship("VatRegistry", back_populates="workspaces")
     members: Mapped[list["WorkspaceMember"]] = relationship(
         "WorkspaceMember", back_populates="workspace", cascade="all, delete-orphan"
     )

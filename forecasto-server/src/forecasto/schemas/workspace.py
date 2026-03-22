@@ -58,6 +58,7 @@ class WorkspaceUpdate(BaseModel):
     description: str | None = None
     is_archived: bool | None = None
     settings: dict | None = None
+    vat_registry_id: str | None = None
 
 class WorkspaceResponse(BaseModel):
     """Workspace response."""
@@ -68,6 +69,7 @@ class WorkspaceResponse(BaseModel):
     is_archived: bool
     settings: dict
     email_whitelist: list[str]
+    vat_registry_id: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -83,6 +85,7 @@ class WorkspaceWithRole(BaseModel):
     settings: dict
     role: str
     area_permissions: dict
+    vat_registry_id: str | None = None
     can_import: bool = True
     can_import_sdi: bool = True
     can_export: bool = True

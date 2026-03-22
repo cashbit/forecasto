@@ -11,18 +11,27 @@ import {
 import { AREA_LABELS } from '@/lib/constants'
 import type { CashflowParams } from '@/types/cashflow'
 import type { Area } from '@/types/record'
+import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
-import { XCircle, CheckCircle2, Anchor } from 'lucide-react'
+import { XCircle, CheckCircle2, Anchor, Calculator } from 'lucide-react'
 
 const DISPLAY_ORDER: Area[] = ['actual', 'orders', 'prospect', 'budget']
+
+export interface VatFilterState {
+  enabled: boolean
+  periodType: 'monthly' | 'quarterly'
+  useSummerExtension: boolean
+}
 
 interface CashflowFiltersProps {
   params: CashflowParams
   onChange: (params: CashflowParams) => void
   onSnapshotsOpen: () => void
+  vatFilter: VatFilterState
+  onVatFilterChange: (vatFilter: VatFilterState) => void
 }
 
-export function CashflowFilters({ params, onChange, onSnapshotsOpen }: CashflowFiltersProps) {
+export function CashflowFilters({ params, onChange, onSnapshotsOpen, vatFilter, onVatFilterChange }: CashflowFiltersProps) {
   const isStageActive = (area: Area, stage: '0' | '1') => {
     const pairs = params.area_stage ?? []
     return pairs.includes(`${area}:${stage}`)
@@ -131,6 +140,59 @@ export function CashflowFilters({ params, onChange, onSnapshotsOpen }: CashflowF
           Saldi a Data
         </Button>
       </div>
+
+      {/* IVA Toggle */}
+      <div className="space-y-2">
+        <Label className="font-semibold">IVA</Label>
+        <div className="flex gap-0.5">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onVatFilterChange({ ...vatFilter, enabled: !vatFilter.enabled })}
+            className={cn(
+              'h-9 px-3 transition-colors',
+              vatFilter.enabled
+                ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600'
+                : 'text-muted-foreground'
+            )}
+          >
+            <Calculator className="h-4 w-4 mr-1.5" />
+            IVA
+          </Button>
+        </div>
+      </div>
+
+      {vatFilter.enabled && (
+        <>
+          <div className="space-y-2">
+            <Label>Periodo IVA</Label>
+            <Select
+              value={vatFilter.periodType}
+              onValueChange={(v) => onVatFilterChange({ ...vatFilter, periodType: v as 'monthly' | 'quarterly' })}
+            >
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="monthly">Mensile</SelectItem>
+                <SelectItem value="quarterly">Trimestrale</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {vatFilter.periodType === 'quarterly' && (
+            <div className="space-y-2">
+              <Label>&nbsp;</Label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer h-9">
+                <Checkbox
+                  checked={vatFilter.useSummerExtension}
+                  onCheckedChange={(v) => onVatFilterChange({ ...vatFilter, useSummerExtension: !!v })}
+                />
+                Proroga estiva
+              </label>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

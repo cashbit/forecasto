@@ -5,6 +5,7 @@ import { registerRecordTools } from "./records.js";
 import { registerCashflowTools } from "./cashflow.js";
 import { registerBankAccountTools } from "./bank_accounts.js";
 import { registerVatTools } from "./vat.js";
+import { registerVatRegistryTools } from "./vat_registry.js";
 
 export function registerAllTools(
   server: McpServer,
@@ -15,4 +16,5 @@ export function registerAllTools(
   registerCashflowTools(server, getClient);
   registerBankAccountTools(server, getClient);
   registerVatTools(server, getClient);
+  registerVatRegistryTools(server, getClient);
 }

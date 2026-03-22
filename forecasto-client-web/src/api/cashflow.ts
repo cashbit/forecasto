@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { CashflowParams, CashflowResponse } from '@/types/cashflow'
+import type { CashflowParams, CashflowResponse, CashflowVatParams, CashflowVatResponse } from '@/types/cashflow'
 
 export const cashflowApi = {
   getCashflow: async (workspaceId: string, params: CashflowParams): Promise<CashflowResponse> => {
@@ -16,6 +16,16 @@ export const cashflowApi = {
     const response = await apiClient.get(`/workspaces/${workspaceId}/cashflow/export`, {
       params: { ...params, format },
       responseType: 'blob',
+    })
+    return response.data
+  },
+
+  getVatSimulation: async (params: CashflowVatParams): Promise<CashflowVatResponse> => {
+    const response = await apiClient.get<CashflowVatResponse>('/cashflow/vat-simulation', {
+      params,
+      paramsSerializer: {
+        indexes: null,
+      },
     })
     return response.data
   },

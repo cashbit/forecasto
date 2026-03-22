@@ -5,6 +5,7 @@ export interface Workspace {
   owner_id: string
   is_archived?: boolean
   settings: WorkspaceSettings
+  vat_registry_id?: string
   created_at: string
   updated_at: string
   // From list endpoint (WorkspaceWithRole)
@@ -48,6 +49,7 @@ export interface WorkspaceUpdate {
   name?: string
   description?: string
   settings?: Partial<WorkspaceSettings>
+  vat_registry_id?: string | null
 }
 
 export interface GranularPermission {
