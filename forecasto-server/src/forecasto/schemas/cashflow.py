@@ -5,29 +5,16 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from typing import Any
+from typing import Annotated
 
-from pydantic import BaseModel, model_serializer
+from pydantic import BaseModel, PlainSerializer
 
 
-class DecimalAsFloat(BaseModel):
-    """Base model that serializes Decimal as float for JSON."""
-
-    @model_serializer(mode='wrap')
-    def serialize_model(self, handler: Any) -> dict[str, Any]:
-        data = handler(self)
-        # Convert any Decimal values to float recursively
-        return self._convert_decimals(data)
-
-    @staticmethod
-    def _convert_decimals(obj: Any) -> Any:
-        if isinstance(obj, Decimal):
-            return float(obj)
-        elif isinstance(obj, dict):
-            return {k: DecimalAsFloat._convert_decimals(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [DecimalAsFloat._convert_decimals(v) for v in obj]
-        return obj
+# Pydantic v2: Decimal fields serialized as float in JSON responses.
+# The old DecimalAsFloat model_serializer approach was broken because
+# Pydantic v2's default JSON handler converts Decimal → str before the
+# custom serializer runs, so isinstance(obj, Decimal) never matched.
+DecimalFloat = Annotated[Decimal, PlainSerializer(lambda v: float(v), return_type=float)]
 
 
 class CashflowRequest(BaseModel):
@@ -42,65 +29,65 @@ class CashflowRequest(BaseModel):
     group_by: str = "day"  # day, week, month
     sign_filter: str | None = None  # in, out, all
 
-class CashflowRecordSummary(DecimalAsFloat):
+class CashflowRecordSummary(BaseModel):
     """Summary of a record in cashflow."""
 
     id: str
     reference: str
-    amount: Decimal
+    amount: DecimalFloat
     area: str
 
-class AccountCashflowEntry(DecimalAsFloat):
+class AccountCashflowEntry(BaseModel):
     """Cashflow data for a single bank account within a period."""
 
-    inflows: Decimal
-    outflows: Decimal
-    running_balance: Decimal
+    inflows: DecimalFloat
+    outflows: DecimalFloat
+    running_balance: DecimalFloat
 
-class CashflowEntry(DecimalAsFloat):
+class CashflowEntry(BaseModel):
     """Single cashflow entry."""
 
     date: date
-    inflows: Decimal
-    outflows: Decimal
-    net: Decimal
-    running_balance: Decimal
-    balance_snapshot: Decimal | None = None  # set when a BankAccountBalance reset occurred on this date
+    inflows: DecimalFloat
+    outflows: DecimalFloat
+    net: DecimalFloat
+    running_balance: DecimalFloat
+    balance_snapshot: DecimalFloat | None = None  # set when a BankAccountBalance reset occurred on this date
     records: list[CashflowRecordSummary] | None = None
     by_account: dict[str, AccountCashflowEntry] | None = None
 
-class AccountBalance(DecimalAsFloat):
+class AccountBalance(BaseModel):
     """Balance for a single account."""
 
     name: str
-    balance: Decimal
-    credit_limit: Decimal
+    balance: DecimalFloat
+    credit_limit: DecimalFloat
 
-class InitialBalance(DecimalAsFloat):
+class InitialBalance(BaseModel):
     """Initial balance information."""
 
     date: date
-    total: Decimal
+    total: DecimalFloat
     by_account: dict[str, AccountBalance]
 
-class BalancePoint(DecimalAsFloat):
+class BalancePoint(BaseModel):
     """A point with date and balance."""
 
     date: date
-    amount: Decimal
+    amount: DecimalFloat
 
-class CashflowSummary(DecimalAsFloat):
+class CashflowSummary(BaseModel):
     """Summary of cashflow calculation."""
 
-    total_inflows: Decimal
-    total_outflows: Decimal
-    net_cashflow: Decimal
-    final_balance: Decimal
+    total_inflows: DecimalFloat
+    total_outflows: DecimalFloat
+    net_cashflow: DecimalFloat
+    final_balance: DecimalFloat
     min_balance: BalancePoint
     max_balance: BalancePoint
     credit_limit_breaches: list[BalancePoint]
 
-class CashflowResponse(DecimalAsFloat):
+class CashflowResponse(BaseModel):
     """Cashflow response."""
 
     success: bool = True
@@ -120,19 +107,19 @@ class ConsolidatedCashflowRequest(BaseModel):
 
 # ── VAT Simulation schemas ─────────────────────────────────────────
 
-class CashflowVatEntry(DecimalAsFloat):
+class CashflowVatEntry(BaseModel):
     """Single VAT payment entry in cashflow simulation."""
 
     date: date
     period: str  # "2026-03" or "2026-Q1"
     area: str
-    iva_debito: Decimal
-    iva_credito: Decimal
-    credit_carried: Decimal
-    net: Decimal  # positive = da versare (uscita)
+    iva_debito: DecimalFloat
+    iva_credito: DecimalFloat
+    credit_carried: DecimalFloat
+    net: DecimalFloat  # positive = da versare (uscita)
 
 
-class CashflowVatSeries(DecimalAsFloat):
+class CashflowVatSeries(BaseModel):
     """VAT simulation series for one P.IVA."""
 
     vat_registry_id: str
@@ -140,12 +127,12 @@ class CashflowVatSeries(DecimalAsFloat):
     name: str
     bank_account_id: str | None = None
     entries: list[CashflowVatEntry]
-    total_debito: Decimal
-    total_credito: Decimal
-    total_net: Decimal
+    total_debito: DecimalFloat
+    total_credito: DecimalFloat
+    total_net: DecimalFloat
 
 
-class CashflowVatResponse(DecimalAsFloat):
+class CashflowVatResponse(BaseModel):
     """Response with VAT simulation series."""
 
     series: list[CashflowVatSeries]

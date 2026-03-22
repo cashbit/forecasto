@@ -89,10 +89,11 @@ export function CashflowChart({ data, height = 400, bankAccounts, onBarClick, va
     if (vatSeries) {
       for (const series of vatSeries) {
         for (const entry of series.entries) {
-          if (entry.net > 0) {
+          const net = Number(entry.net)
+          if (net > 0) {
             // net > 0 = payment outflow (shown as negative bar)
             const current = map.get(entry.date) || 0
-            map.set(entry.date, current + (-entry.net))
+            map.set(entry.date, current + (-net))
           }
         }
       }

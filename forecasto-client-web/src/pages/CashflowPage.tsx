@@ -116,12 +116,13 @@ export function CashflowPage() {
     const ivaByDate = new Map<string, { total: number; byAccount: Record<string, number> }>()
     for (const series of vatSimulation.series) {
       for (const entry of series.entries) {
-        if (entry.net > 0) {
+        const net = Number(entry.net)
+        if (net > 0) {
           const current = ivaByDate.get(entry.date) ?? { total: 0, byAccount: {} }
-          current.total += entry.net
+          current.total += net
           if (series.bank_account_id) {
             current.byAccount[series.bank_account_id] =
-              (current.byAccount[series.bank_account_id] ?? 0) + entry.net
+              (current.byAccount[series.bank_account_id] ?? 0) + net
           }
           ivaByDate.set(entry.date, current)
         }
@@ -163,7 +164,7 @@ export function CashflowPage() {
     if (!vatFilter.enabled || !vatSimulation?.series) return 0
     return vatSimulation.series.reduce(
       (acc, series) =>
-        acc + series.entries.filter((e) => e.net > 0).reduce((a, e) => a + e.net, 0),
+        acc + series.entries.filter((e) => Number(e.net) > 0).reduce((a, e) => a + Number(e.net), 0),
       0,
     )
   }, [vatFilter.enabled, vatSimulation])
