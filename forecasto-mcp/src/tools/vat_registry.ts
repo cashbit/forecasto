@@ -41,7 +41,7 @@ export function registerVatRegistryTools(
     async ({ registry_id }) => {
       const registry = await getClient().get(`/api/v1/vat-registries/${registry_id}`);
       const balances = await getClient().get(`/api/v1/vat-registries/${registry_id}/balances`);
-      const result = { ...registry, balances };
+      const result = { ...(registry as Record<string, unknown>), balances };
       return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
     },
   );
