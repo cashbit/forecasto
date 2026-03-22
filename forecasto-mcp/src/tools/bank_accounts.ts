@@ -27,6 +27,7 @@ export function registerBankAccountTools(
       currency: z.string().default("EUR").describe("Currency code (default: EUR)"),
       credit_limit: z.number().optional().describe("Credit limit for the account"),
       description: z.string().optional(),
+      settings: z.record(z.unknown()).optional().describe("Optional settings dict"),
     },
     async (body) => {
       const data = await getClient().post("/api/v1/bank-accounts", body);
@@ -44,6 +45,8 @@ export function registerBankAccountTools(
       currency: z.string().optional().describe("Currency code (e.g. EUR)"),
       credit_limit: z.number().optional().describe("Credit limit"),
       description: z.string().optional(),
+      is_active: z.boolean().optional().describe("Activate or deactivate the account"),
+      settings: z.record(z.unknown()).optional().describe("Optional settings dict"),
     },
     async ({ account_id, ...body }) => {
       const payload = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
@@ -133,9 +136,11 @@ export function registerBankAccountTools(
     {
       workspace_id: z.string().describe("Workspace UUID"),
       account_id: z.string().describe("Bank account UUID"),
+      from_date: z.string().optional().describe("Filter from date (YYYY-MM-DD)"),
+      to_date: z.string().optional().describe("Filter to date (YYYY-MM-DD)"),
     },
-    async ({ workspace_id, account_id }) => {
-      const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/bank-accounts/${account_id}/balances`);
+    async ({ workspace_id, account_id, from_date, to_date }) => {
+      const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/bank-accounts/${account_id}/balances`, { from_date, to_date });
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -146,13 +151,15 @@ export function registerBankAccountTools(
     {
       workspace_id: z.string().describe("Workspace UUID"),
       account_id: z.string().describe("Bank account UUID"),
-      date: z.string().describe("Snapshot date (YYYY-MM-DD)"),
+      balance_date: z.string().describe("Snapshot date (YYYY-MM-DD)"),
       balance: z.number().describe("Actual balance amount on that date"),
+      note: z.string().optional().describe("Optional note"),
+      source: z.string().optional().default("manual").describe("Source of the balance (default: manual)"),
     },
-    async ({ workspace_id, account_id, date, balance }) => {
+    async ({ workspace_id, account_id, balance_date, balance, note, source }) => {
       const data = await getClient().post(
         `/api/v1/workspaces/${workspace_id}/bank-accounts/${account_id}/balances`,
-        { date, balance },
+        { balance_date, balance, note, source },
       );
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
     },

@@ -17,34 +17,31 @@ export function registerCashflowTools(
         .array(z.enum(["actual", "orders", "prospect", "budget"]))
         .optional()
         .describe("Areas to include (default: all)"),
+      stages: z.array(z.enum(["0", "1"])).optional()
+        .describe("Filter by stage (0 or 1). Applies across all areas."),
+      area_stage: z.array(z.string()).optional()
+        .describe("Combined area:stage filters (e.g. ['actual:0', 'orders:1']). Overrides stages per area."),
+      sign_filter: z.enum(["in", "out", "all"]).optional()
+        .describe("Filter by cash flow direction"),
       group_by: z
         .enum(["day", "week", "month"])
         .optional()
-        .describe("Grouping period (default: month)"),
+        .describe("Grouping period (default: day)"),
       bank_account_id: z.string().optional().describe("Filter by bank account UUID"),
     },
-    async ({ workspace_id, from_date, to_date, areas, group_by, bank_account_id }) => {
-      const params: Record<string, string | undefined> = {
-        from_date,
-        to_date,
-        group_by,
-        bank_account_id,
-      };
-      if (areas && areas.length > 0) {
-        // FastAPI expects repeated query params for arrays
-        const url = new URL(`/api/v1/workspaces/${workspace_id}/cashflow`, "http://x");
-        for (const [k, v] of Object.entries(params)) {
-          if (v) url.searchParams.set(k, v);
-        }
-        for (const area of areas) {
-          url.searchParams.append("areas", area);
-        }
-        const data = await getClient().get(
-          `/api/v1/workspaces/${workspace_id}/cashflow?${url.searchParams.toString()}`,
-        );
-        return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
-      }
-      const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/cashflow`, params);
+    async ({ workspace_id, from_date, to_date, areas, stages, area_stage, sign_filter, group_by, bank_account_id }) => {
+      const url = new URL(`/api/v1/workspaces/${workspace_id}/cashflow`, "http://x");
+      url.searchParams.set("from_date", from_date);
+      url.searchParams.set("to_date", to_date);
+      if (group_by) url.searchParams.set("group_by", group_by);
+      if (bank_account_id) url.searchParams.set("bank_account_id", bank_account_id);
+      if (sign_filter) url.searchParams.set("sign_filter", sign_filter);
+      if (areas) for (const a of areas) url.searchParams.append("areas", a);
+      if (stages) for (const s of stages) url.searchParams.append("stages", s);
+      if (area_stage) for (const as_ of area_stage) url.searchParams.append("area_stage", as_);
+      const data = await getClient().get(
+        `/api/v1/workspaces/${workspace_id}/cashflow?${url.searchParams.toString()}`,
+      );
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -87,8 +84,10 @@ export function registerCashflowTools(
         .describe("VAT settlement period"),
       use_summer_extension: z.boolean().default(true)
         .describe("Quarterly: use summer extension (Q2 Sep 16 vs Aug 16)"),
+      area_stage: z.array(z.string()).optional()
+        .describe("Combined area:stage filters (e.g. ['actual:0', 'orders:1'])"),
     },
-    async ({ workspace_ids, from_date, to_date, period_type, use_summer_extension }) => {
+    async ({ workspace_ids, from_date, to_date, period_type, use_summer_extension, area_stage }) => {
       const url = new URL("/api/v1/cashflow/vat-simulation", "http://x");
       url.searchParams.set("from_date", from_date);
       url.searchParams.set("to_date", to_date);
@@ -97,6 +96,7 @@ export function registerCashflowTools(
       for (const wid of workspace_ids) {
         url.searchParams.append("workspace_ids", wid);
       }
+      if (area_stage) for (const as_ of area_stage) url.searchParams.append("area_stage", as_);
       const data = await getClient().get(`/api/v1/cashflow/vat-simulation?${url.searchParams.toString()}`);
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
     },

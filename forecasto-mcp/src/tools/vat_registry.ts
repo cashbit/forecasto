@@ -24,6 +24,7 @@ export function registerVatRegistryTools(
     {
       name: z.string().describe("Display name (e.g. 'TechMakers SRL')"),
       vat_number: z.string().describe("VAT number (e.g. 'IT01234567890')"),
+      bank_account_id: z.string().optional().describe("UUID of the bank account for VAT settlements"),
     },
     async (body) => {
       const data = await getClient().post("/api/v1/vat-registries", body);
@@ -78,6 +79,56 @@ export function registerVatRegistryTools(
     async ({ registry_id, balance_id }) => {
       await getClient().delete(`/api/v1/vat-registries/${registry_id}/balances/${balance_id}`);
       return { content: [{ type: "text" as const, text: "Balance deleted successfully." }] };
+    },
+  );
+
+  // ── Update VAT registry ─────────────────────────────────────
+  server.tool(
+    "update_vat_registry",
+    "Update name or VAT number of an existing VAT registry. Only include fields you want to change.",
+    {
+      registry_id: z.string().describe("VAT registry UUID"),
+      name: z.string().optional().describe("New display name"),
+      vat_number: z.string().optional().describe("New VAT number (e.g. 'IT01234567890')"),
+      bank_account_id: z.string().nullable().optional().describe("UUID of the bank account for VAT settlements (null to unlink)"),
+    },
+    async ({ registry_id, ...body }) => {
+      const payload = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
+      const data = await getClient().patch(`/api/v1/vat-registries/${registry_id}`, payload);
+      return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+    },
+  );
+
+  // ── Delete VAT registry ─────────────────────────────────────
+  server.tool(
+    "delete_vat_registry",
+    "Delete a VAT registry and all its balance entries. This action is irreversible.",
+    {
+      registry_id: z.string().describe("VAT registry UUID"),
+    },
+    async ({ registry_id }) => {
+      await getClient().delete(`/api/v1/vat-registries/${registry_id}`);
+      return { content: [{ type: "text" as const, text: "VAT registry deleted successfully." }] };
+    },
+  );
+
+  // ── Update VAT balance ──────────────────────────────────────
+  server.tool(
+    "update_vat_balance",
+    "Update an existing VAT balance entry (month, amount, or note). Only include fields you want to change.",
+    {
+      registry_id: z.string().describe("VAT registry UUID"),
+      balance_id: z.string().describe("Balance entry UUID"),
+      amount: z.number().optional().describe("Balance amount (positive = credit, negative = debit)"),
+      note: z.string().optional().describe("Optional note"),
+    },
+    async ({ registry_id, balance_id, amount, note }) => {
+      const payload = Object.fromEntries(Object.entries({ amount, note }).filter(([, v]) => v !== undefined));
+      const data = await getClient().patch(
+        `/api/v1/vat-registries/${registry_id}/balances/${balance_id}`,
+        payload,
+      );
+      return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
     },
   );
 }

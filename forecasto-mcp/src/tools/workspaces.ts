@@ -42,22 +42,23 @@ export function registerWorkspaceTools(
     {
       name: z.string().describe("Workspace name"),
       description: z.string().optional().describe("Optional description"),
+      settings: z.record(z.unknown()).optional().describe("Optional initial settings dict"),
     },
-    async ({ name, description }) => {
-      const data = await getClient().post("/api/v1/workspaces", { name, description });
+    async ({ name, description, settings }) => {
+      const data = await getClient().post("/api/v1/workspaces", { name, description, settings });
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
     },
   );
 
   server.tool(
     "update_workspace",
-    "Update workspace details such as name, description, currency, VAT number, or settings. Only include fields you want to change.",
+    "Update workspace details such as name, description, settings, VAT registry association, or archived status. Only include fields you want to change.",
     {
       workspace_id: z.string().describe("Workspace UUID"),
       name: z.string().optional().describe("New workspace name"),
       description: z.string().optional().describe("Workspace description"),
-      currency: z.string().optional().describe("Currency code (e.g. EUR, USD)"),
-      vat_number: z.string().optional().describe("VAT number / Partita IVA"),
+      is_archived: z.boolean().optional().describe("Archive or unarchive the workspace"),
+      vat_registry_id: z.string().nullable().optional().describe("UUID of the VAT registry to associate (null to unlink)"),
       settings: z.record(z.unknown()).optional().describe("Partial settings object to merge into workspace settings"),
     },
     async ({ workspace_id, ...body }) => {

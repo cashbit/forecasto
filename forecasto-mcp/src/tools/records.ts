@@ -50,14 +50,17 @@ export function registerRecordTools(
       date_end: z.string().optional().describe("End date filter (YYYY-MM-DD)"),
       sign: z.enum(["in", "out", "all"]).optional().describe("Filter by cash flow direction"),
       text_filter: z.string().optional().describe("Text search in account, reference, note"),
+      text_filter_field: z.enum(["account", "reference", "note", "owner", "transaction_id"]).optional().describe("Limit text search to a specific field (default: all fields)"),
       project_code: z.string().optional().describe("Filter by project code"),
       bank_account_id: z.string().optional().describe("Filter by bank account UUID"),
+      include_deleted: z.boolean().optional().default(false).describe("Include soft-deleted records (default false)"),
       limit: z.number().int().min(1).max(1000).default(200).describe("Max records per page (default 200)"),
       offset: z.number().int().min(0).default(0).describe("Pagination offset (default 0)"),
     },
-    async ({ workspace_id, area, date_start, date_end, sign, text_filter, project_code, bank_account_id, limit, offset }) => {
+    async ({ workspace_id, area, date_start, date_end, sign, text_filter, text_filter_field, project_code, bank_account_id, include_deleted, limit, offset }) => {
       const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/records`, {
-        area, date_start, date_end, sign, text_filter, project_code, bank_account_id,
+        area, date_start, date_end, sign, text_filter, text_filter_field, project_code, bank_account_id,
+        include_deleted: include_deleted ? "true" : undefined,
         limit: String(limit),
         offset: String(offset),
       }) as { records: RecordRow[]; total_records: number; has_more?: boolean };
@@ -104,6 +107,8 @@ export function registerRecordTools(
       nextaction: z.string().optional().describe("Next action description"),
       review_date: z.string().optional().describe("Review date (YYYY-MM-DD)"),
       vat_month: z.string().optional().describe("VAT month (YYYY-MM). Defaults to month of date_cashflow if not set"),
+      vat_deduction: z.number().min(0).max(100).default(100).describe("IVA deducibile % (default 100). Use <100 for partially deductible expenses."),
+      classification: z.record(z.unknown()).optional().describe("Optional JSON classification dict"),
     },
     async ({ workspace_id, ...body }) => {
       const data = await getClient().post(`/api/v1/workspaces/${workspace_id}/records`, body);
@@ -134,6 +139,8 @@ export function registerRecordTools(
       nextaction: z.string().optional(),
       review_date: z.string().optional().describe("YYYY-MM-DD"),
       vat_month: z.string().optional().describe("VAT month (YYYY-MM)"),
+      vat_deduction: z.number().min(0).max(100).optional().describe("IVA deducibile %"),
+      classification: z.record(z.unknown()).optional().describe("Optional JSON classification dict"),
     },
     async ({ workspace_id, record_id, ...body }) => {
       const payload = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
@@ -222,11 +229,15 @@ export function registerRecordTools(
         total: z.number().describe("Total amount (amount + vat)"),
         stage: STAGE,
         note: z.string().optional(),
+        transaction_id: z.string().optional(),
+        bank_account_id: z.string().optional(),
         project_code: z.string().optional(),
         owner: z.string().optional(),
         nextaction: z.string().optional(),
         review_date: z.string().optional().describe("YYYY-MM-DD"),
         vat_month: z.string().optional().describe("VAT month (YYYY-MM)"),
+        vat_deduction: z.number().min(0).max(100).optional().describe("IVA deducibile % (default 100)"),
+        classification: z.record(z.unknown()).optional(),
       })).describe("Array of records to create"),
     },
     async ({ workspace_id, records }) => {
@@ -240,13 +251,16 @@ export function registerRecordTools(
     "Get distinct values for a specific field across records in a workspace. Useful for autocomplete before creating/updating records (e.g. know existing account names, project codes, owners).",
     {
       workspace_id: z.string().describe("Workspace UUID"),
-      field: z.enum(["account", "project_code", "owner", "nextaction", "type"]).describe("Field to get distinct values for"),
+      field: z.enum(["account", "reference", "project_code", "owner", "nextaction"]).describe("Field to get distinct values for"),
       area: AREA.optional().describe("Filter by area"),
       sign: z.enum(["in", "out"]).optional().describe("Filter by cash flow direction"),
+      q: z.string().optional().describe("Search string for autocomplete filtering"),
+      limit: z.number().int().min(1).max(100).optional().default(20).describe("Max results (default 20)"),
+      account_filter: z.string().optional().describe("Filter reference values by specific account name"),
     },
-    async ({ workspace_id, field, area, sign }) => {
+    async ({ workspace_id, field, area, sign, q, limit, account_filter }) => {
       const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/records/field-values`, {
-        field, area, sign,
+        field, area, sign, q, limit: limit !== undefined ? String(limit) : undefined, account_filter,
       });
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
     },
@@ -299,6 +313,7 @@ export function registerRecordTools(
           date_offer: newDateOffer,
           amount: original.amount,
           vat: original.vat,
+          vat_deduction: original.vat_deduction,
           total: original.total,
           stage: original.stage,
           project_code: original.project_code,
@@ -369,6 +384,7 @@ export function registerRecordTools(
           date_offer: original.date_offer,
           amount: newAmount,
           vat: newVat,
+          vat_deduction: original.vat_deduction,
           total: newTotal,
           stage: original.stage,
           project_code: original.project_code,

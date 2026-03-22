@@ -12,9 +12,7 @@ compatibility: "Richiede il server MCP 'Forecasto APP' connesso in Claude.ai"
 ---
 # Forecasto — Guida Operativa per Claude
 
-> ⚡ Questa skill include gli schema completi di tutti i tool MCP.
-> **Non chiamare `tool_search` per Forecasto** — usa direttamente i tool qui documentati.
-> Eccezione: tool non elencati o errori di parametro inattesi → chiama tool_search per aggiornare.
+> ⚡ **Inizio sessione:** chiamare `ToolSearch` con query `"forecasto"` una sola volta per caricare le definizioni dei tool Forecasto APP (sono deferred nel system-reminder). Farlo come prima azione, prima di qualsiasi altro tool. Gli schema qui documentati rispecchiano la versione attiva del server MCP.
 
 ---
 
@@ -48,7 +46,8 @@ Forecasto organizza i dati in **4 aree** che rappresentano il ciclo di vita di o
 | `date_cashflow` | date | Data movimento previsto/effettivo (YYYY-MM-DD) |
 | `amount` | number | Imponibile **con segno** (− uscita, + entrata) |
 | `vat` | number | Aliquota % (es. `22.0` per 22%, `0.0` esente) |
-| `vat_deduction` | number | % detraibilità IVA — visibile in output, non impostabile via MCP |
+| `vat_deduction` | number | % detraibilità IVA — **impostabile via MCP** (default `100`). Usare `<100` per spese parzialmente deducibili |
+| `classification` | object | JSON libero per classificazioni custom — opzionale |
 | `vat_month` | string | Mese IVA (YYYY-MM) — default: mese di date_cashflow |
 | `total` | number | Imponibile + IVA, **stesso segno di amount** |
 | `stage` | string | `"0"` = da fare / `"1"` = completato |
@@ -134,6 +133,8 @@ date_start           — YYYY-MM-DD (filtra su date_cashflow)
 date_end             — YYYY-MM-DD (filtra su date_cashflow)
 sign                 — "in"|"out"|"all"
 text_filter          — ricerca libera in account, reference, note
+text_filter_field    — limita la ricerca a un campo specifico: "account"|"reference"|"note"|"owner"|"transaction_id"
+include_deleted      — boolean, default false — include record soft-deleted
 bank_account_id      — UUID conto
 project_code         — codice progetto
 limit                — default 200, max 1000
@@ -165,6 +166,8 @@ amount (req)         — imponibile con segno
 vat (req)            — aliquota % (default 0)
 total (req)          — imponibile + IVA (stesso segno di amount)
 stage (req)          — "0"|"1"
+vat_deduction        — % detraibilità IVA (default 100, usare <100 per spese parzialmente deducibili)
+classification       — oggetto JSON libero per classificazioni custom
 note
 transaction_id       — descrizione/codice testuale
 bank_account_id      — UUID conto
@@ -191,7 +194,10 @@ records (req)        — array di oggetti. Campi per oggetto:
   vat (req, default 0)
   total (req)
   stage (req)
+  vat_deduction        — % detraibilità IVA (default 100)
+  classification       — oggetto JSON libero
   note
+  transaction_id       — ora disponibile anche nel bulk
   project_code
   owner
   nextaction
@@ -199,7 +205,7 @@ records (req)        — array di oggetti. Campi per oggetto:
   vat_month          — YYYY-MM
 ```
 > Preferire sempre questo a più chiamate `create_record` in sequenza.
-> Nota: `transaction_id` e `bank_account_id` non sono disponibili nel bulk — usare `create_record` per i record che li richiedono.
+> Nota: `bank_account_id` non è disponibile nel bulk — usare `create_record` per i record che lo richiedono.
 
 ---
 
@@ -211,6 +217,8 @@ record_id (req)
   type, account, reference,
   date_cashflow, date_offer,
   amount, vat, total, stage,
+  vat_deduction,
+  classification,
   note, transaction_id,
   bank_account_id, project_code,
   owner, nextaction, review_date,
@@ -292,12 +300,16 @@ sign                 — "in"|"out"|"all"
 #### 16. `get_field_values`
 ```
 workspace_id (req)
-field (req)          — "account"|"project_code"|"owner"|"nextaction"|"type"
+field (req)          — "account"|"reference"|"project_code"|"owner"|"nextaction"
 area                 — filtra per area
 sign                 — "in"|"out"
+q                    — stringa di ricerca per autocomplete/filtering
+limit                — max risultati (default 20, max 100)
+account_filter       — filtra i valori `reference` per un account specifico
 ```
 Restituisce i valori distinti per quel campo.
-**Uso:** scoprire le categorie account, owner o type esistenti prima di creare record.
+**Uso:** scoprire le categorie account, owner o reference esistenti prima di creare record.
+> Nota: il campo `type` è stato rimosso dall'enum; usare `reference` per cercare clienti/fornitori per account.
 
 ---
 
@@ -334,16 +346,14 @@ group_by             — "day"|"week"|"month" (default "month")
 
 #### 19. `calculate_vat`
 ```
-source_workspace_ids (req)   — array UUID workspace sorgente
-target_workspace_id (req)    — UUID workspace dove creare i record IVA
+vat_registry_id (req)        — UUID del registro IVA (da list_workspaces → vat_registry_id)
 period_type (req)            — "monthly"|"quarterly"
-start_month (req)            — YYYY-MM
-end_month (req)              — YYYY-MM
-target_area                  — default "prospect"
+end_month                    — YYYY-MM (default: mese corrente)
 use_summer_extension         — solo trimestrale Q2: scadenza 16/9 invece 16/8 (default true)
 dry_run                      — true = solo preview senza creare record (default false)
 ```
-Crea record con `account='Erario'`, `reference='IVA DA VERSARE'`.
+> ⚠️ **Breaking change rispetto alla versione precedente**: non più `source_workspace_ids[]`, `target_workspace_id`, `start_month`, `target_area` — tutto ora è configurato nel registry.
+> I record vengono creati con `account='Erario'`, `reference='IVA DA VERSARE'`, `owner='ADMIN'`, `nextaction='VERIFICARE'`.
 > Usare sempre `dry_run=true` prima di confermare.
 
 ---
@@ -473,14 +483,22 @@ split_record(
 )
 ```
 
+### Calcolo IVA (nuovo flusso via registry)
+```
+vat_registry_id = workspace.vat_registry_id  (da list_workspaces)
+calculate_vat(vat_registry_id=UUID, period_type="monthly"|"quarterly", dry_run=true)
+→ verifica preview → dry_run=false per creare i record
+```
+
 ### Previsione liquidità 3 mesi
 ```
 get_cashflow(areas=["actual","orders"], group_by="month", from_date="[oggi]", to_date="[+3mesi]")
 ```
 
-### Scoprire categorie account usate nel workspace
+### Scoprire categorie account/reference usate nel workspace
 ```
 get_field_values(workspace_id=UUID, field="account")
+get_field_values(workspace_id=UUID, field="reference", account_filter="NOME ACCOUNT", q="ricerca")
 ```
 
 ### Riconciliare saldo bancario
