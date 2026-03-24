@@ -16,6 +16,7 @@ class BankAccountCreate(BaseModel):
     description: str | None = None
     currency: str = "EUR"
     credit_limit: Decimal = Decimal("0")
+    exclude_from_cashflow: bool = False
     settings: dict | None = None
 
 class BankAccountUpdate(BaseModel):
@@ -27,6 +28,7 @@ class BankAccountUpdate(BaseModel):
     currency: str | None = None
     credit_limit: Decimal | None = None
     is_active: bool | None = None
+    exclude_from_cashflow: bool | None = None
     settings: dict | None = None
 
 class BankAccountResponse(BaseModel):
@@ -40,6 +42,7 @@ class BankAccountResponse(BaseModel):
     currency: str
     credit_limit: Decimal
     is_active: bool
+    exclude_from_cashflow: bool
     settings: dict
     created_at: datetime
     updated_at: datetime

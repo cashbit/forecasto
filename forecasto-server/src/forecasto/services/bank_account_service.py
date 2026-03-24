@@ -47,6 +47,7 @@ class BankAccountService:
             description=data.description,
             currency=data.currency,
             credit_limit=data.credit_limit,
+            exclude_from_cashflow=data.exclude_from_cashflow,
             settings=data.settings or {"color": "#1E88E5", "icon": "bank", "show_in_cashflow": True},
         )
         self.db.add(account)

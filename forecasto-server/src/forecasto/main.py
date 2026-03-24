@@ -39,7 +39,7 @@ async def seed_default_admin():
         result = await db.execute(
             select(User).where(User.is_admin == True)  # noqa: E712
         )
-        existing_admin = result.scalar_one_or_none()
+        existing_admin = result.scalars().first()
 
         if not existing_admin:
             # Create default admin

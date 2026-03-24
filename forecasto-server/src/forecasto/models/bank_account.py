@@ -31,6 +31,7 @@ class BankAccount(Base, UUIDMixin, TimestampMixin):
     currency: Mapped[str] = mapped_column(String(3), default="EUR")
     credit_limit: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    exclude_from_cashflow: Mapped[bool] = mapped_column(Boolean, default=False)
     settings: Mapped[dict] = mapped_column(
         JSON,
         default=lambda: {"color": "#1E88E5", "icon": "bank", "show_in_cashflow": True},

@@ -76,6 +76,7 @@ export interface BankAccount {
   currency: string
   credit_limit: number
   is_active: boolean
+  exclude_from_cashflow: boolean
   settings: Record<string, unknown>
   created_at: string
   updated_at: string
@@ -104,6 +105,7 @@ export interface BankAccountCreate {
   description?: string
   currency?: string
   credit_limit?: number
+  exclude_from_cashflow?: boolean
   settings?: Record<string, unknown>
 }
 
@@ -114,6 +116,7 @@ export interface BankAccountUpdate {
   currency?: string
   credit_limit?: number
   is_active?: boolean
+  exclude_from_cashflow?: boolean
   settings?: Record<string, unknown>
 }
 

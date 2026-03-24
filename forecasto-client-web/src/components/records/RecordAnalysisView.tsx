@@ -9,12 +9,15 @@ import { RecordListDialog } from '@/components/records/RecordListDialog'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useAuthStore } from '@/stores/authStore'
 import { authApi } from '@/api/auth'
+import { vatRegistryApi } from '@/api/vatRegistry'
+import { useQuery } from '@tanstack/react-query'
 import { toast } from '@/hooks/useToast'
 import { AREA_LABELS } from '@/lib/constants'
 import type { Record } from '@/types/record'
 
 type Dimension = 'account' | 'reference' | 'project' | 'yearmonth' | 'year' | 'bank' | 'owner' | 'area' | 'workspace'
 type DateField = 'date_cashflow' | 'date_offer'
+type ValueField = 'total' | 'amount'
 
 const DIMENSION_LABELS: Record<Dimension, string> = {
   account: 'Conto',
@@ -71,6 +74,7 @@ function buildPivot(
   rowDim: Dimension,
   colDim: Dimension,
   dateField: DateField,
+  valueField: ValueField,
   workspaceMap: Map<string, string>,
 ): PivotResult {
   const cells = new Map<string, Map<string, number>>()
@@ -86,7 +90,7 @@ function buildPivot(
   for (const record of records) {
     const rowKey = getKey(record, rowDim, dateField, workspaceMap)
     const colKey = getKey(record, colDim, dateField, workspaceMap)
-    const value = parseFloat(record.total || '0')
+    const value = parseFloat(record[valueField] || '0')
 
     rowKeySet.add(rowKey)
     colKeySet.add(colKey)
@@ -128,12 +132,17 @@ function buildPivot(
 export function RecordAnalysisView({ records, isLoading, onToggleAnalysis }: RecordAnalysisViewProps) {
   const workspaces = useWorkspaceStore(state => state.workspaces)
   const { user, fetchUser } = useAuthStore()
+  const { data: vatRegistries = [] } = useQuery({
+    queryKey: ['vat-registries'],
+    queryFn: vatRegistryApi.list,
+  })
 
-  const savedPrefs = user?.ui_preferences?.pivot_analysis as { rowDim?: Dimension; colDim?: Dimension; dateField?: DateField } | undefined
+  const savedPrefs = user?.ui_preferences?.pivot_analysis as { rowDim?: Dimension; colDim?: Dimension; dateField?: DateField; valueField?: ValueField } | undefined
 
   const [rowDim, setRowDim] = useState<Dimension>(savedPrefs?.rowDim ?? 'account')
   const [colDim, setColDim] = useState<Dimension>(savedPrefs?.colDim ?? 'yearmonth')
   const [dateField, setDateField] = useState<DateField>(savedPrefs?.dateField ?? 'date_cashflow')
+  const [valueField, setValueField] = useState<ValueField>(savedPrefs?.valueField ?? 'total')
   const [isSaving, setIsSaving] = useState(false)
 
   const [drillTitle, setDrillTitle] = useState('')
@@ -145,7 +154,7 @@ export function RecordAnalysisView({ records, isLoading, onToggleAnalysis }: Rec
     try {
       const currentPrefs = (user?.ui_preferences ?? {}) as Record<string, unknown>
       await authApi.updateProfile({
-        ui_preferences: { ...currentPrefs, pivot_analysis: { rowDim, colDim, dateField } },
+        ui_preferences: { ...currentPrefs, pivot_analysis: { rowDim, colDim, dateField, valueField } },
       })
       await fetchUser()
       toast({ title: 'Impostazioni memorizzate', variant: 'success' })
@@ -157,19 +166,19 @@ export function RecordAnalysisView({ records, isLoading, onToggleAnalysis }: Rec
   }
 
   const workspaceMap = useMemo(() => {
+    const registryMap = new Map(vatRegistries.map(r => [r.id, r.vat_number]))
     const m = new Map<string, string>()
     for (const ws of workspaces) {
-      const label = ws.settings?.vat_number
-        ? `${ws.name} (${ws.settings.vat_number})`
-        : ws.name
+      const vatNum = ws.vat_registry_id ? registryMap.get(ws.vat_registry_id) : undefined
+      const label = vatNum ? `${ws.name} (${vatNum})` : ws.name
       m.set(ws.id, label)
     }
     return m
-  }, [workspaces])
+  }, [workspaces, vatRegistries])
 
   const pivot = useMemo(
-    () => buildPivot(records, rowDim, colDim, dateField, workspaceMap),
-    [records, rowDim, colDim, dateField, workspaceMap],
+    () => buildPivot(records, rowDim, colDim, dateField, valueField, workspaceMap),
+    [records, rowDim, colDim, dateField, valueField, workspaceMap],
   )
 
   function openDrill(title: string, recs: Record[]) {
@@ -233,6 +242,26 @@ export function RecordAnalysisView({ records, isLoading, onToggleAnalysis }: Rec
             onClick={() => setDateField('date_offer')}
           >
             Ordine
+          </Button>
+        </div>
+
+        <span className="text-sm text-muted-foreground">Valori:</span>
+        <div className="flex gap-1">
+          <Button
+            variant={valueField === 'amount' ? 'default' : 'outline'}
+            size="sm"
+            className="h-8 px-2 text-xs"
+            onClick={() => setValueField('amount')}
+          >
+            Imponibile
+          </Button>
+          <Button
+            variant={valueField === 'total' ? 'default' : 'outline'}
+            size="sm"
+            className="h-8 px-2 text-xs"
+            onClick={() => setValueField('total')}
+          >
+            Totale
           </Button>
         </div>
 
@@ -368,6 +397,7 @@ export function RecordAnalysisView({ records, isLoading, onToggleAnalysis }: Rec
         open={drillOpen}
         title={drillTitle}
         records={drillRecords}
+        valueField={valueField}
         onClose={() => setDrillOpen(false)}
       />
     </div>

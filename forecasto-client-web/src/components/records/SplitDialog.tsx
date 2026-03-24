@@ -43,6 +43,7 @@ type IntervalUnit = 'days' | 'weeks' | 'months'
 export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split' }: SplitDialogProps) {
   const isClone = mode === 'clone'
   const [numInstallments, setNumInstallments] = useState(2)
+  const [numInstallmentsInput, setNumInstallmentsInput] = useState('2')
   const [intervalValue, setIntervalValue] = useState(1)
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('months')
   const [installments, setInstallments] = useState<Installment[]>([])
@@ -210,25 +211,32 @@ export function SplitDialog({ record, open, onOpenChange, onSplit, mode = 'split
                   type="button"
                   variant="outline"
                   size="icon"
-                  onClick={() => setNumInstallments(Math.max(2, numInstallments - 1))}
+                  onClick={() => { const v = Math.max(2, numInstallments - 1); setNumInstallments(v); setNumInstallmentsInput(String(v)) }}
                   disabled={numInstallments <= 2}
                 >
                   <Minus className="h-4 w-4" />
                 </Button>
                 <Input
-                  type="number"
-                  min={2}
-                  max={24}
-                  value={numInstallments}
-                  onChange={(e) => setNumInstallments(Math.max(2, Math.min(24, parseInt(e.target.value) || 2)))}
+                  type="text"
+                  inputMode="numeric"
+                  value={numInstallmentsInput}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, '')
+                    setNumInstallmentsInput(raw)
+                    const parsed = parseInt(raw)
+                    if (!isNaN(parsed) && parsed >= 2) setNumInstallments(parsed)
+                  }}
+                  onBlur={() => {
+                    if (numInstallments < 2) setNumInstallments(2)
+                    setNumInstallmentsInput(String(numInstallments))
+                  }}
                   className="text-center"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
-                  onClick={() => setNumInstallments(Math.min(24, numInstallments + 1))}
-                  disabled={numInstallments >= 24}
+                  onClick={() => { const v = numInstallments + 1; setNumInstallments(v); setNumInstallmentsInput(String(v)) }}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>

@@ -26,6 +26,7 @@ export function registerBankAccountTools(
       bank_name: z.string().optional().describe("Bank name"),
       currency: z.string().default("EUR").describe("Currency code (default: EUR)"),
       credit_limit: z.number().optional().describe("Credit limit for the account"),
+      exclude_from_cashflow: z.boolean().optional().default(false).describe("Exclude this account from cashflow calculations"),
       description: z.string().optional(),
       settings: z.record(z.unknown()).optional().describe("Optional settings dict"),
     },
@@ -46,6 +47,7 @@ export function registerBankAccountTools(
       credit_limit: z.number().optional().describe("Credit limit"),
       description: z.string().optional(),
       is_active: z.boolean().optional().describe("Activate or deactivate the account"),
+      exclude_from_cashflow: z.boolean().optional().describe("Exclude this account from cashflow calculations"),
       settings: z.record(z.unknown()).optional().describe("Optional settings dict"),
     },
     async ({ account_id, ...body }) => {

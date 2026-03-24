@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
@@ -25,6 +26,7 @@ interface AccountFormData {
   description: string
   currency: string
   credit_limit: string
+  exclude_from_cashflow: boolean
 }
 
 export function BankAccountsTab() {
@@ -39,6 +41,7 @@ export function BankAccountsTab() {
       description: '',
       currency: 'EUR',
       credit_limit: '0',
+      exclude_from_cashflow: false,
     },
   })
 
@@ -50,6 +53,7 @@ export function BankAccountsTab() {
       description: '',
       currency: 'EUR',
       credit_limit: '0',
+      exclude_from_cashflow: false,
     })
     setDialogOpen(true)
   }
@@ -62,6 +66,7 @@ export function BankAccountsTab() {
       description: account.description || '',
       currency: account.currency,
       credit_limit: String(account.credit_limit || 0),
+      exclude_from_cashflow: account.exclude_from_cashflow,
     })
     setDialogOpen(true)
   }
@@ -75,6 +80,7 @@ export function BankAccountsTab() {
           description: data.description || undefined,
           currency: data.currency,
           credit_limit: parseFloat(data.credit_limit) || 0,
+          exclude_from_cashflow: data.exclude_from_cashflow,
         }
         await updateAccount(editingAccount.id, updateData)
         toast({ title: 'Conto aggiornato', variant: 'success' })
@@ -85,6 +91,7 @@ export function BankAccountsTab() {
           description: data.description || undefined,
           currency: data.currency,
           credit_limit: parseFloat(data.credit_limit) || 0,
+          exclude_from_cashflow: data.exclude_from_cashflow,
         }
         await createAccount(createData)
         toast({ title: 'Conto creato', variant: 'success' })
@@ -161,6 +168,9 @@ export function BankAccountsTab() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Badge variant="outline">{account.currency}</Badge>
+                    {account.exclude_from_cashflow && (
+                      <Badge variant="outline" className="text-muted-foreground">No cashflow</Badge>
+                    )}
                     {account.credit_limit > 0 && (
                       <Badge variant="secondary">Fido: {account.credit_limit.toLocaleString()}</Badge>
                     )}
@@ -268,6 +278,16 @@ export function BankAccountsTab() {
                   {...form.register('credit_limit')}
                 />
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="exclude-from-cashflow"
+                checked={form.watch('exclude_from_cashflow')}
+                onCheckedChange={(checked) => form.setValue('exclude_from_cashflow', !!checked)}
+              />
+              <Label htmlFor="exclude-from-cashflow" className="text-sm font-normal">
+                Escludi dal cashflow
+              </Label>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { LogOut, Settings, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy, ArrowUpDown, FileJson, Calculator } from 'lucide-react'
 import logoIcon from '@/assets/logo-icon.png'
 import logoText from '@/assets/logo-text.png'
@@ -21,7 +21,7 @@ import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { workspacesApi } from '@/api/workspaces'
 import { recordsApi } from '@/api/records'
 import { toast } from '@/hooks/useToast'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ImportDialog } from '@/components/records/ImportDialog'
 import { SdiImportDialog } from '@/components/records/SdiImportDialog'
 import { ExcelImportDialog } from '@/components/records/ExcelImportDialog'
@@ -32,6 +32,7 @@ import type { PendingInvitation, WorkspaceMember } from '@/types/workspace'
 import type { Area } from '@/types/record'
 import { canImport, canImportSdi, canExport } from '@/lib/permissions'
 import { useTourContext } from '@/components/tour/TourProvider'
+import { vatRegistryApi } from '@/api/vatRegistry'
 
 export function Header() {
   const { startTour } = useTourContext()
@@ -53,6 +54,15 @@ export function Header() {
   const primaryWorkspace = getPrimaryWorkspace()
   const canImportExport = selectedWorkspaceIds.length === 1 && primaryWorkspace
   const currentMember = workspaces.find(w => w.id === primaryWorkspace?.id) as WorkspaceMember | undefined
+
+  const { data: vatRegistries = [] } = useQuery({
+    queryKey: ['vat-registries'],
+    queryFn: vatRegistryApi.list,
+  })
+  const workspaceVatNumber = useMemo(() => {
+    if (!primaryWorkspace?.vat_registry_id) return ''
+    return vatRegistries.find(r => r.id === primaryWorkspace.vat_registry_id)?.vat_number || ''
+  }, [primaryWorkspace?.vat_registry_id, vatRegistries])
 
   useEffect(() => {
     loadInvitations()
@@ -491,7 +501,7 @@ export function Header() {
           onOpenChange={setShowSdiImportDialog}
           workspaceId={primaryWorkspace.id}
           workspaceName={primaryWorkspace.name}
-          workspaceVatNumber={primaryWorkspace.settings?.vat_number || ''}
+          workspaceVatNumber={workspaceVatNumber}
           workspaceSettings={primaryWorkspace.settings as Record<string, unknown> || {}}
           onImportComplete={() => {
             queryClient.invalidateQueries({ queryKey: ['records'] })

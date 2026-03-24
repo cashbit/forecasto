@@ -107,16 +107,10 @@ export function SettingsPage() {
     if (!primaryWorkspace) return
     setIsLoading(true)
     try {
-      // Find the selected registry to keep settings.vat_number in sync for SDI
-      const selectedRegistry = vatRegistries.find(r => r.id === selectedVatRegistryId)
       await updateWorkspace(primaryWorkspace.id, {
         name: data.name,
         description: data.description,
         vat_registry_id: selectedVatRegistryId || null,
-        settings: {
-          ...primaryWorkspace.settings,
-          vat_number: selectedRegistry?.vat_number || undefined,
-        },
       })
       toast({ title: 'Workspace aggiornato', variant: 'success' })
     } catch {

@@ -225,6 +225,7 @@ class CashflowService:
                 select(BankAccount).where(
                     BankAccount.id == bank_account_id,
                     BankAccount.is_active == True,  # noqa: E712
+                    BankAccount.exclude_from_cashflow == False,  # noqa: E712
                 )
             )
             accounts = list(result.scalars().all())
@@ -236,6 +237,7 @@ class CashflowService:
                 .where(
                     workspace_bank_accounts.c.workspace_id == workspace_id,
                     BankAccount.is_active == True,  # noqa: E712
+                    BankAccount.exclude_from_cashflow == False,  # noqa: E712
                 )
             )
             accounts = list(result.scalars().all())
@@ -399,10 +401,14 @@ class CashflowService:
 
         Returns a dict keyed by balance_date → list of snapshots (one per account).
         """
-        # Get all account IDs linked to this workspace via junction table
+        # Get all account IDs linked to this workspace via junction table (excluding cashflow-excluded)
         acct_result = await self.db.execute(
             select(workspace_bank_accounts.c.bank_account_id)
-            .where(workspace_bank_accounts.c.workspace_id == workspace_id)
+            .join(BankAccount, BankAccount.id == workspace_bank_accounts.c.bank_account_id)
+            .where(
+                workspace_bank_accounts.c.workspace_id == workspace_id,
+                BankAccount.exclude_from_cashflow == False,  # noqa: E712
+            )
         )
         account_ids = [row[0] for row in acct_result.all()]
         if not account_ids:

@@ -13,10 +13,11 @@ interface RecordListDialogProps {
   open: boolean
   title: string
   records: Record[]
+  valueField?: 'total' | 'amount'
   onClose: () => void
 }
 
-export function RecordListDialog({ open, title, records, onClose }: RecordListDialogProps) {
+export function RecordListDialog({ open, title, records, valueField = 'total', onClose }: RecordListDialogProps) {
   const queryClient = useQueryClient()
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
@@ -34,7 +35,7 @@ export function RecordListDialog({ open, title, records, onClose }: RecordListDi
   if (!open) return null
 
   const sorted = [...records].sort((a, b) => a.date_cashflow.localeCompare(b.date_cashflow))
-  const grandTotal = sorted.reduce((sum, r) => sum + parseFloat(r.total || '0'), 0)
+  const grandTotal = sorted.reduce((sum, r) => sum + parseFloat(r[valueField] || '0'), 0)
 
   return (
     <div className="fixed inset-y-0 right-0 z-50 flex">
@@ -104,7 +105,7 @@ export function RecordListDialog({ open, title, records, onClose }: RecordListDi
                         <p className="text-xs font-medium truncate">{record.account}</p>
                         <p className="text-xs text-muted-foreground truncate">{record.reference}</p>
                       </div>
-                      <AmountDisplay amount={parseFloat(record.total || '0')} className="text-xs font-medium shrink-0" />
+                      <AmountDisplay amount={parseFloat(record[valueField] || '0')} className="text-xs font-medium shrink-0" />
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-muted-foreground">
@@ -124,7 +125,7 @@ export function RecordListDialog({ open, title, records, onClose }: RecordListDi
               <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/30 flex-shrink-0 text-sm">
                 <span className="text-muted-foreground">{sorted.length} record</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">Totale:</span>
+                  <span className="text-muted-foreground">{valueField === 'amount' ? 'Imponibile:' : 'Totale:'}</span>
                   <AmountDisplay amount={grandTotal} className="font-semibold" />
                 </div>
               </div>

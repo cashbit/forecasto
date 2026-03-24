@@ -17,12 +17,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useUiStore } from '@/stores/uiStore'
 import { toast } from '@/hooks/useToast'
 import { bankAccountsApi } from '@/api/bank-accounts'
 import { recordsApi } from '@/api/records'
 import { workspacesApi } from '@/api/workspaces'
+import { vatRegistryApi } from '@/api/vatRegistry'
+import { useQuery } from '@tanstack/react-query'
 import { useFilterStore } from '@/stores/filterStore'
 import type { RecordCreate, Area } from '@/types/record'
 import demoRecords from '@/data/workspacedemo.json'
@@ -56,6 +59,11 @@ export function CreateWorkspaceDialog() {
   const queryClient = useQueryClient()
   const [isLoading, setIsLoading] = useState(false)
   const [loadDemo, setLoadDemo] = useState(false)
+  const [selectedVatRegistryId, setSelectedVatRegistryId] = useState('')
+  const { data: vatRegistries = [] } = useQuery({
+    queryKey: ['vat-registries'],
+    queryFn: vatRegistryApi.list,
+  })
 
   const {
     register,
@@ -72,6 +80,11 @@ export function CreateWorkspaceDialog() {
     try {
       const workspace = await createWorkspace(data.name, data.description)
       if (!workspace) throw new Error('Workspace non creato')
+
+      // Associate vat_registry if selected
+      if (selectedVatRegistryId) {
+        await updateWorkspace(workspace.id, { vat_registry_id: selectedVatRegistryId })
+      }
 
       if (loadDemo) {
         // 1. Compute year offset
@@ -107,11 +120,13 @@ export function CreateWorkspaceDialog() {
           note: 'Saldo iniziale demo',
         })
 
-        // 7. Set workspace vat_number in settings
-        await workspacesApi.update(workspace.id, {
-          settings: { vat_number: setup.VATID },
-        })
-        await updateWorkspace(workspace.id, { settings: { vat_number: setup.VATID } })
+        // 7. Find or create vat_registry for demo P.IVA and associate to workspace
+        let demoRegistry = vatRegistries.find(r => r.vat_number === setup.VATID)
+        if (!demoRegistry) {
+          demoRegistry = await vatRegistryApi.create({ name: data.name, vat_number: setup.VATID })
+          queryClient.invalidateQueries({ queryKey: ['vat-registries'] })
+        }
+        await updateWorkspace(workspace.id, { vat_registry_id: demoRegistry.id })
 
         // 8. Build RecordCreate array
         const records: RecordCreate[] = shifted.map(r => ({
@@ -156,6 +171,7 @@ export function CreateWorkspaceDialog() {
 
       reset()
       setLoadDemo(false)
+      setSelectedVatRegistryId('')
       setCreateWorkspaceDialogOpen(false)
 
       // Refetch records after dialog closes so DashboardPage is active
@@ -182,6 +198,7 @@ export function CreateWorkspaceDialog() {
   const handleClose = () => {
     reset()
     setLoadDemo(false)
+    setSelectedVatRegistryId('')
     setCreateWorkspaceDialogOpen(false)
   }
 
@@ -217,6 +234,25 @@ export function CreateWorkspaceDialog() {
               {errors.description && (
                 <p className="text-sm text-destructive">{errors.description.message}</p>
               )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vat-registry">Partita IVA (opzionale)</Label>
+              <Select
+                value={selectedVatRegistryId || '__none__'}
+                onValueChange={(v) => setSelectedVatRegistryId(v === '__none__' ? '' : v)}
+              >
+                <SelectTrigger id="vat-registry">
+                  <SelectValue placeholder="Nessuna" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Nessuna</SelectItem>
+                  {vatRegistries.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name} ({r.vat_number})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex items-center gap-2 rounded-md border p-3 bg-muted/30">
               <Checkbox

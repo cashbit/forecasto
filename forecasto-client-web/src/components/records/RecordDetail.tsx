@@ -90,7 +90,14 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">IVA</p>
-            <p className="text-lg font-medium">{parseFloat(record.vat || '0').toFixed(0)}%</p>
+            <p className="text-lg font-medium">
+              {(() => {
+                const a = Math.abs(parseFloat(record.amount || '0'))
+                const t = Math.abs(parseFloat(record.total || '0'))
+                if (a <= 0) return '0'
+                return (((t - a) / a) * 100).toFixed(0)
+              })()}%
+            </p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Detraz. IVA</p>
