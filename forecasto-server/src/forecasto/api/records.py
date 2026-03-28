@@ -23,6 +23,7 @@ from forecasto.schemas.record import (
     RecordResponse,
     RecordUpdate,
 )
+from forecasto.services.event_bus import event_bus
 from forecasto.services.record_service import RecordService
 
 router = APIRouter()
@@ -157,6 +158,8 @@ async def create_record(
     )
     record = result.scalar_one()
 
+    await event_bus.publish("records_changed", workspace_id, {"action": "create"})
+
     return {
         "success": True,
         "record": _record_to_response(record),
@@ -202,6 +205,8 @@ async def bulk_import_records(
         .where(RecordModel.id.in_(created_ids))
     )
     created = list(result.scalars().all())
+
+    await event_bus.publish("records_changed", workspace_id, {"action": "bulk_create"})
 
     return {
         "success": True,
@@ -249,6 +254,8 @@ async def bulk_import_sdi_records(
         .where(RecordModel.id.in_(created_ids))
     )
     created = list(result.scalars().all())
+
+    await event_bus.publish("records_changed", workspace_id, {"action": "bulk_create"})
 
     return {
         "success": True,
@@ -298,6 +305,8 @@ async def update_record(
     # Pass member for granular permission check
     record = await service.update_record(record, data, current_user, member=member)
 
+    await event_bus.publish("records_changed", workspace_id, {"action": "update"})
+
     return {"success": True, "record": _record_to_response(record)}
 
 @router.delete("/{workspace_id}/records/{record_id}", response_model=dict)
@@ -320,6 +329,8 @@ async def delete_record(
 
     # Pass member for granular permission check
     await service.delete_record(record, current_user, member=member)
+
+    await event_bus.publish("records_changed", workspace_id, {"action": "delete"})
 
     return {"success": True, "message": "Record deleted"}
 
@@ -354,6 +365,8 @@ async def restore_record(
 
     check_area_permission(member, record.area, "write")
     record = await service.restore_record(record, current_user, member=member)
+
+    await event_bus.publish("records_changed", workspace_id, {"action": "restore"})
 
     return {"success": True, "record": _record_to_response(record)}
 

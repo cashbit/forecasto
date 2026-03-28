@@ -16,6 +16,7 @@ from forecasto.api import (
     auth,
     bank_accounts,
     cashflow,
+    events,
     oauth,
     partner,
     records,
@@ -115,6 +116,7 @@ app.include_router(vat.router, prefix="/api/v1", tags=["VAT"])
 app.include_router(vat_registry.router, prefix="/api/v1", tags=["VAT Registry"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(partner.router, prefix="/api/v1/partner", tags=["Partner"])
+app.include_router(events.router, prefix="/api/v1", tags=["Events"])
 app.include_router(oauth.router, prefix="/oauth", tags=["OAuth"])
 
 @app.get("/health")

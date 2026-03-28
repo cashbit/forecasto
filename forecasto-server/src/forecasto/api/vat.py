@@ -11,6 +11,7 @@ from forecasto.database import get_db
 from forecasto.dependencies import get_current_user
 from forecasto.models.user import User
 from forecasto.schemas.vat import VatCalculationRequest, VatCalculationResponse
+from forecasto.services.event_bus import event_bus
 from forecasto.services.vat_service import VatService
 
 router = APIRouter()
@@ -29,4 +30,8 @@ async def calculate_vat(
     per-area settlement with global credit carry-forward.
     """
     service = VatService(db)
-    return await service.calculate(data, current_user, dry_run=dry_run)
+    result = await service.calculate(data, current_user, dry_run=dry_run)
+    if not dry_run:
+        await event_bus.publish("vat_changed", data={"action": "calculate"})
+        await event_bus.publish("records_changed", data={"action": "vat_settlement"})
+    return result

@@ -18,6 +18,7 @@ from forecasto.schemas.vat_registry import (
     VatRegistryResponse,
     VatRegistryUpdate,
 )
+from forecasto.services.event_bus import event_bus
 from forecasto.services.vat_registry_service import VatRegistryService
 
 router = APIRouter()
@@ -46,6 +47,7 @@ async def create_registry(
     service = VatRegistryService(db)
     registry = await service.create_registry(data, current_user)
     await db.commit()
+    await event_bus.publish("vat_changed", data={"action": "registry_create"})
     return registry
 
 
@@ -71,6 +73,7 @@ async def update_registry(
     service = VatRegistryService(db)
     registry = await service.update_registry(registry_id, data, current_user)
     await db.commit()
+    await event_bus.publish("vat_changed", data={"action": "registry_update"})
     return registry
 
 
@@ -84,6 +87,7 @@ async def delete_registry(
     service = VatRegistryService(db)
     await service.delete_registry(registry_id, current_user)
     await db.commit()
+    await event_bus.publish("vat_changed", data={"action": "registry_delete"})
 
 
 # ── Balance CRUD ───────────────────────────────────────────────────────
@@ -117,6 +121,7 @@ async def create_balance(
     service = VatRegistryService(db)
     balance = await service.create_balance(registry_id, data, current_user)
     await db.commit()
+    await event_bus.publish("vat_changed", data={"action": "balance_create"})
     return balance
 
 
@@ -135,6 +140,7 @@ async def update_balance(
     service = VatRegistryService(db)
     balance = await service.update_balance(registry_id, balance_id, data, current_user)
     await db.commit()
+    await event_bus.publish("vat_changed", data={"action": "balance_update"})
     return balance
 
 
@@ -152,3 +158,4 @@ async def delete_balance(
     service = VatRegistryService(db)
     await service.delete_balance(registry_id, balance_id, current_user)
     await db.commit()
+    await event_bus.publish("vat_changed", data={"action": "balance_delete"})

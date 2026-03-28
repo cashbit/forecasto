@@ -17,6 +17,7 @@ from forecasto.dependencies import (
 from forecasto.models.user import User
 from forecasto.models.workspace import Workspace, WorkspaceMember
 from forecasto.schemas.record import TransferRequest, TransferResponse
+from forecasto.services.event_bus import event_bus
 from forecasto.services.record_service import RecordService
 from forecasto.services.transfer_service import TransferService
 
@@ -53,6 +54,8 @@ async def transfer_record(
 
     # Use Pydantic auto-mapping
     record_response = RecordResponse.model_validate(record)
+
+    await event_bus.publish("records_changed", workspace_id, {"action": "transfer"})
 
     return TransferResponse(
         record=record_response,

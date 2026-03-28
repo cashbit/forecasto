@@ -22,6 +22,7 @@ from forecasto.schemas.bank_account import (
     BankAccountUpdate,
 )
 from forecasto.services.bank_account_service import BankAccountService
+from forecasto.services.event_bus import event_bus
 
 # User-level router (mounted at /api/v1/bank-accounts)
 user_router = APIRouter()
@@ -57,6 +58,7 @@ async def create_bank_account(
     account = await service.create_account(current_user.id, data)
     await db.flush()
     await db.refresh(account)
+    await event_bus.publish("bank_accounts_changed", data={"action": "create"})
     return {"success": True, "bank_account": BankAccountResponse.model_validate(account)}
 
 @user_router.patch("/{account_id}", response_model=dict)
@@ -72,6 +74,7 @@ async def update_bank_account(
     if account.owner_id != current_user.id:
         raise ForbiddenException("You can only update your own bank accounts")
     account = await service.update_account(account, data)
+    await event_bus.publish("bank_accounts_changed", data={"action": "update"})
     return {"success": True, "bank_account": BankAccountResponse.model_validate(account)}
 
 
@@ -122,6 +125,7 @@ async def set_workspace_bank_account(
         raise ForbiddenException("You can only associate your own bank accounts")
 
     account = await service.set_workspace_account(workspace_id, account_id)
+    await event_bus.publish("bank_accounts_changed", workspace_id, {"action": "set_primary"})
     return {
         "success": True,
         "bank_account": BankAccountResponse.model_validate(account),
@@ -244,6 +248,7 @@ async def add_balance(
     balance = await service.add_balance(account, data, current_user)
     await db.flush()
     await db.refresh(balance)
+    await event_bus.publish("cashflow_changed", workspace_id, {"action": "balance_add"})
     return {"success": True, "balance": BalanceResponse.model_validate(balance)}
 
 @router.delete(
@@ -264,4 +269,5 @@ async def delete_balance(
     _require_workspace_owner(member)
     service = BankAccountService(db)
     await service.delete_balance(balance_id, account_id)
+    await event_bus.publish("cashflow_changed", workspace_id, {"action": "balance_delete"})
     return {"success": True}
