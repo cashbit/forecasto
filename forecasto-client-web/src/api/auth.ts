@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { LoginRequest, LoginResponse, RegisterRequest, RefreshTokenRequest, RefreshTokenResponse, ResetPasswordByCodeRequest, User } from '@/types/auth'
+import type { LoginRequest, LoginResponse, RegisterRequest, RefreshTokenRequest, RefreshTokenResponse, ResetPasswordByCodeRequest, User, DeleteAccountPrecheck } from '@/types/auth'
 
 export const authApi = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
@@ -37,5 +37,28 @@ export const authApi = {
 
   resetPasswordByCode: async (data: ResetPasswordByCodeRequest): Promise<void> => {
     await apiClient.post('/auth/reset-password/by-code', data)
+  },
+
+  verifyPassword: async (password: string): Promise<void> => {
+    await apiClient.post('/users/me/verify-password', { current_password: password, new_password: password })
+  },
+
+  deletionPrecheck: async (): Promise<DeleteAccountPrecheck> => {
+    const response = await apiClient.get<DeleteAccountPrecheck>('/users/me/deletion-precheck')
+    return response.data
+  },
+
+  exportData: async (): Promise<Blob> => {
+    const response = await apiClient.post('/users/me/export-data', null, {
+      responseType: 'blob',
+    })
+    return response.data
+  },
+
+  deleteAccount: async (password: string, token: string): Promise<void> => {
+    await apiClient.delete('/users/me', {
+      data: { password },
+      headers: { Authorization: `Bearer ${token}` },
+    })
   },
 }

@@ -44,3 +44,19 @@ export interface RefreshTokenResponse {
   access_token: string
   token_type: string
 }
+
+export interface WorkspaceSummary {
+  id: string
+  name: string
+  member_count: number
+  record_count: number
+}
+
+export interface DeleteAccountPrecheck {
+  can_delete: boolean
+  owned_workspaces_with_members: WorkspaceSummary[]
+  owned_workspaces_solo: WorkspaceSummary[]
+  bank_accounts_count: number
+  vat_registries_count: number
+  message: string
+}

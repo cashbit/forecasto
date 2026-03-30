@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { User, Building, Bell, Shield, Users, Landmark, Handshake, Receipt } from 'lucide-react'
+import { User, Building, Bell, Shield, Users, Landmark, Handshake, Receipt, Download, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +14,7 @@ import { BankAccountsTab } from '@/components/settings/BankAccountsTab'
 import { VatRegistriesTab } from '@/components/settings/VatRegistriesTab'
 import { PartnershipTab } from '@/components/settings/PartnershipTab'
 import { WorkspaceBankAccountsSection } from '@/components/settings/WorkspaceBankAccountsSection'
+import { DeleteAccountDialog } from '@/components/settings/DeleteAccountDialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/useToast'
 import { authApi } from '@/api/auth'
@@ -26,6 +27,8 @@ export function SettingsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isPasswordLoading, setIsPasswordLoading] = useState(false)
   const [membersDialogOpen, setMembersDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   // Use the first selected workspace for settings
   const primaryWorkspace = workspaces.find(w => w.id === selectedWorkspaceIds[0])
@@ -353,6 +356,74 @@ export function SettingsPage() {
               </form>
             </CardContent>
           </Card>
+
+          <Card className="border-destructive/50 mt-6">
+            <CardHeader>
+              <CardTitle className="text-destructive">Zona Pericolosa</CardTitle>
+              <CardDescription>Azioni irreversibili sul tuo account</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Esporta i tuoi dati</p>
+                  <p className="text-xs text-muted-foreground">Scarica tutti i tuoi dati in formato JSON (GDPR Art. 20)</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isExporting}
+                  onClick={async () => {
+                    setIsExporting(true)
+                    try {
+                      const blob = await authApi.exportData()
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url
+                      a.download = `forecasto-export-${new Date().toISOString().slice(0, 10)}.json`
+                      document.body.appendChild(a)
+                      a.click()
+                      document.body.removeChild(a)
+                      URL.revokeObjectURL(url)
+                      toast({ title: 'Export completato', description: 'I tuoi dati sono stati scaricati.' })
+                    } catch {
+                      toast({ title: 'Errore', description: 'Impossibile esportare i dati.', variant: 'destructive' })
+                    } finally {
+                      setIsExporting(false)
+                    }
+                  }}
+                >
+                  {isExporting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  Esporta
+                </Button>
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Cancella il tuo account</p>
+                  <p className="text-xs text-muted-foreground">Elimina definitivamente il tuo account e tutti i tuoi dati (GDPR Art. 17)</p>
+                </div>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Cancella Account
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <DeleteAccountDialog
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
+          />
         </TabsContent>
       </Tabs>
     </div>

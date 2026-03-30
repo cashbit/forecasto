@@ -56,3 +56,29 @@ class UserResponse(BaseModel):
     ui_preferences: dict = {}
 
     model_config = {"from_attributes": True}
+
+
+class DeleteAccountRequest(BaseModel):
+    """Account deletion request — requires password confirmation."""
+
+    password: str
+
+
+class WorkspaceSummary(BaseModel):
+    """Summary of a workspace for deletion precheck."""
+
+    id: str
+    name: str
+    member_count: int = 0
+    record_count: int = 0
+
+
+class DeleteAccountPrecheck(BaseModel):
+    """Response for account deletion precheck."""
+
+    can_delete: bool
+    owned_workspaces_with_members: list[WorkspaceSummary] = []
+    owned_workspaces_solo: list[WorkspaceSummary] = []
+    bank_accounts_count: int = 0
+    vat_registries_count: int = 0
+    message: str = ""

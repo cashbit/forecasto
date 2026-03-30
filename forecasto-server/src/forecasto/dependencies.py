@@ -58,6 +58,9 @@ async def get_current_user(
     if user.is_blocked:
         raise UnauthorizedException("Account bloccato. Contatta l'amministratore.")
 
+    if user.deleted_at is not None:
+        raise UnauthorizedException("Account eliminato.")
+
     return user
 
 async def get_current_workspace(
