@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Forecasto</title>
+  <meta name="description" content="Forecasto Privacy Policy. Learn how we collect, use, and protect your financial data.">
+  <style>
+    :root {
+      --brand-gradient: linear-gradient(135deg, #5b3cf5 0%, #c026d3 100%);
+      --brand-from: #5b3cf5;
+      --brand-to: #c026d3;
+      --accent: #5b3cf5;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --white: #ffffff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f5f6f8;
+      color: var(--gray-900);
+      line-height: 1.6;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    .header {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .header-logo img { display: block; }
+    .header-nav {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+    .header-nav a {
+      color: var(--gray-600);
+      text-decoration: none;
+      font-size: 14px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--gray-200);
+      transition: all 0.15s;
+      font-weight: 500;
+    }
+    .header-nav a:hover {
+      border-color: var(--gray-300);
+      background: var(--gray-50);
+      color: var(--gray-900);
+    }
+
+    /* ── Hero ────────────────────────────────── */
+    .hero {
+      background: #f5f6f8;
+      padding: 56px 24px 40px;
+      text-align: center;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .hero h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 10px;
+      letter-spacing: -0.5px;
+    }
+    .hero p {
+      font-size: 16px;
+      color: var(--gray-500);
+      max-width: 560px;
+      margin: 0 auto;
+    }
+    .hero .badge {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #f5f0ff 0%, #fdf4ff 100%);
+      color: var(--accent);
+      border: 1px solid #e9d5ff;
+      margin-bottom: 16px;
+    }
+
+    /* ── Content ─────────────────────────────── */
+    .content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ── Section divider ─────────────────────── */
+    .section-divider {
+      margin: 48px 0 24px;
+      padding: 18px 22px;
+      background: linear-gradient(135deg, #f5f0ff 0%, #fdf4ff 100%);
+      border: 1px solid #e9d5ff;
+      border-left: 4px solid transparent;
+      border-image: linear-gradient(180deg, #5b3cf5, #c026d3) 1;
+      border-radius: 0 10px 10px 0;
+    }
+    .section-divider h2 {
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      background: var(--brand-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ── Card ─────────────────────────────────── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      overflow: hidden;
+      transition: box-shadow 0.15s;
+    }
+    .card:hover {
+      box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+    }
+    .card-body {
+      padding: 20px 24px;
+    }
+    .card-body p {
+      font-size: 15px;
+      color: var(--gray-600);
+      margin-bottom: 14px;
+    }
+    .card-body p:last-child { margin-bottom: 0; }
+    .card-body ul {
+      margin: 0 0 14px 20px;
+      font-size: 14px;
+      color: var(--gray-600);
+    }
+    .card-body ul li { margin-bottom: 6px; }
+    .card-body strong { color: var(--gray-900); }
+    .card-body a { color: var(--accent); text-decoration: underline; }
+
+    /* ── Callout ──────────────────────────────── */
+    .callout {
+      background: linear-gradient(135deg, #f5f0ff 0%, #fdf4ff 100%);
+      border: 1px solid #e9d5ff;
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin: 20px 0;
+    }
+    .callout-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .callout p {
+      font-size: 14px;
+      color: var(--gray-600);
+    }
+
+    /* ── Language toggle ──────────────────────── */
+    .lang-toggle {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+    .lang-btn {
+      padding: 6px 16px;
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--white);
+      color: var(--gray-500);
+      transition: all 0.15s;
+    }
+    .lang-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .lang-it { display: none; }
+    body.show-it .lang-en { display: none; }
+    body.show-it .lang-it { display: block; }
+
+    /* ── Footer ───────────────────────────────── */
+    .footer {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--gray-400);
+      border-top: 1px solid var(--gray-200);
+    }
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════ HEADER ═══════════════ -->
+  <header class="header">
+    <div class="header-inner">
+      <a class="header-logo" href="https://forecasto.it">
+        <img src="/logo-icon.png" alt="Forecasto" style="height:30px;width:auto;">
+        <img src="/logo-text.png" alt="Forecasto" style="height:20px;width:auto;">
+      </a>
+      <nav class="header-nav">
+        <a href="/docs/mcp">MCP Docs</a>
+        <a href="https://app.forecasto.it/support">Support</a>
+        <a href="https://forecasto.it">forecasto.it</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ═══════════════ HERO ═══════════════ -->
+  <section class="hero">
+    <div class="badge">Legal</div>
+    <h1>Privacy Policy</h1>
+    <p class="lang-en">How Forecasto collects, uses, and protects your data.</p>
+    <p class="lang-it">Come Forecasto raccoglie, utilizza e protegge i tuoi dati.</p>
+    <div class="lang-toggle" style="margin-top:20px;">
+      <button class="lang-btn active" onclick="setLang('en')">English</button>
+      <button class="lang-btn" onclick="setLang('it')">Italiano</button>
+    </div>
+    <p style="font-size:13px; color:var(--gray-400); margin-top:12px;">Last updated: March 30, 2026</p>
+  </section>
+
+  <div class="content">
+
+    <!-- ═══════════════ DATA COLLECTION ═══════════════ -->
+    <div class="section-divider">
+      <h2 class="lang-en">1. Data Collection</h2>
+      <h2 class="lang-it">1. Raccolta Dati</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <p class="lang-en">When you use Forecasto, we collect the following categories of data:</p>
+        <p class="lang-it">Quando utilizzi Forecasto, raccogliamo le seguenti categorie di dati:</p>
+
+        <p class="lang-en"><strong>Account Information</strong></p>
+        <p class="lang-it"><strong>Informazioni Account</strong></p>
+        <ul class="lang-en">
+          <li>Email address and display name (for authentication and identification)</li>
+          <li>OAuth tokens (for secure session management)</li>
+        </ul>
+        <ul class="lang-it">
+          <li>Indirizzo email e nome visualizzato (per autenticazione e identificazione)</li>
+          <li>Token OAuth (per la gestione sicura delle sessioni)</li>
+        </ul>
+
+        <p class="lang-en"><strong>Financial Data</strong></p>
+        <p class="lang-it"><strong>Dati Finanziari</strong></p>
+        <ul class="lang-en">
+          <li>Financial records: amounts (net, VAT, total), dates, descriptions, account/counterpart names, project codes</li>
+          <li>Bank account names and balance snapshots (for cashflow reconciliation)</li>
+          <li>VAT registry information: business names and VAT numbers (Partita IVA)</li>
+          <li>Workspace names, descriptions, and settings</li>
+        </ul>
+        <ul class="lang-it">
+          <li>Record finanziari: importi (netto, IVA, totale), date, descrizioni, nomi account/controparti, codici progetto</li>
+          <li>Nomi conti bancari e snapshot dei saldi (per la riconciliazione del cashflow)</li>
+          <li>Informazioni registri IVA: ragioni sociali e numeri di Partita IVA</li>
+          <li>Nomi workspace, descrizioni e impostazioni</li>
+        </ul>
+
+        <div class="callout">
+          <div class="callout-title lang-en">What We Do NOT Collect</div>
+          <div class="callout-title lang-it">Cosa NON Raccogliamo</div>
+          <p class="lang-en">
+            Forecasto does <strong>not</strong> collect or store: credit card numbers, bank routing numbers (IBAN/BIC),
+            login passwords (we use OAuth token-based authentication), social security numbers, or any government-issued identification numbers.
+          </p>
+          <p class="lang-it">
+            Forecasto <strong>non</strong> raccoglie n&eacute; memorizza: numeri di carte di credito, coordinate bancarie (IBAN/BIC),
+            password di accesso (utilizziamo autenticazione basata su token OAuth), codici fiscali o altri numeri di identificazione governativi.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ DATA USAGE ═══════════════ -->
+    <div class="section-divider">
+      <h2 class="lang-en">2. Data Usage</h2>
+      <h2 class="lang-it">2. Utilizzo dei Dati</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <p class="lang-en">We use your data exclusively to provide and improve the Forecasto service:</p>
+        <p class="lang-it">Utilizziamo i tuoi dati esclusivamente per fornire e migliorare il servizio Forecasto:</p>
+        <ul class="lang-en">
+          <li><strong>Service delivery:</strong> storing and displaying your financial records, generating cashflow projections, calculating VAT obligations</li>
+          <li><strong>MCP connector:</strong> when you connect Forecasto to Claude via the MCP protocol, your financial data is transmitted to Claude only in response to your explicit requests during conversation. Forecasto does not proactively push data to any AI service.</li>
+          <li><strong>Account management:</strong> authenticating your identity, managing workspace access and permissions</li>
+          <li><strong>Service improvement:</strong> aggregated, anonymized usage metrics to improve performance and reliability</li>
+        </ul>
+        <ul class="lang-it">
+          <li><strong>Erogazione del servizio:</strong> memorizzazione e visualizzazione dei record finanziari, generazione proiezioni cashflow, calcolo obblighi IVA</li>
+          <li><strong>Connettore MCP:</strong> quando colleghi Forecasto a Claude tramite il protocollo MCP, i tuoi dati finanziari vengono trasmessi a Claude solo in risposta alle tue richieste esplicite durante la conversazione. Forecasto non invia proattivamente dati a nessun servizio AI.</li>
+          <li><strong>Gestione account:</strong> autenticazione della tua identit&agrave;, gestione accessi e permessi workspace</li>
+          <li><strong>Miglioramento del servizio:</strong> metriche di utilizzo aggregate e anonimizzate per migliorare prestazioni e affidabilit&agrave;</li>
+        </ul>
+
+        <div class="callout">
+          <div class="callout-title lang-en">No Data Sales &mdash; No AI Training</div>
+          <div class="callout-title lang-it">Nessuna Vendita Dati &mdash; Nessun Addestramento AI</div>
+          <p class="lang-en">We do <strong>not</strong> sell, rent, or share your personal or financial data with third parties for marketing or advertising purposes. Your data is <strong>never</strong> used to train AI models.</p>
+          <p class="lang-it"><strong>Non</strong> vendiamo, affittiamo o condividiamo i tuoi dati personali o finanziari con terze parti per scopi di marketing o pubblicit&agrave;. I tuoi dati <strong>non</strong> vengono mai utilizzati per addestrare modelli AI.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ DATA RETENTION ═══════════════ -->
+    <div class="section-divider">
+      <h2 class="lang-en">3. Data Retention</h2>
+      <h2 class="lang-it">3. Conservazione dei Dati</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <p class="lang-en">
+          Your financial data is retained for as long as your account is active and you maintain an active subscription.
+          Deleted records are soft-deleted (marked as deleted but recoverable) for 90 days, after which they are permanently removed.
+        </p>
+        <p class="lang-it">
+          I tuoi dati finanziari vengono conservati finch&eacute; il tuo account &egrave; attivo e mantieni un abbonamento attivo.
+          I record eliminati vengono soft-deleted (contrassegnati come eliminati ma recuperabili) per 90 giorni, dopo i quali vengono rimossi permanentemente.
+        </p>
+        <p class="lang-en">
+          Upon account deletion request, all your data (including workspaces, records, bank account information, and VAT registries)
+          will be permanently deleted within 30 days. Anonymized, aggregated analytics data may be retained.
+        </p>
+        <p class="lang-it">
+          Su richiesta di cancellazione dell'account, tutti i tuoi dati (inclusi workspace, record, informazioni conti bancari e registri IVA)
+          verranno eliminati permanentemente entro 30 giorni. I dati analitici anonimi e aggregati potranno essere conservati.
+        </p>
+      </div>
+    </div>
+
+    <!-- ═══════════════ DATA SECURITY ═══════════════ -->
+    <div class="section-divider">
+      <h2 class="lang-en">4. Data Security</h2>
+      <h2 class="lang-it">4. Sicurezza dei Dati</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <p class="lang-en">We implement industry-standard security measures to protect your data:</p>
+        <p class="lang-it">Implementiamo misure di sicurezza standard di settore per proteggere i tuoi dati:</p>
+        <ul class="lang-en">
+          <li><strong>Encryption in transit:</strong> all data is transmitted over HTTPS/TLS</li>
+          <li><strong>Authentication:</strong> OAuth 2.0 with JWT tokens; no passwords stored on our servers</li>
+          <li><strong>Access control:</strong> role-based workspace permissions (owner, editor, viewer) ensure users only access authorized data</li>
+          <li><strong>Infrastructure:</strong> hosted on secure European servers with regular security updates</li>
+        </ul>
+        <ul class="lang-it">
+          <li><strong>Crittografia in transito:</strong> tutti i dati vengono trasmessi tramite HTTPS/TLS</li>
+          <li><strong>Autenticazione:</strong> OAuth 2.0 con token JWT; nessuna password memorizzata sui nostri server</li>
+          <li><strong>Controllo accessi:</strong> permessi workspace basati sui ruoli (proprietario, editor, viewer) garantiscono che gli utenti accedano solo ai dati autorizzati</li>
+          <li><strong>Infrastruttura:</strong> hosting su server europei sicuri con aggiornamenti di sicurezza regolari</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ═══════════════ THIRD-PARTY SERVICES ═══════════════ -->
+    <div class="section-divider">
+      <h2 class="lang-en">5. Third-Party Services</h2>
+      <h2 class="lang-it">5. Servizi di Terze Parti</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <p class="lang-en"><strong>MCP Connector (Claude by Anthropic)</strong></p>
+        <p class="lang-it"><strong>Connettore MCP (Claude di Anthropic)</strong></p>
+        <p class="lang-en">
+          When you connect Forecasto to Claude through the Model Context Protocol (MCP), your financial data is shared with Anthropic's Claude
+          service only when you make explicit requests during conversation. The data transmitted is limited to the specific information
+          needed to fulfill your request (e.g., record details, cashflow projections). Anthropic's handling of this data is governed by
+          their own privacy policy and terms of service.
+        </p>
+        <p class="lang-it">
+          Quando colleghi Forecasto a Claude tramite il Model Context Protocol (MCP), i tuoi dati finanziari vengono condivisi con il servizio
+          Claude di Anthropic solo quando effettui richieste esplicite durante la conversazione. I dati trasmessi sono limitati alle informazioni
+          specifiche necessarie per soddisfare la tua richiesta (es. dettagli record, proiezioni cashflow). Il trattamento di questi dati da parte
+          di Anthropic &egrave; regolato dalla loro privacy policy e termini di servizio.
+        </p>
+        <p class="lang-en">
+          You can disconnect the MCP connector at any time from your Claude settings. Disconnecting immediately revokes Forecasto's ability
+          to share data with Claude.
+        </p>
+        <p class="lang-it">
+          Puoi disconnettere il connettore MCP in qualsiasi momento dalle impostazioni di Claude. La disconnessione revoca immediatamente
+          la capacit&agrave; di Forecasto di condividere dati con Claude.
+        </p>
+      </div>
+    </div>
+
+    <!-- ═══════════════ USER RIGHTS ═══════════════ -->
+    <div class="section-divider">
+      <h2 class="lang-en">6. Your Rights</h2>
+      <h2 class="lang-it">6. I Tuoi Diritti</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <p class="lang-en">Under applicable data protection laws (including GDPR), you have the right to:</p>
+        <p class="lang-it">Ai sensi delle leggi sulla protezione dei dati applicabili (incluso il GDPR), hai il diritto di:</p>
+        <ul class="lang-en">
+          <li><strong>Access:</strong> request a copy of all personal and financial data we hold about you</li>
+          <li><strong>Export:</strong> download your financial records in CSV format at any time through the Forecasto app</li>
+          <li><strong>Rectification:</strong> correct any inaccurate data in your account</li>
+          <li><strong>Deletion:</strong> request complete deletion of your account and all associated data</li>
+          <li><strong>Portability:</strong> receive your data in a structured, machine-readable format</li>
+          <li><strong>Restriction:</strong> request restriction of processing in certain circumstances</li>
+          <li><strong>Objection:</strong> object to processing of your data for specific purposes</li>
+        </ul>
+        <ul class="lang-it">
+          <li><strong>Accesso:</strong> richiedere una copia di tutti i dati personali e finanziari che deteniamo su di te</li>
+          <li><strong>Esportazione:</strong> scaricare i record finanziari in formato CSV in qualsiasi momento tramite l'app Forecasto</li>
+          <li><strong>Rettifica:</strong> correggere eventuali dati inesatti nel tuo account</li>
+          <li><strong>Cancellazione:</strong> richiedere la cancellazione completa del tuo account e di tutti i dati associati</li>
+          <li><strong>Portabilit&agrave;:</strong> ricevere i tuoi dati in un formato strutturato e leggibile da macchina</li>
+          <li><strong>Limitazione:</strong> richiedere la limitazione del trattamento in determinate circostanze</li>
+          <li><strong>Opposizione:</strong> opporsi al trattamento dei tuoi dati per scopi specifici</li>
+        </ul>
+        <p class="lang-en">To exercise any of these rights, contact us at <a href="mailto:support@forecasto.it">support@forecasto.it</a>. We will respond within 30 days.</p>
+        <p class="lang-it">Per esercitare uno qualsiasi di questi diritti, contattaci a <a href="mailto:support@forecasto.it">support@forecasto.it</a>. Risponderemo entro 30 giorni.</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════ CONTACT ═══════════════ -->
+    <div class="section-divider">
+      <h2 class="lang-en">7. Contact</h2>
+      <h2 class="lang-it">7. Contatti</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <p class="lang-en">For any questions about this privacy policy or our data practices, contact us:</p>
+        <p class="lang-it">Per qualsiasi domanda su questa privacy policy o sulle nostre pratiche relative ai dati, contattaci:</p>
+        <p>
+          <strong>Email:</strong> <a href="mailto:support@forecasto.it">support@forecasto.it</a><br>
+          <strong>Web:</strong> <a href="https://app.forecasto.it/support">app.forecasto.it/support</a><br>
+          <strong>Website:</strong> <a href="https://forecasto.it">forecasto.it</a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ FOOTER ═══════════════ -->
+  <footer class="footer">
+    <p>&copy; 2025&ndash;2026 Forecasto &mdash; <a href="/privacy">Privacy Policy</a> &middot; <a href="/docs/mcp">MCP Docs</a> &middot; <a href="https://forecasto.it">forecasto.it</a></p>
+  </footer>
+
+  <script>
+    function setLang(lang) {
+      document.body.classList.toggle('show-it', lang === 'it');
+      document.querySelectorAll('.lang-btn').forEach(function(btn, i) {
+        btn.classList.toggle('active', (lang === 'en' && i === 0) || (lang === 'it' && i === 1));
+      });
+    }
+  </script>
+
+</body>
+</html>

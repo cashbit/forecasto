@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forecasto MCP Connector — Documentation</title>
+  <meta name="description" content="Documentation for the Forecasto MCP connector. Manage financial records, cashflow projections, bank accounts, and VAT calculations through Claude.">
+  <style>
+    :root {
+      --brand-gradient: linear-gradient(135deg, #5b3cf5 0%, #c026d3 100%);
+      --brand-from: #5b3cf5;
+      --brand-to: #c026d3;
+      --accent: #5b3cf5;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --white: #ffffff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f5f6f8;
+      color: var(--gray-900);
+      line-height: 1.6;
+    }
+
+    /* ── Header ─────────────────────────────── */
+    .header {
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-200);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .header-logo img { display: block; }
+    .header-nav {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+    .header-nav a {
+      color: var(--gray-600);
+      text-decoration: none;
+      font-size: 14px;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--gray-200);
+      transition: all 0.15s;
+      font-weight: 500;
+    }
+    .header-nav a:hover {
+      border-color: var(--gray-300);
+      background: var(--gray-50);
+      color: var(--gray-900);
+    }
+
+    /* ── Hero ────────────────────────────────── */
+    .hero {
+      background: #f5f6f8;
+      padding: 56px 24px 40px;
+      text-align: center;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .hero h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 10px;
+      letter-spacing: -0.5px;
+    }
+    .hero p {
+      font-size: 16px;
+      color: var(--gray-500);
+      max-width: 560px;
+      margin: 0 auto;
+    }
+    .hero .badge {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #f5f0ff 0%, #fdf4ff 100%);
+      color: var(--accent);
+      border: 1px solid #e9d5ff;
+      margin-bottom: 16px;
+    }
+
+    /* ── Content ─────────────────────────────── */
+    .content {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+
+    /* ── Section divider ─────────────────────── */
+    .section-divider {
+      margin: 48px 0 24px;
+      padding: 18px 22px;
+      background: linear-gradient(135deg, #f5f0ff 0%, #fdf4ff 100%);
+      border: 1px solid #e9d5ff;
+      border-left: 4px solid transparent;
+      border-image: linear-gradient(180deg, #5b3cf5, #c026d3) 1;
+      border-radius: 0 10px 10px 0;
+    }
+    .section-divider h2 {
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      background: var(--brand-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .section-divider p {
+      font-size: 14px;
+      color: var(--gray-500);
+      margin-top: 4px;
+    }
+
+    /* ── Card ─────────────────────────────────── */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      overflow: hidden;
+      transition: box-shadow 0.15s;
+    }
+    .card:hover {
+      box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--brand-gradient);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .card-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+    .card-header .card-count {
+      font-size: 12px;
+      color: var(--gray-400);
+      margin-top: 2px;
+    }
+    .card-body {
+      padding: 20px 24px;
+    }
+    .card-body p {
+      font-size: 15px;
+      color: var(--gray-600);
+      margin-bottom: 14px;
+    }
+    .card-body p:last-child { margin-bottom: 0; }
+
+    /* ── Tool list ────────────────────────────── */
+    .tool-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 16px;
+    }
+    @media (max-width: 600px) {
+      .tool-grid { grid-template-columns: 1fr; }
+    }
+    .tool-item {
+      font-size: 13px;
+      color: var(--gray-600);
+      padding: 4px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tool-item code {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 12px;
+      background: var(--gray-100);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent);
+    }
+    .tool-item .read-badge {
+      font-size: 9px;
+      font-weight: 700;
+      background: #d1fae5;
+      color: #065f46;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+    .tool-item .write-badge {
+      font-size: 9px;
+      font-weight: 700;
+      background: #fef3c7;
+      color: #92400e;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    /* ── Example box ──────────────────────────── */
+    .example-box {
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 12px;
+    }
+    .example-box:last-child { margin-bottom: 0; }
+    .example-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .example-prompt {
+      font-size: 15px;
+      color: var(--gray-900);
+      font-style: italic;
+      margin-bottom: 8px;
+    }
+    .example-desc {
+      font-size: 13px;
+      color: var(--gray-500);
+    }
+
+    /* ── Callout ──────────────────────────────── */
+    .callout {
+      background: linear-gradient(135deg, #f5f0ff 0%, #fdf4ff 100%);
+      border: 1px solid #e9d5ff;
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin: 20px 0;
+    }
+    .callout-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .callout p {
+      font-size: 14px;
+      color: var(--gray-600);
+    }
+    .callout a {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+
+    /* ── Code block ───────────────────────────── */
+    .code-block {
+      background: var(--gray-900);
+      color: #e5e7eb;
+      border-radius: 8px;
+      padding: 16px 20px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+    .code-block .comment { color: #6b7280; }
+    .code-block .url { color: #93c5fd; }
+
+    /* ── Language toggle ──────────────────────── */
+    .lang-toggle {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+    .lang-btn {
+      padding: 6px 16px;
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--white);
+      color: var(--gray-500);
+      transition: all 0.15s;
+    }
+    .lang-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .lang-it { display: none; }
+    body.show-it .lang-en { display: none; }
+    body.show-it .lang-it { display: block; }
+    body.show-it .lang-it-inline { display: inline; }
+    body.show-it .lang-en-inline { display: none; }
+
+    /* ── Footer ───────────────────────────────── */
+    .footer {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--gray-400);
+      border-top: 1px solid var(--gray-200);
+    }
+    .footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════ HEADER ═══════════════ -->
+  <header class="header">
+    <div class="header-inner">
+      <a class="header-logo" href="https://forecasto.it">
+        <img src="/logo-icon.png" alt="Forecasto" style="height:30px;width:auto;">
+        <img src="/logo-text.png" alt="Forecasto" style="height:20px;width:auto;">
+      </a>
+      <nav class="header-nav">
+        <a href="/privacy">Privacy</a>
+        <a href="https://app.forecasto.it/support">Support</a>
+        <a href="https://forecasto.it">forecasto.it</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ═══════════════ HERO ═══════════════ -->
+  <section class="hero">
+    <div class="badge">MCP Connector</div>
+    <h1>Forecasto MCP Documentation</h1>
+    <p class="lang-en">Connect your Forecasto account to Claude and manage your finances through natural language.</p>
+    <p class="lang-it">Collega il tuo account Forecasto a Claude e gestisci le finanze in linguaggio naturale.</p>
+    <div class="lang-toggle" style="margin-top:20px;">
+      <button class="lang-btn active" onclick="setLang('en')">English</button>
+      <button class="lang-btn" onclick="setLang('it')">Italiano</button>
+    </div>
+  </section>
+
+  <div class="content">
+
+    <!-- ═══════════════ OVERVIEW ═══════════════ -->
+    <div class="section-divider">
+      <h2 class="lang-en">Overview</h2>
+      <h2 class="lang-it">Panoramica</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <p class="lang-en">
+          Forecasto is a financial management platform designed for small businesses, freelancers, and consultants.
+          It helps you track cashflow, manage invoices, monitor bank accounts, and calculate VAT obligations.
+        </p>
+        <p class="lang-en">
+          The Forecasto MCP connector lets you interact with your Forecasto workspace directly from Claude.
+          You can create and update financial records, generate cashflow projections, manage bank accounts,
+          and handle VAT calculations &mdash; all through natural conversation.
+        </p>
+        <p class="lang-it">
+          Forecasto &egrave; una piattaforma di gestione finanziaria progettata per piccole imprese, liberi professionisti e consulenti.
+          Ti aiuta a monitorare il cashflow, gestire fatture, conti bancari e calcoli IVA.
+        </p>
+        <p class="lang-it">
+          Il connettore MCP di Forecasto ti consente di interagire con il tuo workspace direttamente da Claude.
+          Puoi creare e aggiornare record finanziari, generare proiezioni di cashflow, gestire conti bancari
+          e calcolare l'IVA &mdash; tutto attraverso una conversazione naturale.
+        </p>
+      </div>
+    </div>
+
+    <!-- ═══════════════ FEATURES ═══════════════ -->
+    <div class="section-divider">
+      <h2 class="lang-en">Features &amp; Tools</h2>
+      <h2 class="lang-it">Funzionalit&agrave; e Strumenti</h2>
+      <p class="lang-en">40 tools across 6 categories</p>
+      <p class="lang-it">40 strumenti in 6 categorie</p>
+    </div>
+
+    <!-- Workspaces -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">&#128188;</div>
+        <div>
+          <h3>Workspaces</h3>
+          <div class="card-count">4 tools</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="lang-en">Create, list, update, and retrieve workspace details. Each workspace represents a separate financial entity (company, project, or fiscal year).</p>
+        <p class="lang-it">Crea, elenca, aggiorna e recupera i dettagli dei workspace. Ogni workspace rappresenta un'entit&agrave; finanziaria separata (azienda, progetto o anno fiscale).</p>
+        <div class="tool-grid">
+          <div class="tool-item"><code>list_workspaces</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>get_workspace</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>create_workspace</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>update_workspace</code> <span class="write-badge">WRITE</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Financial Records -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">&#128203;</div>
+        <div>
+          <h3>Financial Records</h3>
+          <div class="card-count">12 tools</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="lang-en">Full CRUD for financial records across four areas: <strong>actual</strong> (confirmed cash), <strong>orders</strong> (confirmed orders), <strong>prospect</strong> (pipeline/quotes), and <strong>budget</strong> (planned). Includes bulk import, cloning, splitting into installments, and field value lookups.</p>
+        <p class="lang-it">CRUD completo per record finanziari su quattro aree: <strong>actual</strong> (cassa confermata), <strong>orders</strong> (ordini confermati), <strong>prospect</strong> (pipeline/preventivi) e <strong>budget</strong> (pianificato). Include import massivo, clonazione, suddivisione in rate e ricerca valori campo.</p>
+        <div class="tool-grid">
+          <div class="tool-item"><code>list_records</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>get_record</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>export_records</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>get_field_values</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>create_record</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>update_record</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>delete_record</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>restore_record</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>transfer_record</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>bulk_create_records</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>clone_record</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>split_record</code> <span class="write-badge">WRITE</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bank Accounts -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">&#127974;</div>
+        <div>
+          <h3>Bank Accounts</h3>
+          <div class="card-count">12 tools</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="lang-en">Manage bank accounts for cashflow tracking. Associate accounts with workspaces, set primary accounts, and record balance snapshots for reconciliation.</p>
+        <p class="lang-it">Gestisci i conti bancari per il monitoraggio del cashflow. Associa conti ai workspace, imposta conti primari e registra snapshot dei saldi per la riconciliazione.</p>
+        <div class="tool-grid">
+          <div class="tool-item"><code>list_bank_accounts</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>get_workspace_bank_account</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>list_workspace_bank_accounts</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>get_account_balances</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>create_bank_account</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>update_bank_account</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>set_workspace_bank_account</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>remove_workspace_bank_account</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>add_workspace_bank_account</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>remove_workspace_bank_account_link</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>add_balance_snapshot</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>delete_balance_snapshot</code> <span class="write-badge">WRITE</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cashflow -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">&#128200;</div>
+        <div>
+          <h3>Cashflow Analysis</h3>
+          <div class="card-count">3 tools</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="lang-en">Generate cashflow projections grouped by day, week, or month. Consolidate multiple workspaces and simulate VAT payment impact on cashflow.</p>
+        <p class="lang-it">Genera proiezioni di cashflow raggruppate per giorno, settimana o mese. Consolida pi&ugrave; workspace e simula l'impatto dei pagamenti IVA sul cashflow.</p>
+        <div class="tool-grid">
+          <div class="tool-item"><code>get_cashflow</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>get_consolidated_cashflow</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>get_cashflow_vat_simulation</code> <span class="read-badge">READ</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VAT Registry -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">&#128209;</div>
+        <div>
+          <h3>VAT Registry</h3>
+          <div class="card-count">8 tools</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="lang-en">Manage VAT registries (Italian Partita IVA). Track monthly VAT balances, create and update registry entries for accurate tax reporting.</p>
+        <p class="lang-it">Gestisci i registri IVA (Partite IVA). Monitora i saldi IVA mensili, crea e aggiorna le registrazioni per una corretta dichiarazione fiscale.</p>
+        <div class="tool-grid">
+          <div class="tool-item"><code>list_vat_registries</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>get_vat_registry</code> <span class="read-badge">READ</span></div>
+          <div class="tool-item"><code>create_vat_registry</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>update_vat_registry</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>delete_vat_registry</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>add_vat_balance</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>update_vat_balance</code> <span class="write-badge">WRITE</span></div>
+          <div class="tool-item"><code>delete_vat_balance</code> <span class="write-badge">WRITE</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VAT Calculation -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">&#128178;</div>
+        <div>
+          <h3>VAT Calculation</h3>
+          <div class="card-count">1 tool</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="lang-en">Calculate periodic Italian VAT (IVA) settlements. Aggregates debit and credit VAT across workspaces, supports monthly and quarterly periods, with dry-run preview.</p>
+        <p class="lang-it">Calcola le liquidazioni periodiche IVA italiane. Aggrega IVA a debito e a credito tra workspace, supporta periodi mensili e trimestrali, con anteprima dry-run.</p>
+        <div class="tool-grid">
+          <div class="tool-item"><code>calculate_vat</code> <span class="write-badge">WRITE</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ GETTING STARTED ═══════════════ -->
+    <div class="section-divider">
+      <h2 class="lang-en">Getting Started</h2>
+      <h2 class="lang-it">Come Iniziare</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <p class="lang-en"><strong>1. Connect on Claude.ai</strong><br>
+          Go to <strong>Settings &rarr; Integrations</strong> in Claude.ai and search for <strong>Forecasto</strong> in the connector directory.
+          Click <strong>Connect</strong> and authorize with your Forecasto account via OAuth 2.0.
+        </p>
+        <p class="lang-it"><strong>1. Collegati su Claude.ai</strong><br>
+          Vai su <strong>Impostazioni &rarr; Integrazioni</strong> in Claude.ai e cerca <strong>Forecasto</strong> nella directory dei connettori.
+          Clicca <strong>Connetti</strong> e autorizza con il tuo account Forecasto tramite OAuth 2.0.
+        </p>
+        <p class="lang-en"><strong>2. Or connect via Claude Code</strong><br>
+          Add the Forecasto MCP server to your Claude Code configuration:
+        </p>
+        <p class="lang-it"><strong>2. Oppure collegati tramite Claude Code</strong><br>
+          Aggiungi il server MCP di Forecasto alla tua configurazione Claude Code:
+        </p>
+        <div class="code-block">
+<span class="comment">// settings.json or .mcp.json</span>
+{
+  "mcpServers": {
+    "forecasto": {
+      "type": "url",
+      "url": "<span class="url">https://app.forecasto.it/mcp</span>"
+    }
+  }
+}</div>
+        <p class="lang-en"><strong>3. Start asking</strong><br>
+          Once connected, simply ask Claude about your finances. The connector automatically determines which tools to use.
+        </p>
+        <p class="lang-it"><strong>3. Inizia a chiedere</strong><br>
+          Una volta collegato, chiedi a Claude delle tue finanze. Il connettore determina automaticamente quali strumenti usare.
+        </p>
+      </div>
+    </div>
+
+    <!-- ═══════════════ AUTHENTICATION ═══════════════ -->
+    <div class="section-divider">
+      <h2 class="lang-en">Authentication</h2>
+      <h2 class="lang-it">Autenticazione</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <p class="lang-en">
+          Forecasto uses <strong>OAuth 2.0 Authorization Code flow</strong> to securely connect your account.
+          When you connect for the first time, you'll be redirected to Forecasto's login page to grant access.
+          Tokens are automatically refreshed &mdash; no manual intervention needed.
+        </p>
+        <p class="lang-it">
+          Forecasto usa il flusso <strong>OAuth 2.0 Authorization Code</strong> per collegare il tuo account in modo sicuro.
+          Al primo collegamento, verrai reindirizzato alla pagina di login di Forecasto per autorizzare l'accesso.
+          I token vengono aggiornati automaticamente &mdash; nessun intervento manuale necessario.
+        </p>
+        <div class="callout">
+          <div class="callout-title lang-en">MCP Server Endpoint</div>
+          <div class="callout-title lang-it">Endpoint Server MCP</div>
+          <p><code>https://app.forecasto.it/mcp</code></p>
+        </div>
+        <p class="lang-en">
+          The connector requests access only to the workspaces and data associated with your Forecasto account.
+          You can revoke access at any time from your Forecasto account settings.
+        </p>
+        <p class="lang-it">
+          Il connettore richiede accesso solo ai workspace e ai dati associati al tuo account Forecasto.
+          Puoi revocare l'accesso in qualsiasi momento dalle impostazioni del tuo account.
+        </p>
+      </div>
+    </div>
+
+    <!-- ═══════════════ EXAMPLES ═══════════════ -->
+    <div class="section-divider">
+      <h2 class="lang-en">Usage Examples</h2>
+      <h2 class="lang-it">Esempi d'Uso</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="example-box">
+          <div class="example-label lang-en">Example 1 &mdash; Cashflow Projection</div>
+          <div class="example-label lang-it">Esempio 1 &mdash; Proiezione Cashflow</div>
+          <div class="example-prompt lang-en">&ldquo;Show me the cashflow forecast for the next 3 months, grouped by week.&rdquo;</div>
+          <div class="example-prompt lang-it">&ldquo;Mostrami la proiezione del cashflow per i prossimi 3 mesi, raggruppata per settimana.&rdquo;</div>
+          <div class="example-desc lang-en">Uses <code>get_cashflow</code> to retrieve inflows, outflows, net cashflow, and running balance for the specified period.</div>
+          <div class="example-desc lang-it">Usa <code>get_cashflow</code> per recuperare entrate, uscite, cashflow netto e saldo progressivo per il periodo specificato.</div>
+        </div>
+
+        <div class="example-box">
+          <div class="example-label lang-en">Example 2 &mdash; Create an Invoice Record</div>
+          <div class="example-label lang-it">Esempio 2 &mdash; Creare un Record Fattura</div>
+          <div class="example-prompt lang-en">&ldquo;Create a new invoice for Acme Corp, &euro;5,000 + VAT 22%, due date June 15th, in the orders area.&rdquo;</div>
+          <div class="example-prompt lang-it">&ldquo;Crea una nuova fattura per Acme Corp, 5.000&euro; + IVA 22%, scadenza 15 giugno, nell'area ordini.&rdquo;</div>
+          <div class="example-desc lang-en">Uses <code>create_record</code> with area "orders", calculating VAT amount automatically and setting the cashflow date.</div>
+          <div class="example-desc lang-it">Usa <code>create_record</code> con area "orders", calcolando automaticamente l'importo IVA e impostando la data di cashflow.</div>
+        </div>
+
+        <div class="example-box">
+          <div class="example-label lang-en">Example 3 &mdash; VAT Position Check</div>
+          <div class="example-label lang-it">Esempio 3 &mdash; Verifica Posizione IVA</div>
+          <div class="example-prompt lang-en">&ldquo;What&rsquo;s my VAT position for Q1? Show me a dry run of the quarterly calculation.&rdquo;</div>
+          <div class="example-prompt lang-it">&ldquo;Qual &egrave; la mia posizione IVA per il primo trimestre? Mostrami un dry run del calcolo trimestrale.&rdquo;</div>
+          <div class="example-desc lang-en">Uses <code>calculate_vat</code> with dry_run=true to preview IVA a debito vs. IVA a credito without creating settlement records.</div>
+          <div class="example-desc lang-it">Usa <code>calculate_vat</code> con dry_run=true per visualizzare IVA a debito vs. IVA a credito senza creare record di liquidazione.</div>
+        </div>
+
+        <div class="example-box">
+          <div class="example-label lang-en">Example 4 &mdash; Multi-Workspace Analysis</div>
+          <div class="example-label lang-it">Esempio 4 &mdash; Analisi Multi-Workspace</div>
+          <div class="example-prompt lang-en">&ldquo;Compare the cashflow of my two companies for this quarter and show me a consolidated view.&rdquo;</div>
+          <div class="example-prompt lang-it">&ldquo;Confronta il cashflow delle mie due aziende per questo trimestre e mostrami una vista consolidata.&rdquo;</div>
+          <div class="example-desc lang-en">Uses <code>list_workspaces</code> and <code>get_consolidated_cashflow</code> to combine financial data across multiple entities.</div>
+          <div class="example-desc lang-it">Usa <code>list_workspaces</code> e <code>get_consolidated_cashflow</code> per combinare i dati finanziari di pi&ugrave; entit&agrave;.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ DATA & PRIVACY ═══════════════ -->
+    <div class="section-divider">
+      <h2 class="lang-en">Data &amp; Privacy</h2>
+      <h2 class="lang-it">Dati e Privacy</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <p class="lang-en">
+          The Forecasto MCP connector accesses only the financial data in your Forecasto account, strictly scoped to the workspaces you have permission to access.
+          Data is transmitted over HTTPS/TLS and is only shared with Claude when you explicitly request it through conversation.
+        </p>
+        <p class="lang-it">
+          Il connettore MCP di Forecasto accede solo ai dati finanziari del tuo account, limitatamente ai workspace a cui hai accesso.
+          I dati sono trasmessi via HTTPS/TLS e vengono condivisi con Claude solo quando lo richiedi esplicitamente nella conversazione.
+        </p>
+        <div class="callout">
+          <div class="callout-title lang-en">What we DO NOT collect</div>
+          <div class="callout-title lang-it">Cosa NON raccogliamo</div>
+          <p class="lang-en">Forecasto does not store credit card numbers, bank routing numbers, or passwords. We do not sell data to third parties or use your data for AI model training.</p>
+          <p class="lang-it">Forecasto non memorizza numeri di carte di credito, coordinate bancarie o password. Non vendiamo dati a terzi n&eacute; utilizziamo i tuoi dati per l'addestramento di modelli AI.</p>
+        </div>
+        <p class="lang-en">
+          For full details, see our <a href="/privacy">Privacy Policy</a>.
+        </p>
+        <p class="lang-it">
+          Per tutti i dettagli, consulta la nostra <a href="/privacy">Privacy Policy</a>.
+        </p>
+      </div>
+    </div>
+
+    <!-- ═══════════════ SUPPORT ═══════════════ -->
+    <div class="section-divider">
+      <h2>Support</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <p class="lang-en">
+          Need help? Reach out to us:
+        </p>
+        <p class="lang-it">
+          Hai bisogno di aiuto? Contattaci:
+        </p>
+        <p>
+          <strong>Email:</strong> <a href="mailto:support@forecasto.it">support@forecasto.it</a><br>
+          <strong>Web:</strong> <a href="https://app.forecasto.it/support">app.forecasto.it/support</a><br>
+          <strong>Website:</strong> <a href="https://forecasto.it">forecasto.it</a>
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ FOOTER ═══════════════ -->
+  <footer class="footer">
+    <p>&copy; 2025&ndash;2026 Forecasto &mdash; <a href="/privacy">Privacy Policy</a> &middot; <a href="/docs/mcp">MCP Docs</a> &middot; <a href="https://forecasto.it">forecasto.it</a></p>
+  </footer>
+
+  <script>
+    function setLang(lang) {
+      document.body.classList.toggle('show-it', lang === 'it');
+      document.querySelectorAll('.lang-btn').forEach(function(btn, i) {
+        btn.classList.toggle('active', (lang === 'en' && i === 0) || (lang === 'it' && i === 1));
+      });
+    }
+  </script>
+
+</body>
+</html>
