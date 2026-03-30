@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, computed_field, field_validator
 
 class RecordCreate(BaseModel):
     """Record creation request."""
@@ -30,6 +30,7 @@ class RecordCreate(BaseModel):
     bank_account_id: str | None = None
     project_code: str | None = None
     review_date: date | None = None
+    withholding_rate: Decimal | None = None
     classification: dict | None = None
 
     @field_validator("area")
@@ -61,6 +62,7 @@ class RecordUpdate(BaseModel):
     bank_account_id: str | None = None
     project_code: str | None = None
     review_date: date | None = None
+    withholding_rate: Decimal | None = None
     classification: dict | None = None
 
 class TransferHistoryEntry(BaseModel):
@@ -97,6 +99,7 @@ class RecordResponse(BaseModel):
     bank_account_name: str | None = None
     project_code: str | None = None
     review_date: date | None = None
+    withholding_rate: Decimal | None = None
     classification: dict
     seq_num: int | None = None
     transfer_history: list[TransferHistoryEntry]
@@ -111,6 +114,14 @@ class RecordResponse(BaseModel):
     creator_email: str | None = None
     updater_email: str | None = None
     deleter_email: str | None = None
+
+    @computed_field
+    @property
+    def withholding_amount(self) -> Decimal | None:
+        """Calculate withholding amount: |amount| * rate / 100."""
+        if self.withholding_rate is None or self.withholding_rate == 0:
+            return None
+        return (abs(self.amount) * self.withholding_rate / Decimal("100")).quantize(Decimal("0.01"))
 
     model_config = {"from_attributes": True}
 

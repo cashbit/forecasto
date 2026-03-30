@@ -116,6 +116,23 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
           </div>
         </div>
 
+        {record.withholding_rate && parseFloat(record.withholding_rate) > 0 && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Ritenuta d'acconto</p>
+              <p className="text-lg font-medium">{parseFloat(record.withholding_rate).toFixed(0)}%</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Importo Ritenuta</p>
+              <p className="text-lg font-medium">
+                {record.withholding_amount
+                  ? `€ ${Math.abs(parseFloat(record.withholding_amount)).toLocaleString('it-IT', { minimumFractionDigits: 2 })}`
+                  : '-'}
+              </p>
+            </div>
+          </div>
+        )}
+
         <Separator />
 
         <div className="grid grid-cols-2 gap-4">

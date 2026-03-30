@@ -30,6 +30,8 @@ export interface Record {
   vat: string
   vat_deduction?: string
   vat_month?: string
+  withholding_rate?: string | null
+  withholding_amount?: string | null
   total: string
   stage: string
   nextaction?: string
@@ -67,6 +69,7 @@ export interface RecordCreate {
   vat?: string
   vat_deduction?: string
   vat_month?: string
+  withholding_rate?: string | null
   total: string
   stage?: string
   nextaction?: string
@@ -89,6 +92,7 @@ export interface RecordUpdate {
   vat?: string
   vat_deduction?: string
   vat_month?: string
+  withholding_rate?: string | null
   total?: string
   stage?: string
   nextaction?: string

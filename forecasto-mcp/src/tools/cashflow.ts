@@ -101,4 +101,30 @@ export function registerCashflowTools(
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
     },
   );
+
+  server.tool(
+    "get_cashflow_withholding_simulation",
+    "Simulate withholding tax (ritenuta d'acconto) payments for cashflow overlay. " +
+    "Returns projected F24 payments grouped by month. Withholding is calculated on " +
+    "outgoing records (amount < 0) that have withholding_rate set. " +
+    "Payment date: 16th of the month following the invoice payment date.",
+    {
+      workspace_ids: z.array(z.string()).describe("Workspace UUIDs to include"),
+      from_date: z.string().describe("Start date (YYYY-MM-DD)"),
+      to_date: z.string().describe("End date (YYYY-MM-DD)"),
+      area_stage: z.array(z.string()).optional()
+        .describe("Combined area:stage filters (e.g. ['actual:0', 'orders:1'])"),
+    },
+    async ({ workspace_ids, from_date, to_date, area_stage }) => {
+      const url = new URL("/api/v1/cashflow/withholding-simulation", "http://x");
+      url.searchParams.set("from_date", from_date);
+      url.searchParams.set("to_date", to_date);
+      for (const wid of workspace_ids) {
+        url.searchParams.append("workspace_ids", wid);
+      }
+      if (area_stage) for (const as_ of area_stage) url.searchParams.append("area_stage", as_);
+      const data = await getClient().get(`/api/v1/cashflow/withholding-simulation?${url.searchParams.toString()}`);
+      return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+    },
+  );
 }

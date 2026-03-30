@@ -136,3 +136,21 @@ class CashflowVatResponse(BaseModel):
     """Response with VAT simulation series."""
 
     series: list[CashflowVatSeries]
+
+
+# ── Withholding Tax (Ritenuta d'Acconto) Simulation schemas ──────
+
+class CashflowWithholdingEntry(BaseModel):
+    """Single withholding payment entry."""
+
+    date: date
+    period: str  # "YYYY-MM"
+    area: str
+    amount: DecimalFloat  # positive = da versare (uscita)
+
+
+class CashflowWithholdingResponse(BaseModel):
+    """Response with withholding simulation entries."""
+
+    entries: list[CashflowWithholdingEntry]
+    total: DecimalFloat

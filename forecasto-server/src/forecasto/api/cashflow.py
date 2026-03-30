@@ -23,9 +23,12 @@ from forecasto.schemas.cashflow import (
     CashflowVatEntry,
     CashflowVatResponse,
     CashflowVatSeries,
+    CashflowWithholdingEntry,
+    CashflowWithholdingResponse,
 )
 from forecasto.services.cashflow_service import CashflowService
 from forecasto.services.vat_service import VatService
+from forecasto.services.withholding_service import WithholdingService
 
 router = APIRouter()
 
@@ -164,3 +167,31 @@ async def get_vat_simulation(
         ))
 
     return CashflowVatResponse(series=series_list)
+
+
+@router.get("/cashflow/withholding-simulation", response_model=CashflowWithholdingResponse)
+async def get_withholding_simulation(
+    workspace_ids: list[str] = Query(...),
+    from_date: date = Query(...),
+    to_date: date = Query(...),
+    current_user: Annotated[User, Depends(get_current_user)] = None,
+    db: Annotated[AsyncSession, Depends(get_db)] = None,
+    area_stage: list[str] | None = Query(None),
+):
+    """Simulate withholding tax (ritenuta d'acconto) payments for cashflow overlay.
+
+    Returns projected F24 payments: each entry is a monthly payment on the 16th
+    of the month following the invoice payment date.
+    """
+    service = WithholdingService(db)
+    raw_entries = await service.simulate(
+        workspace_ids=workspace_ids,
+        from_date=from_date,
+        to_date=to_date,
+        area_stage=area_stage,
+    )
+
+    entries = [CashflowWithholdingEntry(**e) for e in raw_entries]
+    total = sum((e.amount for e in entries), Decimal("0"))
+
+    return CashflowWithholdingResponse(entries=entries, total=total)

@@ -226,6 +226,7 @@ class RecordService:
             transaction_id=data.transaction_id,
             bank_account_id=data.bank_account_id,
             project_code=data.project_code,
+            withholding_rate=data.withholding_rate,
             review_date=review_date,
             seq_num=seq_num,
             classification=data.classification or {},

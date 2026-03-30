@@ -35,6 +35,7 @@ const schema = z.object({
   vat: z.string().optional(),
   vat_deduction: z.string().optional(),
   vat_month: z.string().optional(),
+  withholding_rate: z.string().optional(),
   bank_account_id: z.string().optional(),
   sign: z.enum(['in', 'out'], { message: 'Seleziona entrata o uscita' }),
 })
@@ -116,6 +117,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
       review_date: record?.review_date?.split('T')[0] || '',
       vat_deduction: record?.vat_deduction ? parseFloat(record.vat_deduction).toFixed(0) : '100',
       vat_month: record?.vat_month || '',
+      withholding_rate: record?.withholding_rate ? parseFloat(record.withholding_rate).toString() : '',
       project_code: record?.project_code || '',
       bank_account_id: record?.bank_account_id || '',
       sign: record?.amount ? (parseFloat(record.amount) >= 0 ? 'in' : 'out') : undefined,
@@ -170,6 +172,22 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
     calcTotalFromVat(watch('amount'), val)
   }
 
+  const handleVatMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Strip non-digits except dash
+    let raw = e.target.value.replace(/[^\d]/g, '')
+    // Auto-insert dash after 4 digits (year)
+    if (raw.length > 4) raw = raw.slice(0, 4) + '-' + raw.slice(4)
+    // Cap at 7 chars (YYYY-MM)
+    raw = raw.slice(0, 7)
+    // Validate month: if we have full YYYY-MM, clamp month to 01-12
+    if (raw.length === 7) {
+      const month = parseInt(raw.slice(5), 10)
+      if (month < 1) raw = raw.slice(0, 5) + '01'
+      else if (month > 12) raw = raw.slice(0, 5) + '12'
+    }
+    setValue('vat_month', raw)
+  }
+
   const handleTotalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
     setValue('total', val)
@@ -188,8 +206,12 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
 
     const vatDeduction = data.vat_deduction || '100'
 
+    const withholdingRate = data.withholding_rate && parseFloat(data.withholding_rate) > 0
+      ? data.withholding_rate
+      : undefined
+
     // Remove sign and vat from data (UI-only fields); normalize bank_account_id empty string to undefined
-    const { sign, vat: _vat, vat_deduction: _vatDed, vat_month, review_date, bank_account_id, ...submitData } = data
+    const { sign, vat: _vat, vat_deduction: _vatDed, vat_month, withholding_rate: _whRate, review_date, bank_account_id, ...submitData } = data
 
     // In create mode: '' → undefined (don't send field)
     // In update mode: '' → null (explicitly clear the field on server)
@@ -197,32 +219,32 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
       ? bank_account_id
       : record ? null : undefined
 
-    return { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth: vat_month || undefined, review_date, bank_account_id: normalizedBankAccountId }
+    return { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth: vat_month || undefined, withholdingRate, review_date, bank_account_id: normalizedBankAccountId }
   }
 
   const handleFormSubmit = (data: FormData) => {
-    const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, review_date, bank_account_id } = processFormData(data)
+    const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, withholdingRate, review_date, bank_account_id } = processFormData(data)
 
     if (record) {
-      onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, review_date: review_date || undefined, bank_account_id } as RecordUpdate)
+      onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, withholding_rate: withholdingRate || null, review_date: review_date || undefined, bank_account_id } as RecordUpdate)
     } else {
       // Add default type for new records
-      onSubmit({ ...submitData, area, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, review_date: review_date || undefined, bank_account_id, type: 'standard' } as RecordCreate)
+      onSubmit({ ...submitData, area, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, withholding_rate: withholdingRate, review_date: review_date || undefined, bank_account_id, type: 'standard' } as RecordCreate)
     }
   }
 
   const handleReviewClick = (days: number) => {
     handleSubmit((data: FormData) => {
-      const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, bank_account_id } = processFormData(data)
-      onReview?.(days, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, bank_account_id } as RecordUpdate)
+      const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, withholdingRate, bank_account_id } = processFormData(data)
+      onReview?.(days, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, withholding_rate: withholdingRate || null, bank_account_id } as RecordUpdate)
     })()
   }
 
   const handlePromoteClick = (toArea: Area) => {
     if (!record) return
     handleSubmit((data: FormData) => {
-      const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, bank_account_id } = processFormData(data)
-      onPromote?.(record.id, toArea, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, bank_account_id } as RecordUpdate)
+      const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, withholdingRate, bank_account_id } = processFormData(data)
+      onPromote?.(record.id, toArea, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, withholding_rate: withholdingRate || null, bank_account_id } as RecordUpdate)
     })()
   }
 
@@ -364,15 +386,19 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
             </div>
           </div>
 
-          {/* Detrazione IVA + Mese IVA */}
-          <div className="grid grid-cols-2 gap-2">
+          {/* Detraz. IVA + Mese IVA + Ritenuta */}
+          <div className="grid grid-cols-[4rem_1fr_4rem] gap-2">
             <div className="space-y-1">
-              <Label htmlFor="vat_deduction">Detrazione IVA %</Label>
-              <Input id="vat_deduction" type="number" step="1" min="0" max="100" {...register('vat_deduction')} className="text-center" />
+              <Label htmlFor="vat_deduction">Det. %</Label>
+              <Input id="vat_deduction" type="number" step="1" min="0" max="100" {...register('vat_deduction')} className="px-1 text-center" />
             </div>
             <div className="space-y-1">
               <Label htmlFor="vat_month">Mese IVA</Label>
-              <Input id="vat_month" type="month" {...register('vat_month')} />
+              <Input id="vat_month" type="text" placeholder="YYYY-MM" maxLength={7} value={watch('vat_month')} onChange={handleVatMonthChange} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="withholding_rate">Rit. %</Label>
+              <Input id="withholding_rate" type="number" step="0.01" min="0" max="100" {...register('withholding_rate')} className="px-1 text-center" placeholder="20" />
             </div>
           </div>
 

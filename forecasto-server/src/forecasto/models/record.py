@@ -62,6 +62,9 @@ class Record(Base, UUIDMixin, TimestampMixin):
     # Transfer history
     transfer_history: Mapped[list] = mapped_column(JSON, default=list)
 
+    # Ritenuta d'acconto (withholding tax rate %)
+    withholding_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2), nullable=True)
+
     # Sequential number per owner
     seq_num: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 

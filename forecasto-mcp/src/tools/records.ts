@@ -11,7 +11,7 @@ const STAGE = z.enum(["0", "1"]).describe(
 const CSV_COLUMNS = [
   "id", "area", "type", "account", "reference", "note",
   "date_cashflow", "date_offer",
-  "amount", "vat", "vat_deduction", "vat_month", "total",
+  "amount", "vat", "vat_deduction", "vat_month", "total", "withholding_rate", "withholding_amount",
   "stage", "transaction_id", "bank_account_id", "project_code",
   "owner", "nextaction", "review_date",
   "seq_num", "version", "is_draft",
@@ -108,6 +108,7 @@ export function registerRecordTools(
       review_date: z.string().optional().describe("Review date (YYYY-MM-DD)"),
       vat_month: z.string().optional().describe("VAT month (YYYY-MM). Defaults to month of date_cashflow if not set"),
       vat_deduction: z.number().min(0).max(100).default(100).describe("IVA deducibile % (default 100). Use <100 for partially deductible expenses."),
+      withholding_rate: z.number().min(0).max(100).optional().describe("Ritenuta d'acconto % (e.g. 20 for professionals). Withholding amount is calculated as |amount| * rate / 100."),
       classification: z.record(z.unknown()).optional().describe("Optional JSON classification dict"),
     },
     async ({ workspace_id, ...body }) => {
@@ -140,6 +141,7 @@ export function registerRecordTools(
       review_date: z.string().optional().describe("YYYY-MM-DD"),
       vat_month: z.string().optional().describe("VAT month (YYYY-MM)"),
       vat_deduction: z.number().min(0).max(100).optional().describe("IVA deducibile %"),
+      withholding_rate: z.number().min(0).max(100).optional().nullable().describe("Ritenuta d'acconto % (null to clear)"),
       classification: z.record(z.unknown()).optional().describe("Optional JSON classification dict"),
     },
     async ({ workspace_id, record_id, ...body }) => {
@@ -237,6 +239,7 @@ export function registerRecordTools(
         review_date: z.string().optional().describe("YYYY-MM-DD"),
         vat_month: z.string().optional().describe("VAT month (YYYY-MM)"),
         vat_deduction: z.number().min(0).max(100).optional().describe("IVA deducibile % (default 100)"),
+        withholding_rate: z.number().min(0).max(100).optional().describe("Ritenuta d'acconto %"),
         classification: z.record(z.unknown()).optional(),
       })).describe("Array of records to create"),
     },
@@ -314,6 +317,7 @@ export function registerRecordTools(
           amount: original.amount,
           vat: original.vat,
           vat_deduction: original.vat_deduction,
+          withholding_rate: original.withholding_rate,
           total: original.total,
           stage: original.stage,
           project_code: original.project_code,
@@ -385,6 +389,7 @@ export function registerRecordTools(
           amount: newAmount,
           vat: newVat,
           vat_deduction: original.vat_deduction,
+          withholding_rate: original.withholding_rate,
           total: newTotal,
           stage: original.stage,
           project_code: original.project_code,
