@@ -10,6 +10,7 @@ export function registerWorkspaceTools(
     "list_workspaces",
     "List all Forecasto workspaces you have access to, including your role and area permissions for each.",
     {},
+    { title: "List Workspaces", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async () => {
       const data = await getClient().get("/api/v1/workspaces") as { workspaces?: Record<string, unknown>[] };
       const stripped = (data.workspaces ?? []).map(ws => {
@@ -25,6 +26,7 @@ export function registerWorkspaceTools(
     "get_workspace",
     "Get details of a specific Forecasto workspace.",
     { workspace_id: z.string().describe("The workspace UUID") },
+    { title: "Get Workspace", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ workspace_id }) => {
       const data = await getClient().get(`/api/v1/workspaces/${workspace_id}`) as { workspace?: Record<string, unknown> };
       if (data.workspace?.settings) {
@@ -44,6 +46,7 @@ export function registerWorkspaceTools(
       description: z.string().optional().describe("Optional description"),
       settings: z.record(z.unknown()).optional().describe("Optional initial settings dict"),
     },
+    { title: "Create Workspace", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     async ({ name, description, settings }) => {
       const data = await getClient().post("/api/v1/workspaces", { name, description, settings });
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -61,6 +64,7 @@ export function registerWorkspaceTools(
       vat_registry_id: z.string().nullable().optional().describe("UUID of the VAT registry to associate (null to unlink)"),
       settings: z.record(z.unknown()).optional().describe("Partial settings object to merge into workspace settings"),
     },
+    { title: "Update Workspace", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async ({ workspace_id, ...body }) => {
       const payload = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
       const data = await getClient().patch(`/api/v1/workspaces/${workspace_id}`, payload);

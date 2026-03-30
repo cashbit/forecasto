@@ -57,6 +57,7 @@ export function registerRecordTools(
       limit: z.number().int().min(1).max(1000).default(200).describe("Max records per page (default 200)"),
       offset: z.number().int().min(0).default(0).describe("Pagination offset (default 0)"),
     },
+    { title: "List Records", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ workspace_id, area, date_start, date_end, sign, text_filter, text_filter_field, project_code, bank_account_id, include_deleted, limit, offset }) => {
       const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/records`, {
         area, date_start, date_end, sign, text_filter, text_filter_field, project_code, bank_account_id,
@@ -78,6 +79,7 @@ export function registerRecordTools(
       workspace_id: z.string().describe("Workspace UUID"),
       record_id: z.string().describe("Record UUID"),
     },
+    { title: "Get Record", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ workspace_id, record_id }) => {
       const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/records/${record_id}`);
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -111,6 +113,7 @@ export function registerRecordTools(
       withholding_rate: z.number().min(0).max(100).optional().describe("Ritenuta d'acconto % (e.g. 20 for professionals). Withholding amount is calculated as |amount| * rate / 100."),
       classification: z.record(z.unknown()).optional().describe("Optional JSON classification dict"),
     },
+    { title: "Create Record", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     async ({ workspace_id, ...body }) => {
       const data = await getClient().post(`/api/v1/workspaces/${workspace_id}/records`, body);
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -144,6 +147,7 @@ export function registerRecordTools(
       withholding_rate: z.number().min(0).max(100).optional().nullable().describe("Ritenuta d'acconto % (null to clear)"),
       classification: z.record(z.unknown()).optional().describe("Optional JSON classification dict"),
     },
+    { title: "Update Record", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async ({ workspace_id, record_id, ...body }) => {
       const payload = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
       const data = await getClient().patch(`/api/v1/workspaces/${workspace_id}/records/${record_id}`, payload);
@@ -158,6 +162,7 @@ export function registerRecordTools(
       workspace_id: z.string().describe("Workspace UUID"),
       record_id: z.string().describe("Record UUID"),
     },
+    { title: "Delete Record", readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     async ({ workspace_id, record_id }) => {
       const data = await getClient().delete(`/api/v1/workspaces/${workspace_id}/records/${record_id}`);
       return { content: [{ type: "text" as const, text: JSON.stringify(data ?? { success: true }, null, 2) }] };
@@ -173,6 +178,7 @@ export function registerRecordTools(
       to_area: AREA.describe("Destination area"),
       note: z.string().optional().describe("Optional note for the transfer"),
     },
+    { title: "Transfer Record", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     async ({ workspace_id, record_id, to_area, note }) => {
       const data = await getClient().post(
         `/api/v1/workspaces/${workspace_id}/records/${record_id}/transfer`,
@@ -192,6 +198,7 @@ export function registerRecordTools(
       date_end: z.string().optional().describe("End date (YYYY-MM-DD)"),
       sign: z.enum(["in", "out", "all"]).optional(),
     },
+    { title: "Export Records", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ workspace_id, area, date_start, date_end, sign }) => {
       const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/records/export`, {
         area, date_start, date_end, sign,
@@ -208,6 +215,7 @@ export function registerRecordTools(
       workspace_id: z.string().describe("Workspace UUID"),
       record_id: z.string().describe("Record UUID to restore"),
     },
+    { title: "Restore Record", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async ({ workspace_id, record_id }) => {
       const data = await getClient().post(`/api/v1/workspaces/${workspace_id}/records/${record_id}/restore`);
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -243,6 +251,7 @@ export function registerRecordTools(
         classification: z.record(z.unknown()).optional(),
       })).describe("Array of records to create"),
     },
+    { title: "Bulk Create Records", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     async ({ workspace_id, records }) => {
       const data = await getClient().post(`/api/v1/workspaces/${workspace_id}/records/bulk-import`, records);
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -261,6 +270,7 @@ export function registerRecordTools(
       limit: z.number().int().min(1).max(100).optional().default(20).describe("Max results (default 20)"),
       account_filter: z.string().optional().describe("Filter reference values by specific account name"),
     },
+    { title: "Get Field Values", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ workspace_id, field, area, sign, q, limit, account_filter }) => {
       const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/records/field-values`, {
         field, area, sign, q, limit: limit !== undefined ? String(limit) : undefined, account_filter,
@@ -281,6 +291,7 @@ export function registerRecordTools(
       next_action: z.string().optional().describe("Override next_action on all clones"),
       review_date_offset_days: z.number().int().optional().describe("If set, review_date = date_cashflow + N days"),
     },
+    { title: "Clone Record", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     async ({ workspace_id, record_id, count, interval_value, interval_unit, next_action, review_date_offset_days }) => {
       const original = await getClient().get(`/api/v1/workspaces/${workspace_id}/records/${record_id}`) as RecordRow;
 
@@ -352,6 +363,7 @@ export function registerRecordTools(
         split_percent: z.number().min(0.01).max(100).describe("Percentage of original amount (0-100)"),
       })).min(2).max(24).describe("Installments definition. Percentages must sum to 100."),
     },
+    { title: "Split Record", readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
     async ({ workspace_id, record_id, installments }) => {
       const totalPct = installments.reduce((s, i) => s + i.split_percent, 0);
       if (totalPct < 99 || totalPct > 101) {

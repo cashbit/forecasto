@@ -23,6 +23,7 @@ export function registerVatTools(
       dry_run: z.boolean().default(false)
         .describe("If true, only preview the calculation without creating records"),
     },
+    { title: "Calculate VAT", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     async ({ dry_run, ...body }) => {
       const data = await getClient().post(
         `/api/v1/vat/calculate?dry_run=${dry_run}`,

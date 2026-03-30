@@ -12,6 +12,7 @@ export function registerBankAccountTools(
     {
       active_only: z.boolean().optional().default(true).describe("Return only active accounts"),
     },
+    { title: "List Bank Accounts", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ active_only }) => {
       const data = await getClient().get("/api/v1/bank-accounts", { active_only });
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -30,6 +31,7 @@ export function registerBankAccountTools(
       description: z.string().optional(),
       settings: z.record(z.unknown()).optional().describe("Optional settings dict"),
     },
+    { title: "Create Bank Account", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     async (body) => {
       const data = await getClient().post("/api/v1/bank-accounts", body);
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -50,6 +52,7 @@ export function registerBankAccountTools(
       exclude_from_cashflow: z.boolean().optional().describe("Exclude this account from cashflow calculations"),
       settings: z.record(z.unknown()).optional().describe("Optional settings dict"),
     },
+    { title: "Update Bank Account", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async ({ account_id, ...body }) => {
       const payload = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
       const data = await getClient().patch(`/api/v1/bank-accounts/${account_id}`, payload);
@@ -63,6 +66,7 @@ export function registerBankAccountTools(
     {
       workspace_id: z.string().describe("Workspace UUID"),
     },
+    { title: "Get Workspace Bank Account", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ workspace_id }) => {
       const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/bank-account`);
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -76,6 +80,7 @@ export function registerBankAccountTools(
       workspace_id: z.string().describe("Workspace UUID"),
       account_id: z.string().describe("Bank account UUID to set as primary"),
     },
+    { title: "Set Workspace Bank Account", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async ({ workspace_id, account_id }) => {
       const data = await getClient().put(`/api/v1/workspaces/${workspace_id}/bank-account/${account_id}`);
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -88,6 +93,7 @@ export function registerBankAccountTools(
     {
       workspace_id: z.string().describe("Workspace UUID"),
     },
+    { title: "Remove Workspace Bank Account", readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     async ({ workspace_id }) => {
       const data = await getClient().delete(`/api/v1/workspaces/${workspace_id}/bank-account`);
       return { content: [{ type: "text" as const, text: JSON.stringify(data ?? { success: true }, null, 2) }] };
@@ -100,6 +106,7 @@ export function registerBankAccountTools(
     {
       workspace_id: z.string().describe("Workspace UUID"),
     },
+    { title: "List Workspace Bank Accounts", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ workspace_id }) => {
       const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/bank-accounts`);
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -113,6 +120,7 @@ export function registerBankAccountTools(
       workspace_id: z.string().describe("Workspace UUID"),
       account_id: z.string().describe("Bank account UUID to associate"),
     },
+    { title: "Add Workspace Bank Account", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async ({ workspace_id, account_id }) => {
       const data = await getClient().post(`/api/v1/workspaces/${workspace_id}/bank-accounts/${account_id}`, {});
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -126,6 +134,7 @@ export function registerBankAccountTools(
       workspace_id: z.string().describe("Workspace UUID"),
       account_id: z.string().describe("Bank account UUID to disassociate"),
     },
+    { title: "Remove Workspace Bank Account Link", readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     async ({ workspace_id, account_id }) => {
       const data = await getClient().delete(`/api/v1/workspaces/${workspace_id}/bank-accounts/${account_id}`);
       return { content: [{ type: "text" as const, text: JSON.stringify(data ?? { success: true }, null, 2) }] };
@@ -141,6 +150,7 @@ export function registerBankAccountTools(
       from_date: z.string().optional().describe("Filter from date (YYYY-MM-DD)"),
       to_date: z.string().optional().describe("Filter to date (YYYY-MM-DD)"),
     },
+    { title: "Get Account Balances", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ workspace_id, account_id, from_date, to_date }) => {
       const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/bank-accounts/${account_id}/balances`, { from_date, to_date });
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -158,6 +168,7 @@ export function registerBankAccountTools(
       note: z.string().optional().describe("Optional note"),
       source: z.string().optional().default("manual").describe("Source of the balance (default: manual)"),
     },
+    { title: "Add Balance Snapshot", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async ({ workspace_id, account_id, balance_date, balance, note, source }) => {
       const data = await getClient().post(
         `/api/v1/workspaces/${workspace_id}/bank-accounts/${account_id}/balances`,
@@ -175,6 +186,7 @@ export function registerBankAccountTools(
       account_id: z.string().describe("Bank account UUID"),
       balance_id: z.string().describe("Balance snapshot UUID to delete"),
     },
+    { title: "Delete Balance Snapshot", readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     async ({ workspace_id, account_id, balance_id }) => {
       const data = await getClient().delete(
         `/api/v1/workspaces/${workspace_id}/bank-accounts/${account_id}/balances/${balance_id}`,

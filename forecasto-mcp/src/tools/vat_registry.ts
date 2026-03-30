@@ -11,6 +11,7 @@ export function registerVatRegistryTools(
     "list_vat_registries",
     "List all VAT registries (anagrafica partite IVA) owned by the current user.",
     {},
+    { title: "List VAT Registries", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async () => {
       const data = await getClient().get("/api/v1/vat-registries");
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -26,6 +27,7 @@ export function registerVatRegistryTools(
       vat_number: z.string().describe("VAT number (e.g. 'IT01234567890')"),
       bank_account_id: z.string().optional().describe("UUID of the bank account for VAT settlements"),
     },
+    { title: "Create VAT Registry", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     async (body) => {
       const data = await getClient().post("/api/v1/vat-registries", body);
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
@@ -39,6 +41,7 @@ export function registerVatRegistryTools(
     {
       registry_id: z.string().describe("VAT registry UUID"),
     },
+    { title: "Get VAT Registry", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ registry_id }) => {
       const registry = await getClient().get(`/api/v1/vat-registries/${registry_id}`);
       const balances = await getClient().get(`/api/v1/vat-registries/${registry_id}/balances`);
@@ -59,6 +62,7 @@ export function registerVatRegistryTools(
       amount: z.number().describe("Balance amount (positive = credit, negative = debit)"),
       note: z.string().optional().describe("Optional note"),
     },
+    { title: "Add VAT Balance", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     async ({ registry_id, ...body }) => {
       const data = await getClient().post(
         `/api/v1/vat-registries/${registry_id}/balances`,
@@ -76,6 +80,7 @@ export function registerVatRegistryTools(
       registry_id: z.string().describe("VAT registry UUID"),
       balance_id: z.string().describe("Balance entry UUID"),
     },
+    { title: "Delete VAT Balance", readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     async ({ registry_id, balance_id }) => {
       await getClient().delete(`/api/v1/vat-registries/${registry_id}/balances/${balance_id}`);
       return { content: [{ type: "text" as const, text: "Balance deleted successfully." }] };
@@ -92,6 +97,7 @@ export function registerVatRegistryTools(
       vat_number: z.string().optional().describe("New VAT number (e.g. 'IT01234567890')"),
       bank_account_id: z.string().nullable().optional().describe("UUID of the bank account for VAT settlements (null to unlink)"),
     },
+    { title: "Update VAT Registry", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async ({ registry_id, ...body }) => {
       const payload = Object.fromEntries(Object.entries(body).filter(([, v]) => v !== undefined));
       const data = await getClient().patch(`/api/v1/vat-registries/${registry_id}`, payload);
@@ -106,6 +112,7 @@ export function registerVatRegistryTools(
     {
       registry_id: z.string().describe("VAT registry UUID"),
     },
+    { title: "Delete VAT Registry", readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     async ({ registry_id }) => {
       await getClient().delete(`/api/v1/vat-registries/${registry_id}`);
       return { content: [{ type: "text" as const, text: "VAT registry deleted successfully." }] };
@@ -122,6 +129,7 @@ export function registerVatRegistryTools(
       amount: z.number().optional().describe("Balance amount (positive = credit, negative = debit)"),
       note: z.string().optional().describe("Optional note"),
     },
+    { title: "Update VAT Balance", readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     async ({ registry_id, balance_id, amount, note }) => {
       const payload = Object.fromEntries(Object.entries({ amount, note }).filter(([, v]) => v !== undefined));
       const data = await getClient().patch(

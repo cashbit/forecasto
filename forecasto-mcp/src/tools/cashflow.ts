@@ -29,6 +29,7 @@ export function registerCashflowTools(
         .describe("Grouping period (default: day)"),
       bank_account_id: z.string().optional().describe("Filter by bank account UUID"),
     },
+    { title: "Get Cashflow", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ workspace_id, from_date, to_date, areas, stages, area_stage, sign_filter, group_by, bank_account_id }) => {
       const url = new URL(`/api/v1/workspaces/${workspace_id}/cashflow`, "http://x");
       url.searchParams.set("from_date", from_date);
@@ -58,6 +59,7 @@ export function registerCashflowTools(
         .optional()
         .describe("Grouping period (default: month)"),
     },
+    { title: "Get Consolidated Cashflow", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ workspace_ids, from_date, to_date, group_by }) => {
       const url = new URL("/api/v1/cashflow/consolidated", "http://x");
       url.searchParams.set("from_date", from_date);
@@ -87,6 +89,7 @@ export function registerCashflowTools(
       area_stage: z.array(z.string()).optional()
         .describe("Combined area:stage filters (e.g. ['actual:0', 'orders:1'])"),
     },
+    { title: "Get Cashflow VAT Simulation", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ workspace_ids, from_date, to_date, period_type, use_summer_extension, area_stage }) => {
       const url = new URL("/api/v1/cashflow/vat-simulation", "http://x");
       url.searchParams.set("from_date", from_date);
@@ -115,6 +118,7 @@ export function registerCashflowTools(
       area_stage: z.array(z.string()).optional()
         .describe("Combined area:stage filters (e.g. ['actual:0', 'orders:1'])"),
     },
+    { title: "Get Cashflow Withholding Simulation", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     async ({ workspace_ids, from_date, to_date, area_stage }) => {
       const url = new URL("/api/v1/cashflow/withholding-simulation", "http://x");
       url.searchParams.set("from_date", from_date);
