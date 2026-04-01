@@ -14,6 +14,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from forecasto.models.base import Base, TimestampMixin, UUIDMixin, generate_uuid
 
 if TYPE_CHECKING:
+    from forecasto.models.agent_token import AgentToken
     from forecasto.models.registration_code import RegistrationCode
     from forecasto.models.workspace import WorkspaceMember
 
@@ -76,6 +77,9 @@ class User(Base, UUIDMixin, TimestampMixin):
     )
     registration_code: Mapped[Optional["RegistrationCode"]] = relationship(
         "RegistrationCode", foreign_keys=[registration_code_id]
+    )
+    agent_tokens: Mapped[list["AgentToken"]] = relationship(
+        "AgentToken", back_populates="user", cascade="all, delete-orphan"
     )
 
 

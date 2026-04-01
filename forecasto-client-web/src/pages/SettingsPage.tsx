@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { User, Building, Bell, Shield, Users, Landmark, Handshake, Receipt, Download, Trash2, Loader2 } from 'lucide-react'
+import { User, Building, Bell, Shield, Users, Landmark, Handshake, Receipt, Download, Trash2, Loader2, Bot } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +15,7 @@ import { VatRegistriesTab } from '@/components/settings/VatRegistriesTab'
 import { PartnershipTab } from '@/components/settings/PartnershipTab'
 import { WorkspaceBankAccountsSection } from '@/components/settings/WorkspaceBankAccountsSection'
 import { DeleteAccountDialog } from '@/components/settings/DeleteAccountDialog'
+import { AgentTokensTab } from '@/components/settings/AgentTokensTab'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/useToast'
 import { authApi } from '@/api/auth'
@@ -155,6 +156,10 @@ export function SettingsPage() {
               Partnership
             </TabsTrigger>
           )}
+          <TabsTrigger value="agent">
+            <Bot className="mr-2 h-4 w-4" />
+            Agente
+          </TabsTrigger>
           <TabsTrigger value="notifications">
             <Bell className="mr-2 h-4 w-4" />
             Notifiche
@@ -317,6 +322,10 @@ export function SettingsPage() {
             <PartnershipTab />
           </TabsContent>
         )}
+
+        <TabsContent value="agent">
+          <AgentTokensTab />
+        </TabsContent>
 
         <TabsContent value="notifications">
           <Card>

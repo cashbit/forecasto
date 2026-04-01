@@ -14,6 +14,7 @@ from forecasto.models.base import Base, TimestampMixin, UUIDMixin, generate_uuid
 
 if TYPE_CHECKING:
     from forecasto.models.bank_account import BankAccount
+    from forecasto.models.inbox import InboxItem
     from forecasto.models.record import Record
     from forecasto.models.session import Session
     from forecasto.models.user import User
@@ -81,6 +82,9 @@ class Workspace(Base, UUIDMixin, TimestampMixin):
     )
     api_keys: Mapped[list["ApiKey"]] = relationship(
         "ApiKey", back_populates="workspace", cascade="all, delete-orphan"
+    )
+    inbox_items: Mapped[list["InboxItem"]] = relationship(
+        "InboxItem", back_populates="workspace", cascade="all, delete-orphan"
     )
 
 def _default_granular_permissions() -> dict:

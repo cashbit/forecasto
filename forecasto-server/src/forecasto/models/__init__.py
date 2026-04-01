@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 
+from forecasto.models.agent_token import AgentToken
 from forecasto.models.audit import AuditLog
+from forecasto.models.inbox import InboxItem
 from forecasto.models.bank_account import BankAccount, BankAccountBalance
 from forecasto.models.base import Base
 from forecasto.models.record import Record
@@ -19,6 +21,7 @@ from forecasto.models.vat_registry import VatBalance, VatRegistry
 from forecasto.models.workspace import ApiKey, Invitation, Workspace, WorkspaceMember
 
 __all__ = [
+    "AgentToken",
     "Base",
     "User",
     "RefreshToken",
@@ -39,5 +42,6 @@ __all__ = [
     "RegistrationCodeBatch",
     "VatRegistry",
     "VatBalance",
+    "InboxItem",
 ]
 

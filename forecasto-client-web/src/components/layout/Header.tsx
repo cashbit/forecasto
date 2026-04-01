@@ -22,6 +22,7 @@ import { workspacesApi } from '@/api/workspaces'
 import { recordsApi } from '@/api/records'
 import { toast } from '@/hooks/useToast'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { inboxApi } from '@/api/inbox'
 import { ImportDialog } from '@/components/records/ImportDialog'
 import { SdiImportDialog } from '@/components/records/SdiImportDialog'
 import { ExcelImportDialog } from '@/components/records/ExcelImportDialog'
@@ -58,6 +59,14 @@ export function Header() {
   const { data: vatRegistries = [] } = useQuery({
     queryKey: ['vat-registries'],
     queryFn: vatRegistryApi.list,
+  })
+
+  const primaryWorkspaceId = primaryWorkspace?.id
+  const { data: inboxCount } = useQuery({
+    queryKey: ['inbox-count', primaryWorkspaceId],
+    queryFn: () => inboxApi.count(primaryWorkspaceId!),
+    enabled: !!primaryWorkspaceId,
+    refetchInterval: 30_000,
   })
   const workspaceVatNumber = useMemo(() => {
     if (!primaryWorkspace?.vat_registry_id) return ''
@@ -260,6 +269,24 @@ export function Header() {
             )}
           >
             <Link to="/cashflow">Cashflow</Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className={cn(
+              'relative',
+              location.pathname === '/inbox' && 'bg-primary/10 text-primary font-semibold'
+            )}
+          >
+            <Link to="/inbox">
+              Inbox
+              {(inboxCount?.pending ?? 0) > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-medium">
+                  {inboxCount!.pending}
+                </span>
+              )}
+            </Link>
           </Button>
         </nav>
 

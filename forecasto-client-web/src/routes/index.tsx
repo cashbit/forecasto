@@ -9,6 +9,7 @@ import { SettingsPage } from '@/pages/SettingsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { SupportPage } from '@/pages/SupportPage'
 import { SkillsPage } from '@/pages/SkillsPage'
+import { InboxPage } from '@/pages/InboxPage'
 import { AdminLayout, AdminDashboard, RegistrationCodesPage, UsersPage, ActivatedCodesReportPage, BillingSummaryPage } from '@/pages/admin'
 import { MobileLayout } from '@/pages/mobile/MobileLayout'
 import { MobileQuickEntry } from '@/pages/mobile/MobileQuickEntry'
@@ -78,6 +79,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'cashflow', element: <CashflowPage /> },
+      { path: 'inbox', element: <InboxPage /> },
       { path: 'settings', element: <SettingsPage /> },
     ],
   },
