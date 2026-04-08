@@ -68,6 +68,9 @@ class User(Base, UUIDMixin, TimestampMixin):
     # Sequential record counter (used for all workspaces owned by this user)
     next_seq_num: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
+    # AI document processing quota (pages per month, 0 = unlimited)
+    monthly_page_quota: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
+
     # Relationships
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"

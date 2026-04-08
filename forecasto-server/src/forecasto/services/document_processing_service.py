@@ -5,11 +5,12 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 from pathlib import Path
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from forecasto.config import settings
 from forecasto.models.document_processing import (
@@ -17,6 +18,7 @@ from forecasto.models.document_processing import (
     LLMPricingConfig,
     UsageRecord,
 )
+from forecasto.models.user import User
 from forecasto.services.processing_queue import processing_queue, QueueFullError
 
 logger = logging.getLogger(__name__)
@@ -91,7 +93,9 @@ class DocumentProcessingService:
 
     async def get_job(self, workspace_id: str, job_id: str) -> DocumentProcessingJob | None:
         result = await self.db.execute(
-            select(DocumentProcessingJob).where(
+            select(DocumentProcessingJob)
+            .options(selectinload(DocumentProcessingJob.usage_record))
+            .where(
                 DocumentProcessingJob.id == job_id,
                 DocumentProcessingJob.workspace_id == workspace_id,
             )
@@ -115,9 +119,10 @@ class DocumentProcessingService:
         return list(result.scalars().all()), total
 
     async def get_usage_summary(
-        self, workspace_id: str, from_date: str | None = None, to_date: str | None = None
+        self, workspace_id: str, user_id: str,
+        from_date: str | None = None, to_date: str | None = None,
     ) -> dict:
-        """Aggregated usage stats for a workspace."""
+        """Aggregated usage stats for a workspace + user monthly quota."""
         stmt = select(UsageRecord).where(UsageRecord.workspace_id == workspace_id)
         if from_date:
             stmt = stmt.where(UsageRecord.created_at >= from_date)
@@ -129,10 +134,9 @@ class DocumentProcessingService:
 
         # Aggregate
         total_docs = len(records)
+        total_pages = sum(r.pages_processed for r in records)
         total_in = sum(r.input_tokens for r in records)
         total_out = sum(r.output_tokens for r in records)
-        total_cost = sum(r.total_cost_usd for r in records)
-        total_billed = sum(r.billed_cost_usd for r in records)
 
         # By model
         by_model: dict[str, dict] = {}
@@ -140,24 +144,50 @@ class DocumentProcessingService:
             m = by_model.setdefault(r.llm_model, {
                 "llm_model": r.llm_model,
                 "document_count": 0,
+                "pages": 0,
                 "input_tokens": 0,
                 "output_tokens": 0,
-                "total_cost_usd": 0.0,
-                "billed_cost_usd": 0.0,
             })
             m["document_count"] += 1
+            m["pages"] += r.pages_processed
             m["input_tokens"] += r.input_tokens
             m["output_tokens"] += r.output_tokens
-            m["total_cost_usd"] += r.total_cost_usd
-            m["billed_cost_usd"] += r.billed_cost_usd
+
+        # Monthly quota (user-level, cross-workspace)
+        quota_info = await self.get_user_monthly_usage(user_id)
 
         return {
             "total_documents": total_docs,
+            "total_pages": total_pages,
             "total_input_tokens": total_in,
             "total_output_tokens": total_out,
-            "total_cost_usd": round(total_cost, 4),
-            "total_billed_cost_usd": round(total_billed, 4),
             "by_model": list(by_model.values()),
+            **quota_info,
+        }
+
+    async def get_user_monthly_usage(self, user_id: str) -> dict:
+        """Get user's monthly page usage and quota (cross-workspace)."""
+        # Load user for quota
+        user_result = await self.db.execute(select(User).where(User.id == user_id))
+        user = user_result.scalar_one_or_none()
+        quota = user.monthly_page_quota if user else 50
+
+        # Pages consumed this month (all workspaces for this user)
+        month_start = date.today().replace(day=1)
+        month_stmt = (
+            select(func.coalesce(func.sum(UsageRecord.pages_processed), 0))
+            .where(
+                UsageRecord.user_id == user_id,
+                UsageRecord.created_at >= datetime.combine(month_start, datetime.min.time()),
+            )
+        )
+        pages_this_month = (await self.db.execute(month_stmt)).scalar_one()
+
+        remaining = max(0, quota - pages_this_month)
+        return {
+            "monthly_page_quota": quota,
+            "pages_this_month": pages_this_month,
+            "pages_remaining": remaining,
         }
 
     async def list_usage_records(

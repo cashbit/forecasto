@@ -59,9 +59,7 @@ export const inboxApi = {
   upload: async (workspaceId: string, file: File): Promise<{ job_id: string; status: string; queue_position: number }> => {
     const formData = new FormData()
     formData.append('file', file)
-    const res = await apiClient.post(`/workspaces/${workspaceId}/inbox/upload-web`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const res = await apiClient.post(`/workspaces/${workspaceId}/inbox/upload-web`, formData)
     return res.data
   },
 

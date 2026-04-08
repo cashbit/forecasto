@@ -485,3 +485,35 @@ async def update_llm_pricing(
         raise NotFoundException("Pricing config non trovato")
     await db.commit()
     return {"success": True, "config": LLMPricingResponse.model_validate(config)}
+
+
+# --- User Quota Management ---
+
+@router.patch("/users/{user_id}/quota", response_model=dict)
+async def set_user_quota(
+    user_id: str,
+    body: dict,
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Set monthly page quota for a user (admin only)."""
+    from sqlalchemy import select as sa_select
+    quota = body.get("monthly_page_quota")
+    if quota is None or not isinstance(quota, int) or quota < 0:
+        from forecasto.exceptions import BadRequestException
+        raise BadRequestException("monthly_page_quota deve essere un intero >= 0")
+
+    result = await db.execute(sa_select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        from forecasto.exceptions import NotFoundException
+        raise NotFoundException("Utente non trovato")
+
+    user.monthly_page_quota = quota
+    await db.commit()
+    return {
+        "success": True,
+        "user_id": user.id,
+        "email": user.email,
+        "monthly_page_quota": user.monthly_page_quota,
+    }

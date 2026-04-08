@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Check, X, Trash2, FileText, AlertTriangle, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
+import { Check, X, Trash2, FileText, AlertTriangle, ChevronDown, ChevronUp, Pencil, StickyNote } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { InboxRecordRow } from './InboxRecordRow'
+import { AREAS, AREA_LABELS } from '@/lib/constants'
 import type { InboxItem, RecordSuggestion, ReconciliationMatch } from '@/types/inbox'
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -41,6 +43,7 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate }:
   const [editedSuggestions, setEditedSuggestions] = useState<RecordSuggestion[]>(item.extracted_data)
   const [isLoading, setIsLoading] = useState(false)
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set())
+  const [allNotesExpanded, setAllNotesExpanded] = useState(false)
 
   const isPending = item.status === 'pending'
   const isConfirmed = item.status === 'confirmed'
@@ -52,6 +55,12 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate }:
       updated[index] = { ...updated[index], [field]: value }
       return updated
     })
+  }
+
+  const handleBulkAreaChange = (area: string) => {
+    setEditedSuggestions((prev) =>
+      prev.map((s) => ({ ...s, area }))
+    )
   }
 
   const handleSaveEdit = async () => {
@@ -219,9 +228,39 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate }:
             </div>
           )}
 
+          {/* Document toolbar */}
+          {isPending && suggestions.length > 0 && (
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Area:</span>
+                <Select onValueChange={handleBulkAreaChange}>
+                  <SelectTrigger className="h-7 text-xs w-44">
+                    <SelectValue placeholder="Imposta tutte le righe…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AREAS.map((a) => (
+                      <SelectItem key={a} value={a} className="text-xs">
+                        {AREA_LABELS[a]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className={cn('h-7 text-xs gap-1', allNotesExpanded && 'bg-amber-50 border-amber-200')}
+                onClick={() => setAllNotesExpanded((v) => !v)}
+              >
+                <StickyNote className="h-3.5 w-3.5" />
+                {allNotesExpanded ? 'Nascondi note' : 'Note'}
+              </Button>
+            </div>
+          )}
+
           {suggestions.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-auto">
                 <thead>
                   <tr className="text-xs text-muted-foreground">
                     <th className="text-left pb-2 pr-2 font-medium">Area</th>
@@ -244,6 +283,7 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate }:
                       editable={isEditing}
                       workspaceId={item.workspace_id}
                       onChange={handleFieldChange}
+                      forceNoteExpanded={allNotesExpanded}
                     />
                   ))}
                 </tbody>

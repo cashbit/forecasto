@@ -117,11 +117,22 @@ async def upload_document_web(
     db: AsyncSession = Depends(get_db),
 ):
     """Upload a document via web interface (JWT auth)."""
+    # Quick quota check before reading file
+    service = DocumentProcessingService(db)
+    quota_info = await service.get_user_monthly_usage(current_user.id)
+    if quota_info["pages_remaining"] <= 0:
+        return Response(
+            content=(
+                f'{{"error": "Limite mensile raggiunto: {quota_info["monthly_page_quota"]} pagine/mese. '
+                f'Usate {quota_info["pages_this_month"]} pagine questo mese."}}'
+            ),
+            status_code=429,
+            media_type="application/json",
+        )
+
     file_bytes = await file.read()
     content_type = file.content_type or "application/octet-stream"
     filename = file.filename or "document"
-
-    service = DocumentProcessingService(db)
     try:
         job = await service.upload_document(
             workspace_id=workspace_id,

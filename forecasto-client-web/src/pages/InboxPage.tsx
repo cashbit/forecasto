@@ -7,6 +7,7 @@ import { InboxItemCard } from '@/components/inbox/InboxItemCard'
 import { DocumentUploadZone } from '@/components/inbox/DocumentUploadZone'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { inboxApi } from '@/api/inbox'
+import { usageApi } from '@/api/usage'
 import { toast } from '@/hooks/useToast'
 import type { InboxItem, InboxItemUpdate, RecordSuggestion, ReconciliationMatch } from '@/types/inbox'
 
@@ -33,9 +34,21 @@ export function InboxPage() {
     refetchInterval: 30_000,
   })
 
+  const { data: usageSummary } = useQuery({
+    queryKey: ['usage-summary', workspaceId],
+    queryFn: () => usageApi.getSummary(workspaceId),
+    enabled: !!workspaceId,
+  })
+
+  const quotaExceeded = (usageSummary?.pages_remaining ?? 1) <= 0
+  const quotaMessage = quotaExceeded
+    ? `Limite mensile raggiunto: ${usageSummary?.pages_this_month}/${usageSummary?.monthly_page_quota} pagine`
+    : undefined
+
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['inbox', workspaceId] })
     queryClient.invalidateQueries({ queryKey: ['inbox-count', workspaceId] })
+    queryClient.invalidateQueries({ queryKey: ['usage-summary', workspaceId] })
   }
 
   const updateMutation = useMutation({
@@ -134,6 +147,8 @@ export function InboxPage() {
           onProcessingComplete={() => {
             invalidate()
           }}
+          quotaExceeded={quotaExceeded}
+          quotaMessage={quotaMessage}
         />
       )}
 

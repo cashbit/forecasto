@@ -39,7 +39,7 @@ EXTRACT_TOOL = {
                         },
                         "reference": {
                             "type": "string",
-                            "description": "Counterpart name + document identifier. E.g.: 'Acme SRL — Fattura 123/2026'.",
+                            "description": "Counterpart NAME only — company or person. E.g.: 'Italtronic S.r.l.', 'Mario Rossi'. Do NOT include document numbers or dates here.",
                         },
                         "transaction_id": {
                             "type": "string",

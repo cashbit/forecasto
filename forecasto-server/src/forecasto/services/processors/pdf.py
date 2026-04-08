@@ -16,12 +16,16 @@ MAX_WIDTH = 1568
 DPI = 144
 
 
-def pdf_bytes_to_base64_images(file_bytes: bytes) -> list[dict]:
-    """Convert PDF bytes to a list of Anthropic vision-compatible image blocks."""
+def pdf_bytes_to_base64_images(file_bytes: bytes) -> tuple[list[dict], int]:
+    """Convert PDF bytes to a list of Anthropic vision-compatible image blocks.
+
+    Returns (image_blocks, page_count).
+    """
     doc = fitz.open(stream=file_bytes, filetype="pdf")
-    pages = min(len(doc), MAX_PAGES)
-    if len(doc) > MAX_PAGES:
-        logger.warning("PDF has %d pages, processing only first %d", len(doc), MAX_PAGES)
+    total_pages = len(doc)
+    pages = min(total_pages, MAX_PAGES)
+    if total_pages > MAX_PAGES:
+        logger.warning("PDF has %d pages, processing only first %d", total_pages, MAX_PAGES)
 
     blocks = []
     for i in range(pages):
@@ -45,4 +49,4 @@ def pdf_bytes_to_base64_images(file_bytes: bytes) -> list[dict]:
             },
         })
     doc.close()
-    return blocks
+    return blocks, total_pages

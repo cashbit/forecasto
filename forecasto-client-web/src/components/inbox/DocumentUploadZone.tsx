@@ -24,9 +24,11 @@ interface UploadJob {
 interface DocumentUploadZoneProps {
   workspaceId: string
   onProcessingComplete: () => void  // called when a job finishes -> refetch inbox
+  quotaExceeded?: boolean
+  quotaMessage?: string
 }
 
-export function DocumentUploadZone({ workspaceId, onProcessingComplete }: DocumentUploadZoneProps) {
+export function DocumentUploadZone({ workspaceId, onProcessingComplete, quotaExceeded, quotaMessage }: DocumentUploadZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [uploads, setUploads] = useState<UploadJob[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -115,13 +117,15 @@ export function DocumentUploadZone({ workspaceId, onProcessingComplete }: Docume
       {/* Drop zone */}
       <div
         className={cn(
-          'border-2 border-dashed rounded-lg px-6 py-4 text-center cursor-pointer transition-colors',
-          isDragOver ? 'border-blue-400 bg-blue-50' : 'border-muted-foreground/25 hover:border-muted-foreground/50',
+          'border-2 border-dashed rounded-lg px-6 py-4 text-center transition-colors',
+          quotaExceeded
+            ? 'border-red-200 bg-red-50/50 cursor-not-allowed'
+            : isDragOver ? 'border-blue-400 bg-blue-50 cursor-pointer' : 'border-muted-foreground/25 hover:border-muted-foreground/50 cursor-pointer',
         )}
-        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true) }}
+        onDragOver={(e) => { e.preventDefault(); if (!quotaExceeded) setIsDragOver(true) }}
         onDragLeave={() => setIsDragOver(false)}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
+        onDrop={quotaExceeded ? (e) => e.preventDefault() : handleDrop}
+        onClick={() => !quotaExceeded && fileInputRef.current?.click()}
       >
         <input
           ref={fileInputRef}
@@ -130,14 +134,29 @@ export function DocumentUploadZone({ workspaceId, onProcessingComplete }: Docume
           multiple
           className="hidden"
           onChange={handleFileInput}
+          disabled={quotaExceeded}
         />
-        <Upload className={cn('h-6 w-6 mx-auto mb-1', isDragOver ? 'text-blue-500' : 'text-muted-foreground')} />
-        <p className="text-sm text-muted-foreground">
-          Trascina qui i documenti o <span className="text-foreground font-medium">clicca per selezionare</span>
-        </p>
-        <p className="text-xs text-muted-foreground/70 mt-0.5">
-          PDF, JPG, PNG, WEBP, GIF — max 20MB per file
-        </p>
+        {quotaExceeded ? (
+          <>
+            <Upload className="h-6 w-6 mx-auto mb-1 text-red-400" />
+            <p className="text-sm text-red-600 font-medium">
+              {quotaMessage || 'Limite mensile di pagine raggiunto'}
+            </p>
+            <p className="text-xs text-red-500/70 mt-0.5">
+              Contatta l'amministratore per aumentare il limite
+            </p>
+          </>
+        ) : (
+          <>
+            <Upload className={cn('h-6 w-6 mx-auto mb-1', isDragOver ? 'text-blue-500' : 'text-muted-foreground')} />
+            <p className="text-sm text-muted-foreground">
+              Trascina qui i documenti o <span className="text-foreground font-medium">clicca per selezionare</span>
+            </p>
+            <p className="text-xs text-muted-foreground/70 mt-0.5">
+              PDF, JPG, PNG, WEBP, GIF — max 20MB per file
+            </p>
+          </>
+        )}
       </div>
 
       {/* Active uploads */}

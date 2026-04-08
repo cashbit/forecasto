@@ -45,8 +45,10 @@ FIELD DEFINITIONS — read carefully:
   "Personale", "Marketing"). This is NOT the counterpart company name — it is the cost/revenue category.
   Use a short, generic Italian noun that classifies the expense or income.
 
-- reference: the COUNTERPART NAME and/or document identifier, e.g. "Acme SRL — Fattura 123/2026"
-  or "Mario Rossi — Parcella marzo 2026". Combine supplier/client name with invoice number.
+- reference: the COUNTERPART NAME only — the company or person name on the other side of the transaction.
+  Examples: "Italtronic S.r.l.", "SIAD Macchine Impianti S.p.A.", "Mario Rossi".
+  Do NOT include document numbers, invoice references, or dates in this field.
+  Those belong in the transaction_id field.
 
 - transaction_id: document type, number and date in Italian, e.g. "Fattura 1/2026",
   "Nota credito 5/2026", "Parcella 3/2026", "Ricevuta 42/2026".
@@ -79,13 +81,18 @@ Return a valid JSON array of records. Extract ALL transactions found in the docu
 
 
 class ProcessingQueue:
-    """Singleton — global document processing queue with bounded concurrency."""
+    """Singleton — global document processing queue with bounded concurrency.
+
+    Per-user serialization: only one document is processed at a time per user,
+    so quota is checked and decremented atomically document-by-document.
+    """
 
     def __init__(self):
         self._queue: asyncio.Queue[str] = asyncio.Queue()
         self._running = False
         self._workers: list[asyncio.Task] = []
         self._processing_count = 0
+        self._user_locks: dict[str, asyncio.Lock] = {}  # per-user serialization
 
     @property
     def queued_count(self) -> int:
@@ -111,6 +118,12 @@ class ProcessingQueue:
             task.cancel()
         self._workers.clear()
         logger.info("Processing queue stopped")
+
+    def _get_user_lock(self, user_id: str) -> asyncio.Lock:
+        """Get or create a per-user lock for serialized processing."""
+        if user_id not in self._user_locks:
+            self._user_locks[user_id] = asyncio.Lock()
+        return self._user_locks[user_id]
 
     async def enqueue(self, job_id: str) -> int:
         """Add a job to the queue. Returns queue position."""
@@ -142,7 +155,30 @@ class ProcessingQueue:
                 self._queue.task_done()
 
     async def _process_job(self, job_id: str) -> None:
-        """Process a single document — runs in worker context with own DB session."""
+        """Process a single document — runs in worker context with own DB session.
+
+        Per-user serialization ensures quota is checked atomically.
+        """
+        # First load the job to get the user_id for the lock
+        async with async_session_maker() as db:
+            result = await db.execute(
+                select(DocumentProcessingJob).where(DocumentProcessingJob.id == job_id)
+            )
+            job_peek = result.scalar_one_or_none()
+            if not job_peek:
+                logger.error("Job %s not found", job_id)
+                return
+            user_id = job_peek.uploaded_by_user_id or "__no_user__"
+
+        # Acquire per-user lock — only one document at a time per user
+        user_lock = self._get_user_lock(user_id)
+        async with user_lock:
+            await self._process_job_inner(job_id, user_id)
+
+    async def _process_job_inner(self, job_id: str, user_id: str) -> None:
+        """Inner processing — called with per-user lock held."""
+        from forecasto.models.user import User
+
         async with async_session_maker() as db:
             try:
                 # Load job
@@ -158,6 +194,25 @@ class ProcessingQueue:
                     logger.warning("Job %s has status %s, skipping", job_id, job.status)
                     return
 
+                # --- Quota check (before any heavy processing) ---
+                if user_id != "__no_user__":
+                    user_result = await db.execute(select(User).where(User.id == user_id))
+                    user = user_result.scalar_one_or_none()
+                    if user and user.monthly_page_quota > 0:
+                        from forecasto.services.document_processing_service import DocumentProcessingService
+                        svc = DocumentProcessingService(db)
+                        quota_info = await svc.get_user_monthly_usage(user_id)
+                        if quota_info["pages_remaining"] <= 0:
+                            job.status = "failed"
+                            job.error_message = (
+                                f"Limite mensile raggiunto: {user.monthly_page_quota} pagine/mese. "
+                                f"Usate {quota_info['pages_this_month']} pagine questo mese."
+                            )
+                            job.completed_at = datetime.utcnow()
+                            await db.commit()
+                            logger.info("Job %s rejected: monthly quota exceeded", job_id)
+                            return
+
                 # Mark processing
                 job.status = "processing"
                 job.started_at = datetime.utcnow()
@@ -171,9 +226,10 @@ class ProcessingQueue:
                 file_bytes = file_path.read_bytes()
 
                 # Convert to vision blocks (CPU-bound → run in thread)
-                image_blocks = await asyncio.to_thread(
+                image_blocks, page_count = await asyncio.to_thread(
                     _convert_to_images, file_bytes, job.file_content_type
                 )
+                job.pages_processed = page_count
 
                 # Load workspace for custom prompts
                 ws_result = await db.execute(
@@ -234,6 +290,7 @@ class ProcessingQueue:
                     user_id=job.uploaded_by_user_id,
                     llm_provider="anthropic",
                     llm_model=job.llm_model,
+                    pages_processed=page_count,
                     input_tokens=usage["input_tokens"],
                     output_tokens=usage["output_tokens"],
                     cache_creation_tokens=usage.get("cache_creation_input_tokens", 0),
@@ -273,14 +330,17 @@ class ProcessingQueue:
                 await db.commit()
 
 
-def _convert_to_images(file_bytes: bytes, content_type: str) -> list[dict]:
-    """Convert file bytes to Anthropic vision blocks. Runs in a thread."""
+def _convert_to_images(file_bytes: bytes, content_type: str) -> tuple[list[dict], int]:
+    """Convert file bytes to Anthropic vision blocks. Runs in a thread.
+
+    Returns (image_blocks, page_count).
+    """
     if content_type == "application/pdf":
         from forecasto.services.processors.pdf import pdf_bytes_to_base64_images
         return pdf_bytes_to_base64_images(file_bytes)
     else:
         from forecasto.services.processors.image import image_bytes_to_base64
-        return [image_bytes_to_base64(file_bytes, content_type)]
+        return [image_bytes_to_base64(file_bytes, content_type)], 1
 
 
 async def _get_pricing(db: AsyncSession, model_name: str) -> dict:

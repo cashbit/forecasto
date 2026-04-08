@@ -6,8 +6,13 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Request interceptor - add auth token
+// Request interceptor - add auth token + fix Content-Type for FormData
 apiClient.interceptors.request.use((config) => {
+  // Let axios set the correct Content-Type (with boundary) for FormData
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']
+  }
+
   // Get token from localStorage (will be set by auth store)
   const authData = localStorage.getItem('forecasto-auth')
   if (authData) {

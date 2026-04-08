@@ -14,14 +14,16 @@ interface InboxRecordRowProps {
   editable: boolean
   workspaceId: string
   onChange: (index: number, field: keyof RecordSuggestion, value: string) => void
+  forceNoteExpanded?: boolean
 }
 
 // Number of <td> columns in the main row (used for colSpan in note row)
 const COL_COUNT = 9
 
-export function InboxRecordRow({ suggestion, index, editable, workspaceId, onChange }: InboxRecordRowProps) {
+export function InboxRecordRow({ suggestion, index, editable, workspaceId, onChange, forceNoteExpanded }: InboxRecordRowProps) {
   const [noteExpanded, setNoteExpanded] = useState(false)
   const hasNote = Boolean(suggestion.note?.trim())
+  const showNote = noteExpanded || forceNoteExpanded
 
   return (
     <>
@@ -33,7 +35,7 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
               value={suggestion.area}
               onValueChange={(v) => onChange(index, 'area', v)}
             >
-              <SelectTrigger className="h-7 text-xs w-24">
+              <SelectTrigger className="h-7 text-xs w-full min-w-[7rem]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -57,7 +59,7 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
               workspaceIds={[workspaceId]}
               value={suggestion.account ?? ''}
               onChange={(v) => onChange(index, 'account', v)}
-              className="h-7 text-xs w-36"
+              className="h-7 text-xs w-full min-w-[8rem]"
             />
           ) : (
             <span className="text-xs truncate max-w-[9rem] block">{suggestion.account}</span>
@@ -72,10 +74,10 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
               workspaceIds={[workspaceId]}
               value={suggestion.reference ?? ''}
               onChange={(v) => onChange(index, 'reference', v)}
-              className="h-7 text-xs w-36"
+              className="h-7 text-xs w-full min-w-[12rem]"
             />
           ) : (
-            <span className="text-xs truncate max-w-[9rem] block">{suggestion.reference}</span>
+            <span className="text-xs truncate max-w-[12rem] block">{suggestion.reference}</span>
           )}
         </td>
 
@@ -83,7 +85,7 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
         <td className="py-1.5 pr-2">
           {editable ? (
             <Input
-              className="h-7 text-xs w-28"
+              className="h-7 text-xs w-full min-w-[7rem]"
               value={suggestion.transaction_id ?? ''}
               onChange={(e) => onChange(index, 'transaction_id', e.target.value)}
               placeholder="—"
@@ -99,7 +101,7 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
         <td className="py-1.5 pr-2">
           {editable ? (
             <Input
-              className="h-7 text-xs w-28"
+              className="h-7 text-xs w-full min-w-[7.5rem]"
               type="date"
               value={suggestion.date_offer ?? ''}
               onChange={(e) => onChange(index, 'date_offer', e.target.value)}
@@ -113,7 +115,7 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
         <td className="py-1.5 pr-2">
           {editable ? (
             <Input
-              className="h-7 text-xs w-28"
+              className="h-7 text-xs w-full min-w-[7.5rem]"
               type="date"
               value={suggestion.date_cashflow ?? ''}
               onChange={(e) => onChange(index, 'date_cashflow', e.target.value)}
@@ -127,7 +129,7 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
         <td className="py-1.5 pr-2 text-right">
           {editable ? (
             <Input
-              className="h-7 text-xs w-24 text-right"
+              className="h-7 text-xs w-full min-w-[5.5rem] text-right"
               value={suggestion.total ?? ''}
               onChange={(e) => onChange(index, 'total', e.target.value)}
             />
@@ -163,7 +165,7 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
       </tr>
 
       {/* Expanded note row */}
-      {noteExpanded && (
+      {showNote && (
         <tr className="bg-amber-50/50 border-b last:border-0">
           <td colSpan={COL_COUNT} className="px-3 py-2">
             <div className="flex items-start gap-2">

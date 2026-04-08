@@ -37,8 +37,10 @@ FIELD DEFINITIONS — read carefully:
   "Personale", "Marketing"). This is NOT the counterpart company name — it is the cost/revenue category.
   Use a short, generic Italian noun that classifies the expense or income.
 
-- reference: the COUNTERPART NAME and/or document identifier, e.g. "Acme SRL — Fattura 123/2026"
-  or "Mario Rossi — Parcella marzo 2026". Combine supplier/client name with invoice number.
+- reference: the COUNTERPART NAME only — the company or person name on the other side of the transaction.
+  Examples: "Italtronic S.r.l.", "SIAD Macchine Impianti S.p.A.", "Mario Rossi".
+  Do NOT include document numbers, invoice references, or dates in this field.
+  Those belong in the transaction_id field.
 
 - transaction_id: document type, number and date in Italian, e.g. "Fattura 1/2026",
   "Nota credito 5/2026", "Parcella 3/2026", "Ricevuta 42/2026".

@@ -255,26 +255,6 @@ export function Header() {
             size="sm"
             asChild
             className={cn(
-              location.pathname === '/dashboard' && 'bg-primary/10 text-primary font-semibold'
-            )}
-          >
-            <Link to="/dashboard">Dashboard</Link>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            asChild
-            className={cn(
-              location.pathname === '/cashflow' && 'bg-primary/10 text-primary font-semibold'
-            )}
-          >
-            <Link to="/cashflow">Cashflow</Link>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            asChild
-            className={cn(
               'relative',
               location.pathname === '/inbox' && 'bg-primary/10 text-primary font-semibold'
             )}
@@ -293,13 +273,20 @@ export function Header() {
             size="sm"
             asChild
             className={cn(
-              location.pathname === '/usage' && 'bg-primary/10 text-primary font-semibold'
+              location.pathname === '/dashboard' && 'bg-primary/10 text-primary font-semibold'
             )}
           >
-            <Link to="/usage">
-              <BarChart3 className="h-4 w-4 mr-1" />
-              Consumo
-            </Link>
+            <Link to="/dashboard">Dashboard</Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className={cn(
+              location.pathname === '/cashflow' && 'bg-primary/10 text-primary font-semibold'
+            )}
+          >
+            <Link to="/cashflow">Cashflow</Link>
           </Button>
         </nav>
 
@@ -492,6 +479,12 @@ export function Header() {
               <Link to="/settings">
                 <Settings className="mr-2 h-4 w-4" />
                 Impostazioni
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/usage">
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Consumo AI
               </Link>
             </DropdownMenuItem>
             {user?.is_admin && (

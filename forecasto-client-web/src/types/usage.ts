@@ -1,19 +1,21 @@
 export interface UsageSummary {
   total_documents: number
+  total_pages: number
   total_input_tokens: number
   total_output_tokens: number
-  total_cost_usd: number
-  total_billed_cost_usd: number
   by_model: ModelUsageSummary[]
+  // Monthly quota (user-level)
+  monthly_page_quota: number
+  pages_this_month: number
+  pages_remaining: number
 }
 
 export interface ModelUsageSummary {
   llm_model: string
   document_count: number
+  pages: number
   input_tokens: number
   output_tokens: number
-  total_cost_usd: number
-  billed_cost_usd: number
 }
 
 export interface UsageRecord {
@@ -22,14 +24,11 @@ export interface UsageRecord {
   job_id: string
   llm_provider: string
   llm_model: string
+  pages_processed: number
   input_tokens: number
   output_tokens: number
   cache_creation_tokens: number
   cache_read_tokens: number
-  input_cost_usd: number
-  output_cost_usd: number
-  total_cost_usd: number
-  billed_cost_usd: number
-  multiplier: number
+  total_tokens: number
   created_at: string
 }

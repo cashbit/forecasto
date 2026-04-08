@@ -50,6 +50,7 @@ class UserResponse(BaseModel):
     email_verified: bool
     is_admin: bool = False
     is_partner: bool = False
+    monthly_page_quota: int = 50
     created_at: datetime
     last_login_at: datetime | None = None
     notification_preferences: dict

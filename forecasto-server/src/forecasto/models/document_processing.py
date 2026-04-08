@@ -50,6 +50,9 @@ class DocumentProcessingJob(Base, UUIDMixin, TimestampMixin):
     )
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Document metrics
+    pages_processed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
     # Timing
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -87,6 +90,9 @@ class UsageRecord(Base, UUIDMixin, TimestampMixin):
     output_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     cache_creation_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     cache_read_tokens: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Document metrics
+    pages_processed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     # Costs (USD)
     input_cost_usd: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)

@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.database import get_db
-from forecasto.dependencies import get_current_workspace
+from forecasto.dependencies import get_current_user, get_current_workspace
+from forecasto.models.user import User
 from forecasto.models.workspace import Workspace, WorkspaceMember
 from forecasto.schemas.document_processing import UsageRecordResponse, UsageSummaryResponse, ModelUsageSummary
 from forecasto.services.document_processing_service import DocumentProcessingService
@@ -22,13 +23,14 @@ async def get_usage_summary(
     workspace_data: Annotated[
         tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
     ],
+    current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     from_date: str | None = Query(None, description="YYYY-MM-DD"),
     to_date: str | None = Query(None, description="YYYY-MM-DD"),
 ):
-    """Get aggregated usage stats for a workspace."""
+    """Get aggregated usage stats for a workspace + user monthly quota."""
     service = DocumentProcessingService(db)
-    summary = await service.get_usage_summary(workspace_id, from_date, to_date)
+    summary = await service.get_usage_summary(workspace_id, current_user.id, from_date, to_date)
     return {"success": True, **summary}
 
 
