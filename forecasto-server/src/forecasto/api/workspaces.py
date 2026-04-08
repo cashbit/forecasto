@@ -186,6 +186,22 @@ async def list_workspace_invitations(
     }
 
 
+@router.get("/{workspace_id}/invitable-users", response_model=dict)
+async def get_invitable_users(
+    workspace_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get users from the same billing profile that can be invited."""
+    workspace, member = workspace_data
+    service = WorkspaceService(db)
+    users = await service.get_invitable_users(workspace_id, current_user)
+    return {"success": True, "users": users}
+
+
 @router.patch("/{workspace_id}/invitations/{invitation_id}", response_model=dict)
 async def update_invitation(
     workspace_id: str,
@@ -260,6 +276,23 @@ async def accept_invitation(
         "message": "Invitation accepted",
         "member": MemberResponse.model_validate(member),
     }
+
+@router.delete("/{workspace_id}/members/{user_id}", response_model=dict)
+async def remove_member(
+    workspace_id: str,
+    user_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Remove a member from a workspace."""
+    workspace, requesting_member = workspace_data
+    service = WorkspaceService(db)
+    await service.remove_member(workspace_id, user_id, requesting_member, current_user)
+    return {"success": True}
+
 
 @router.patch("/{workspace_id}/members/{user_id}", response_model=dict)
 async def update_member(

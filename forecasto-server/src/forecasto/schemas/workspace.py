@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from forecasto.schemas.bank_account import BankAccountResponse
 
 
@@ -132,9 +132,10 @@ class MemberUpdate(BaseModel):
     can_export: bool | None = None
 
 class InvitationCreate(BaseModel):
-    """Invitation creation request."""
+    """Invitation creation request. Provide either invite_code or user_id."""
 
-    invite_code: str
+    invite_code: str | None = None
+    user_id: str | None = None
     role: str = "member"
     area_permissions: AreaPermissions | None = None
     granular_permissions: GranularAreaPermissions | None = None
@@ -144,8 +145,10 @@ class InvitationCreate(BaseModel):
 
     @field_validator('invite_code')
     @classmethod
-    def validate_invite_code(cls, v: str) -> str:
+    def validate_invite_code(cls, v: str | None) -> str | None:
         """Normalize and validate invite code format."""
+        if v is None:
+            return v
         # Normalize: uppercase, remove dashes and spaces
         cleaned = v.upper().replace('-', '').replace(' ', '')
         if len(cleaned) != 9:
@@ -153,6 +156,13 @@ class InvitationCreate(BaseModel):
         if not cleaned.isalnum():
             raise ValueError('Codice deve contenere solo lettere e numeri')
         return f"{cleaned[:3]}-{cleaned[3:6]}-{cleaned[6:9]}"
+
+    @model_validator(mode='after')
+    def validate_invite_method(self) -> 'InvitationCreate':
+        """Ensure at least one invite method is provided."""
+        if not self.invite_code and not self.user_id:
+            raise ValueError('Devi specificare invite_code o user_id')
+        return self
 
 class InvitationResponse(BaseModel):
     """Invitation response."""

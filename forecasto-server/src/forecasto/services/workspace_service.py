@@ -158,6 +158,38 @@ class WorkspaceService:
 
         return member
 
+    async def remove_member(
+        self,
+        workspace_id: str,
+        user_id: str,
+        requesting_member: WorkspaceMember,
+        current_user: User,
+    ) -> None:
+        """Remove a member from a workspace."""
+        if requesting_member.role not in ("owner", "admin"):
+            raise ForbiddenException("Solo owner e admin possono rimuovere membri")
+
+        result = await self.db.execute(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.user_id == user_id,
+            )
+        )
+        member = result.scalar_one_or_none()
+        if not member:
+            raise NotFoundException(f"Membro {user_id} non trovato nel workspace")
+
+        # Cannot remove owner
+        if member.role == "owner":
+            raise ForbiddenException("Non puoi rimuovere il proprietario del workspace")
+
+        # Cannot remove yourself (use leave instead)
+        if member.user_id == current_user.id:
+            raise ForbiddenException("Non puoi rimuovere te stesso dal workspace")
+
+        await self.db.delete(member)
+        await self.db.flush()
+
     async def delete_workspace(
         self,
         workspace_id: str,
@@ -184,13 +216,39 @@ class WorkspaceService:
         if requesting_member.role not in ("owner", "admin"):
             raise ForbiddenException("Only owners and admins can invite members")
 
-        # Look up user by invite_code
-        result = await self.db.execute(
-            select(User).where(User.invite_code == data.invite_code)
-        )
-        target_user = result.scalar_one_or_none()
-        if not target_user:
-            raise NotFoundException(f"Nessun utente trovato con codice {data.invite_code}")
+        # Billing profile check: only master users (or admins) can invite
+        if not inviter.is_admin:
+            if not inviter.billing_profile_id or not inviter.is_billing_master:
+                raise ForbiddenException(
+                    "Per invitare utenti devi avere un profilo di fatturazione "
+                    "ed essere l'utente master del profilo"
+                )
+
+        # Resolve target user: by user_id or invite_code
+        if data.user_id:
+            result = await self.db.execute(
+                select(User).where(User.id == data.user_id)
+            )
+            target_user = result.scalar_one_or_none()
+            if not target_user:
+                raise NotFoundException(f"Utente {data.user_id} non trovato")
+
+            # If inviting by user_id, verify same billing profile (unless admin)
+            if not inviter.is_admin:
+                if target_user.billing_profile_id != inviter.billing_profile_id:
+                    raise ForbiddenException(
+                        "Puoi invitare solo utenti collegati al tuo stesso profilo di fatturazione"
+                    )
+        else:
+            # Look up user by invite_code
+            result = await self.db.execute(
+                select(User).where(User.invite_code == data.invite_code)
+            )
+            target_user = result.scalar_one_or_none()
+            if not target_user:
+                raise NotFoundException(f"Nessun utente trovato con codice {data.invite_code}")
+
+        invite_code = target_user.invite_code
 
         # Check if already a member (via user_id)
         result = await self.db.execute(
@@ -202,11 +260,23 @@ class WorkspaceService:
         if result.scalar_one_or_none():
             raise ValidationException("Utente è già membro di questo workspace")
 
-        # Check for existing pending invitation (via invite_code)
+        # Clean up old invitations (accepted or expired) to avoid UNIQUE constraint conflicts
+        old_invitations = await self.db.execute(
+            select(Invitation).where(
+                Invitation.workspace_id == workspace_id,
+                Invitation.invite_code == invite_code,
+                (Invitation.accepted_at.isnot(None)) | (Invitation.expires_at <= datetime.utcnow()),
+            )
+        )
+        for old_inv in old_invitations.scalars().all():
+            await self.db.delete(old_inv)
+        await self.db.flush()
+
+        # Check for existing pending invitation
         result = await self.db.execute(
             select(Invitation).where(
                 Invitation.workspace_id == workspace_id,
-                Invitation.invite_code == data.invite_code,
+                Invitation.invite_code == invite_code,
                 Invitation.accepted_at.is_(None),
                 Invitation.expires_at > datetime.utcnow(),
             )
@@ -214,11 +284,34 @@ class WorkspaceService:
         if result.scalar_one_or_none():
             raise ValidationException("Un invito è già pendente per questo utente")
 
+        # Check max_users limit for billing profile invites
+        if inviter.billing_profile_id and not inviter.is_admin:
+            from forecasto.models.billing_profile import BillingProfile
+
+            bp_result = await self.db.execute(
+                select(BillingProfile).where(BillingProfile.id == inviter.billing_profile_id)
+            )
+            billing_profile = bp_result.scalar_one_or_none()
+            if billing_profile:
+                # Check if target user is already a member of any master's workspace
+                # If so, they're already counted — no need to check limit
+                already_in_master_ws = await self._is_user_in_any_master_workspace(
+                    inviter.id, target_user.id
+                )
+                if not already_in_master_ws:
+                    # New user — check limit
+                    invited_count = await self._count_master_invited_users(inviter.id)
+                    if invited_count >= billing_profile.max_users:
+                        raise ForbiddenException(
+                            f"Hai raggiunto il limite massimo di {billing_profile.max_users} "
+                            f"utenti invitati per il tuo profilo di fatturazione"
+                        )
+
         token = secrets.token_urlsafe(32)
         invitation = Invitation(
             workspace_id=workspace_id,
             invited_by=inviter.id,
-            invite_code=data.invite_code,
+            invite_code=invite_code,
             role=data.role,
             area_permissions=data.area_permissions.model_dump() if data.area_permissions else {},
             granular_permissions=data.granular_permissions.model_dump(by_alias=True) if data.granular_permissions else {},
@@ -232,6 +325,101 @@ class WorkspaceService:
         await self.db.flush()
 
         return invitation
+
+    async def get_invitable_users(
+        self, workspace_id: str, current_user: User
+    ) -> list[dict]:
+        """Get users from the same billing profile that can be invited to workspace."""
+        if not current_user.billing_profile_id or not current_user.is_billing_master:
+            return []
+
+        # Get users in same billing profile (excluding self)
+        result = await self.db.execute(
+            select(User).where(
+                User.billing_profile_id == current_user.billing_profile_id,
+                User.id != current_user.id,
+                User.deleted_at.is_(None),
+                User.is_blocked == False,  # noqa: E712
+            ).order_by(User.name)
+        )
+        profile_users = result.scalars().all()
+
+        # Get current members and pending invitations for this workspace
+        members_result = await self.db.execute(
+            select(WorkspaceMember.user_id).where(
+                WorkspaceMember.workspace_id == workspace_id
+            )
+        )
+        member_ids = {r[0] for r in members_result.all()}
+
+        pending_result = await self.db.execute(
+            select(Invitation.invite_code).where(
+                Invitation.workspace_id == workspace_id,
+                Invitation.accepted_at.is_(None),
+                Invitation.expires_at > datetime.utcnow(),
+            )
+        )
+        pending_codes = {r[0] for r in pending_result.all()}
+
+        invitable = []
+        for u in profile_users:
+            already_member = u.id in member_ids
+            has_pending = u.invite_code in pending_codes
+            invitable.append({
+                "id": u.id,
+                "name": u.name,
+                "email": u.email,
+                "already_member": already_member,
+                "has_pending_invitation": has_pending,
+            })
+
+        return invitable
+
+    async def _is_user_in_any_master_workspace(
+        self, master_user_id: str, target_user_id: str
+    ) -> bool:
+        """Check if target user is already a member of any workspace owned by master."""
+        owner_ws = await self.db.execute(
+            select(WorkspaceMember.workspace_id).where(
+                WorkspaceMember.user_id == master_user_id,
+                WorkspaceMember.role == "owner",
+            )
+        )
+        ws_ids = [r[0] for r in owner_ws.all()]
+        if not ws_ids:
+            return False
+
+        result = await self.db.execute(
+            select(WorkspaceMember.id).where(
+                WorkspaceMember.workspace_id.in_(ws_ids),
+                WorkspaceMember.user_id == target_user_id,
+            ).limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def _count_master_invited_users(self, master_user_id: str) -> int:
+        """Count unique users that are members of any workspace owned by the master."""
+        from sqlalchemy import func as sa_func
+
+        # Get all workspaces where master is owner
+        owner_ws = await self.db.execute(
+            select(WorkspaceMember.workspace_id).where(
+                WorkspaceMember.user_id == master_user_id,
+                WorkspaceMember.role == "owner",
+            )
+        )
+        ws_ids = [r[0] for r in owner_ws.all()]
+        if not ws_ids:
+            return 0
+
+        # Count distinct users (excluding master) across those workspaces
+        count_result = await self.db.execute(
+            select(sa_func.count(sa_func.distinct(WorkspaceMember.user_id))).where(
+                WorkspaceMember.workspace_id.in_(ws_ids),
+                WorkspaceMember.user_id != master_user_id,
+            )
+        )
+        return count_result.scalar() or 0
 
     async def get_pending_invitations_for_user(self, user: User) -> list[Invitation]:
         """Get all pending invitations for a user by their invite_code."""

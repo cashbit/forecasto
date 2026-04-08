@@ -20,6 +20,11 @@ from forecasto.schemas.admin import (
     AssignPartnerRequest,
     BatchListResponse,
     BatchWithCodesResponse,
+    BillingProfileCreate,
+    BillingProfileDetailResponse,
+    BillingProfileListResponse,
+    BillingProfileResponse,
+    BillingProfileUpdate,
     BlockUserRequest,
     CodeFilter,
     CodeListResponse,
@@ -27,6 +32,9 @@ from forecasto.schemas.admin import (
     InvoiceCodesRequest,
     RecognizeFeeRequest,
     RegistrationCodeResponse,
+    SetAdminRequest,
+    SetBillingProfileRequest,
+    SetMaxRecordsFreeRequest,
     SetPartnerRequest,
     SetPartnerTypeRequest,
     UpdateBatchRequest,
@@ -386,6 +394,116 @@ async def export_activated_codes_csv(
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=report_attivazioni.csv"},
     )
+
+
+# --- Admin Toggle ---
+
+
+@router.patch("/users/{user_id}/admin", response_model=dict)
+async def set_admin(
+    user_id: str,
+    data: SetAdminRequest,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Set or unset admin role for a user."""
+    service = AdminService(db)
+    user = await service.set_admin(user_id, data.is_admin, admin_user)
+    return {"success": True, "user": user}
+
+
+# --- Billing Profile Endpoints ---
+
+
+@router.post("/billing-profiles", response_model=dict, status_code=201)
+async def create_billing_profile(
+    data: BillingProfileCreate,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Create a new billing profile."""
+    service = AdminService(db)
+    profile = await service.create_billing_profile(data)
+    return {"success": True, "profile": profile}
+
+
+@router.get("/billing-profiles", response_model=dict)
+async def list_billing_profiles(
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """List all billing profiles."""
+    service = AdminService(db)
+    result = await service.list_billing_profiles()
+    return {"success": True, "profiles": result.profiles, "total": result.total}
+
+
+@router.get("/billing-profiles/{profile_id}", response_model=dict)
+async def get_billing_profile(
+    profile_id: str,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get a billing profile with linked users."""
+    service = AdminService(db)
+    profile = await service.get_billing_profile(profile_id)
+    return {"success": True, "profile": profile}
+
+
+@router.put("/billing-profiles/{profile_id}", response_model=dict)
+async def update_billing_profile(
+    profile_id: str,
+    data: BillingProfileUpdate,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Update a billing profile."""
+    service = AdminService(db)
+    profile = await service.update_billing_profile(profile_id, data)
+    return {"success": True, "profile": profile}
+
+
+@router.delete("/billing-profiles/{profile_id}", response_model=dict)
+async def delete_billing_profile(
+    profile_id: str,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Delete a billing profile (only if no users linked)."""
+    service = AdminService(db)
+    await service.delete_billing_profile(profile_id)
+    return {"success": True}
+
+
+# --- User-Profile Association ---
+
+
+@router.patch("/users/{user_id}/billing-profile", response_model=dict)
+async def set_user_billing_profile(
+    user_id: str,
+    data: SetBillingProfileRequest,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Associate or dissociate a user with a billing profile."""
+    service = AdminService(db)
+    user = await service.set_user_billing_profile(
+        user_id, data.billing_profile_id, data.is_billing_master
+    )
+    return {"success": True, "user": user}
+
+
+@router.patch("/users/{user_id}/max-records-free", response_model=dict)
+async def set_max_records_free(
+    user_id: str,
+    data: SetMaxRecordsFreeRequest,
+    admin_user: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Set max records for a free user."""
+    service = AdminService(db)
+    user = await service.set_max_records_free(user_id, data.max_records_free)
+    return {"success": True, "user": user}
 
 
 # ActiveCampaign Integration

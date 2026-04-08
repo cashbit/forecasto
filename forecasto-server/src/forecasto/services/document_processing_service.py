@@ -166,24 +166,56 @@ class DocumentProcessingService:
         }
 
     async def get_user_monthly_usage(self, user_id: str) -> dict:
-        """Get user's monthly page usage and quota (cross-workspace)."""
+        """Get user's monthly page usage and quota.
+
+        If the user belongs to a billing profile, the quota comes from the profile
+        and usage is counted across ALL users in that profile (shared quota).
+        Otherwise, uses the per-user monthly_page_quota.
+        """
         # Load user for quota
         user_result = await self.db.execute(select(User).where(User.id == user_id))
         user = user_result.scalar_one_or_none()
-        quota = user.monthly_page_quota if user else 50
+        if not user:
+            return {"monthly_page_quota": 50, "pages_this_month": 0, "pages_remaining": 50}
 
-        # Pages consumed this month (all workspaces for this user)
         month_start = date.today().replace(day=1)
-        month_stmt = (
-            select(func.coalesce(func.sum(UsageRecord.pages_processed), 0))
-            .where(
-                UsageRecord.user_id == user_id,
-                UsageRecord.created_at >= datetime.combine(month_start, datetime.min.time()),
-            )
-        )
-        pages_this_month = (await self.db.execute(month_stmt)).scalar_one()
+        month_start_dt = datetime.combine(month_start, datetime.min.time())
 
+        if user.billing_profile_id:
+            # Shared quota from billing profile
+            from forecasto.models.billing_profile import BillingProfile
+
+            bp_result = await self.db.execute(
+                select(BillingProfile).where(BillingProfile.id == user.billing_profile_id)
+            )
+            billing_profile = bp_result.scalar_one_or_none()
+            quota = billing_profile.monthly_page_quota if billing_profile else user.monthly_page_quota
+
+            # Count pages for ALL users in this billing profile
+            profile_users_stmt = select(User.id).where(
+                User.billing_profile_id == user.billing_profile_id
+            )
+            month_stmt = (
+                select(func.coalesce(func.sum(UsageRecord.pages_processed), 0))
+                .where(
+                    UsageRecord.user_id.in_(profile_users_stmt),
+                    UsageRecord.created_at >= month_start_dt,
+                )
+            )
+        else:
+            # Per-user quota
+            quota = user.monthly_page_quota
+            month_stmt = (
+                select(func.coalesce(func.sum(UsageRecord.pages_processed), 0))
+                .where(
+                    UsageRecord.user_id == user_id,
+                    UsageRecord.created_at >= month_start_dt,
+                )
+            )
+
+        pages_this_month = (await self.db.execute(month_stmt)).scalar_one()
         remaining = max(0, quota - pages_this_month)
+
         return {
             "monthly_page_quota": quota,
             "pages_this_month": pages_this_month,

@@ -1,12 +1,13 @@
 import { Outlet, NavLink, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
-import { Users, KeyRound, LayoutDashboard, ArrowLeft, FileBarChart, Receipt } from 'lucide-react'
+import { Users, KeyRound, LayoutDashboard, ArrowLeft, FileBarChart, Receipt, Building2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
   { to: '/admin/codes', icon: KeyRound, label: 'Codici Attivazione', end: false },
   { to: '/admin/users', icon: Users, label: 'Utenti', end: false },
+  { to: '/admin/billing-profiles', icon: Building2, label: 'Profili Fatturazione', end: false },
   { to: '/admin/reports/activations', icon: FileBarChart, label: 'Report Attivazioni', end: false },
   { to: '/admin/reports/billing', icon: Receipt, label: 'Report Fatturazione', end: false },
 ]

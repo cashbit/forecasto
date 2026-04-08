@@ -110,6 +110,10 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
   const [lookupResult, setLookupResult] = useState<{ name: string } | null>(null)
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [isLookingUp, setIsLookingUp] = useState(false)
+  const [invitableUsers, setInvitableUsers] = useState<{
+    id: string; name: string; email: string; already_member: boolean; has_pending_invitation: boolean
+  }[]>([])
+  const [invitingUserId, setInvitingUserId] = useState<string | null>(null)
 
   // Check if current user can invite (owner or admin)
   const canInvite = useMemo(() => {
@@ -234,6 +238,14 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
       ])
       setMembers(membersData)
       setPendingInvitations(invitationsData)
+
+      // Load invitable users from billing profile
+      try {
+        const invitable = await workspacesApi.getInvitableUsers(workspaceId)
+        setInvitableUsers(invitable)
+      } catch {
+        setInvitableUsers([])
+      }
     } catch (error) {
       console.error('Error loading members:', error)
       const message = error instanceof Error ? error.message : 'Errore sconosciuto'
@@ -250,6 +262,33 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
       loadMembers()
     } catch {
       toast({ title: 'Errore nell\'annullamento dell\'invito', variant: 'destructive' })
+    }
+  }
+
+  const handleInviteByUserId = async (userId: string) => {
+    setInvitingUserId(userId)
+    try {
+      await workspacesApi.inviteMember(
+        workspaceId,
+        userId,
+        inviteRole,
+        invitePermissions,
+        inviteCanImport,
+        inviteCanImportSdi,
+        inviteCanExport,
+        true // byUserId
+      )
+      toast({ title: 'Invito inviato', variant: 'success' })
+      loadMembers()
+    } catch (error: unknown) {
+      let message = 'Errore nell\'invio dell\'invito'
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; error?: string; detail?: string } } }
+        message = axiosError.response?.data?.message || axiosError.response?.data?.error || axiosError.response?.data?.detail || message
+      }
+      toast({ title: message, variant: 'destructive' })
+    } finally {
+      setInvitingUserId(null)
     }
   }
 
@@ -303,12 +342,12 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
     setInvitePermissions(newPermissions)
   }
 
-  const handleRemoveMember = async (memberId: string) => {
+  const handleRemoveMember = async (userId: string) => {
     try {
-      await workspacesApi.removeMember(workspaceId, memberId)
+      await workspacesApi.removeMember(workspaceId, userId)
       toast({ title: 'Membro rimosso', variant: 'success' })
       loadMembers()
-      if (selectedMember?.id === memberId) {
+      if (selectedMember?.user?.id === userId) {
         setSelectedMember(null)
       }
     } catch {
@@ -479,6 +518,33 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
               </div>
             )}
 
+            {/* Invitable Users from Billing Profile */}
+            {canInvite && invitableUsers.length > 0 && (
+              <div className="p-2 border-b">
+                <p className="text-xs text-muted-foreground px-1 pb-1">Utenti del profilo</p>
+                <div className="space-y-1 max-h-[120px] overflow-y-auto">
+                  {invitableUsers.filter(u => !u.already_member && !u.has_pending_invitation).map((u) => (
+                    <div key={u.id} className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-muted/50">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium truncate">{u.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        disabled={invitingUserId === u.id}
+                        onClick={() => handleInviteByUserId(u.id)}
+                      >
+                        <UserPlus className="h-3 w-3 mr-1" />
+                        {invitingUserId === u.id ? '...' : 'Invita'}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Members List */}
             <ScrollArea className="h-[350px]">
               <div className="p-2 space-y-1">
@@ -506,7 +572,7 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
                             className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleRemoveMember(member.id)
+                              handleRemoveMember(member.user.id)
                             }}
                           >
                             <Trash className="h-3 w-3" />

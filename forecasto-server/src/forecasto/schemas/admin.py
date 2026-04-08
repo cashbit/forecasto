@@ -101,6 +101,114 @@ class CodeListResponse(BaseModel):
     total: int
 
 
+class BillingProfileCreate(BaseModel):
+    """Request to create a billing profile."""
+
+    company_name: str = Field(..., min_length=1, max_length=255)
+    vat_number: str = Field(..., min_length=1, max_length=20)
+    legal_form: str | None = None
+    billing_address: str | None = None
+    sdi_code: str | None = Field(default=None, max_length=7)
+    iban: str | None = Field(default=None, max_length=34)
+    swift: str | None = Field(default=None, max_length=11)
+    iban_holder: str | None = None
+    setup_cost: float = 0
+    monthly_cost_first_year: float = 0
+    monthly_cost_after_first_year: float = 0
+    monthly_page_quota: int = Field(default=0, ge=0)
+    page_package_cost: float = 0
+    max_users: int = Field(default=1, ge=1)
+
+
+class BillingProfileUpdate(BaseModel):
+    """Request to update a billing profile (all fields optional)."""
+
+    company_name: str | None = Field(default=None, min_length=1, max_length=255)
+    vat_number: str | None = Field(default=None, min_length=1, max_length=20)
+    legal_form: str | None = None
+    billing_address: str | None = None
+    sdi_code: str | None = Field(default=None, max_length=7)
+    iban: str | None = Field(default=None, max_length=34)
+    swift: str | None = Field(default=None, max_length=11)
+    iban_holder: str | None = None
+    setup_cost: float | None = None
+    monthly_cost_first_year: float | None = None
+    monthly_cost_after_first_year: float | None = None
+    monthly_page_quota: int | None = Field(default=None, ge=0)
+    page_package_cost: float | None = None
+    max_users: int | None = Field(default=None, ge=1)
+
+
+class BillingProfileUserInfo(BaseModel):
+    """Minimal user info for billing profile responses."""
+
+    id: str
+    email: str
+    name: str
+    is_billing_master: bool
+
+    model_config = {"from_attributes": True}
+
+
+class BillingProfileResponse(BaseModel):
+    """Billing profile response."""
+
+    id: str
+    company_name: str
+    legal_form: str | None = None
+    vat_number: str
+    billing_address: str | None = None
+    sdi_code: str | None = None
+    iban: str | None = None
+    swift: str | None = None
+    iban_holder: str | None = None
+    setup_cost: float = 0
+    monthly_cost_first_year: float = 0
+    monthly_cost_after_first_year: float = 0
+    monthly_page_quota: int = 0
+    page_package_cost: float = 0
+    max_users: int = 1
+    users_count: int = 0
+    master_user_id: str | None = None
+    master_user_name: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class BillingProfileDetailResponse(BillingProfileResponse):
+    """Billing profile response with user list."""
+
+    users: list[BillingProfileUserInfo] = []
+
+
+class BillingProfileListResponse(BaseModel):
+    """List of billing profiles."""
+
+    profiles: list[BillingProfileResponse]
+    total: int
+
+
+class SetAdminRequest(BaseModel):
+    """Request to set/unset admin role."""
+
+    is_admin: bool
+
+
+class SetBillingProfileRequest(BaseModel):
+    """Request to associate a user with a billing profile."""
+
+    billing_profile_id: str | None = None
+    is_billing_master: bool = False
+
+
+class SetMaxRecordsFreeRequest(BaseModel):
+    """Request to set max records for free users."""
+
+    max_records_free: int = Field(..., ge=0)
+
+
 class AdminUserResponse(BaseModel):
     """User response for admin panel."""
 
@@ -115,6 +223,11 @@ class AdminUserResponse(BaseModel):
     blocked_reason: str | None = None
     registration_code_id: str | None = None
     registration_code: str | None = None
+    billing_profile_id: str | None = None
+    billing_profile_company: str | None = None
+    is_billing_master: bool = False
+    max_records_free: int = 100
+    monthly_page_quota: int = 50
     created_at: datetime
     last_login_at: datetime | None = None
 

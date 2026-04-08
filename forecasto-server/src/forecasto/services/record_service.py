@@ -176,6 +176,55 @@ class RecordService:
         result = await self.db.execute(stmt)
         return [row[0] for row in result.fetchall()]
 
+    async def _check_free_user_record_limit(self, user: User) -> dict | None:
+        """Check if a free user (no billing profile) has reached record limit.
+
+        Returns None if OK, or a dict with usage info if at/near limit.
+        Raises ForbiddenException if limit reached.
+        """
+        if user.billing_profile_id is not None:
+            return None  # User has billing profile, no record limit
+
+        max_records = user.max_records_free
+        if max_records == 0:
+            return None  # 0 = unlimited
+
+        # Count total records across all workspaces for this user
+        from forecasto.models.workspace import WorkspaceMember as WM
+
+        ws_result = await self.db.execute(
+            select(WM.workspace_id).where(WM.user_id == user.id)
+        )
+        ws_ids = [r[0] for r in ws_result.all()]
+        if not ws_ids:
+            return None
+
+        count_result = await self.db.execute(
+            select(func.count()).select_from(Record).where(
+                Record.workspace_id.in_(ws_ids),
+                Record.deleted_at.is_(None),
+            )
+        )
+        current_count = count_result.scalar() or 0
+
+        if current_count >= max_records:
+            raise ForbiddenException(
+                f"Hai raggiunto il limite di {max_records} record. "
+                f"Per continuare, contatta l'amministratore per un piano a pagamento."
+            )
+
+        # Warning at 80%
+        threshold = int(max_records * 0.8)
+        if current_count >= threshold:
+            return {
+                "warning": True,
+                "current": current_count,
+                "max": max_records,
+                "remaining": max_records - current_count,
+            }
+
+        return None
+
     async def create_record(
         self,
         workspace_id: str,
@@ -184,6 +233,9 @@ class RecordService:
         member: WorkspaceMember | None = None,
     ) -> Record:
         """Create a new record."""
+        # Check free user record limit
+        await self._check_free_user_record_limit(user)
+
         # Check granular permission if member provided
         if member:
             sign = get_sign_from_amount(data.amount)

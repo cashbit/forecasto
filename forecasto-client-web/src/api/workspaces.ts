@@ -55,26 +55,45 @@ export const workspacesApi = {
 
   inviteMember: async (
     workspaceId: string,
-    inviteCode: string,
+    inviteCodeOrUserId: string,
     role: string,
     granularPermissions?: GranularAreaPermissions,
     canImport?: boolean,
     canImportSdi?: boolean,
-    canExport?: boolean
+    canExport?: boolean,
+    byUserId?: boolean
   ): Promise<void> => {
-    await apiClient.post(`/workspaces/${workspaceId}/invitations`, {
-      invite_code: inviteCode,
+    const body: Record<string, unknown> = {
       role,
       granular_permissions: granularPermissions,
       can_import: canImport,
       can_import_sdi: canImportSdi,
       can_export: canExport,
-    })
+    }
+    if (byUserId) {
+      body.user_id = inviteCodeOrUserId
+    } else {
+      body.invite_code = inviteCodeOrUserId
+    }
+    await apiClient.post(`/workspaces/${workspaceId}/invitations`, body)
   },
 
   lookupUserByCode: async (inviteCode: string): Promise<{ name: string; invite_code: string }> => {
     const response = await apiClient.get<{ success: boolean; user: { name: string; invite_code: string } }>(`/users/lookup/${inviteCode}`)
     return response.data.user
+  },
+
+  getInvitableUsers: async (workspaceId: string): Promise<{
+    id: string
+    name: string
+    email: string
+    already_member: boolean
+    has_pending_invitation: boolean
+  }[]> => {
+    const response = await apiClient.get<{ success: boolean; users: {
+      id: string; name: string; email: string; already_member: boolean; has_pending_invitation: boolean
+    }[] }>(`/workspaces/${workspaceId}/invitable-users`)
+    return response.data.users
   },
 
   updateMember: async (workspaceId: string, userId: string, data: MemberUpdate): Promise<WorkspaceMember> => {

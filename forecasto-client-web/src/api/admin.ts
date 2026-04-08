@@ -3,6 +3,10 @@ import type {
   ActivatedCodeReportRow,
   ActivatedCodesReportFilter,
   AdminUser,
+  BillingProfile,
+  BillingProfileCreate,
+  BillingProfileDetail,
+  BillingProfileUpdate,
   BillingSummaryFilter,
   BlockUserRequest,
   CodeFilter,
@@ -71,6 +75,22 @@ interface InvoiceResponse {
 interface FeeResponse {
   success: boolean
   updated: number
+}
+
+interface BillingProfileResponse {
+  success: boolean
+  profile: BillingProfile
+}
+
+interface BillingProfileDetailResponse {
+  success: boolean
+  profile: BillingProfileDetail
+}
+
+interface BillingProfileListResponse {
+  success: boolean
+  profiles: BillingProfile[]
+  total: number
 }
 
 export const adminApi = {
@@ -232,5 +252,55 @@ export const adminApi = {
       responseType: 'blob',
     })
     return response.data
+  },
+
+  // Admin Toggle
+
+  setAdmin: async (userId: string, isAdmin: boolean): Promise<AdminUser> => {
+    const response = await apiClient.patch<UserResponse>(`/admin/users/${userId}/admin`, { is_admin: isAdmin })
+    return response.data.user
+  },
+
+  // Billing Profile Endpoints
+
+  createBillingProfile: async (data: BillingProfileCreate): Promise<BillingProfile> => {
+    const response = await apiClient.post<BillingProfileResponse>('/admin/billing-profiles', data)
+    return response.data.profile
+  },
+
+  listBillingProfiles: async (): Promise<{ profiles: BillingProfile[]; total: number }> => {
+    const response = await apiClient.get<BillingProfileListResponse>('/admin/billing-profiles')
+    return { profiles: response.data.profiles, total: response.data.total }
+  },
+
+  getBillingProfile: async (profileId: string): Promise<BillingProfileDetail> => {
+    const response = await apiClient.get<BillingProfileDetailResponse>(`/admin/billing-profiles/${profileId}`)
+    return response.data.profile
+  },
+
+  updateBillingProfile: async (profileId: string, data: BillingProfileUpdate): Promise<BillingProfile> => {
+    const response = await apiClient.put<BillingProfileResponse>(`/admin/billing-profiles/${profileId}`, data)
+    return response.data.profile
+  },
+
+  deleteBillingProfile: async (profileId: string): Promise<void> => {
+    await apiClient.delete(`/admin/billing-profiles/${profileId}`)
+  },
+
+  // User-Profile Association
+
+  setUserBillingProfile: async (userId: string, billingProfileId: string | null, isBillingMaster: boolean = false): Promise<AdminUser> => {
+    const response = await apiClient.patch<UserResponse>(`/admin/users/${userId}/billing-profile`, {
+      billing_profile_id: billingProfileId,
+      is_billing_master: isBillingMaster,
+    })
+    return response.data.user
+  },
+
+  setMaxRecordsFree: async (userId: string, maxRecords: number): Promise<AdminUser> => {
+    const response = await apiClient.patch<UserResponse>(`/admin/users/${userId}/max-records-free`, {
+      max_records_free: maxRecords,
+    })
+    return response.data.user
   },
 }

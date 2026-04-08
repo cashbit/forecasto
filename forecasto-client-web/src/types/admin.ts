@@ -67,6 +67,76 @@ export interface ValidateCodeResponse {
   error: string | null
 }
 
+// Billing Profile Types
+
+export interface BillingProfile {
+  id: string
+  company_name: string
+  legal_form: string | null
+  vat_number: string
+  billing_address: string | null
+  sdi_code: string | null
+  iban: string | null
+  swift: string | null
+  iban_holder: string | null
+  setup_cost: number
+  monthly_cost_first_year: number
+  monthly_cost_after_first_year: number
+  monthly_page_quota: number
+  page_package_cost: number
+  max_users: number
+  users_count: number
+  master_user_id: string | null
+  master_user_name: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BillingProfileUser {
+  id: string
+  email: string
+  name: string
+  is_billing_master: boolean
+}
+
+export interface BillingProfileDetail extends BillingProfile {
+  users: BillingProfileUser[]
+}
+
+export interface BillingProfileCreate {
+  company_name: string
+  vat_number: string
+  legal_form?: string | null
+  billing_address?: string | null
+  sdi_code?: string | null
+  iban?: string | null
+  swift?: string | null
+  iban_holder?: string | null
+  setup_cost?: number
+  monthly_cost_first_year?: number
+  monthly_cost_after_first_year?: number
+  monthly_page_quota?: number
+  page_package_cost?: number
+  max_users?: number
+}
+
+export interface BillingProfileUpdate {
+  company_name?: string
+  vat_number?: string
+  legal_form?: string | null
+  billing_address?: string | null
+  sdi_code?: string | null
+  iban?: string | null
+  swift?: string | null
+  iban_holder?: string | null
+  setup_cost?: number
+  monthly_cost_first_year?: number
+  monthly_cost_after_first_year?: number
+  monthly_page_quota?: number
+  page_package_cost?: number
+  max_users?: number
+}
+
 // User Management Types
 
 export interface AdminUser {
@@ -81,6 +151,11 @@ export interface AdminUser {
   blocked_reason: string | null
   registration_code_id: string | null
   registration_code: string | null
+  billing_profile_id: string | null
+  billing_profile_company: string | null
+  is_billing_master: boolean
+  max_records_free: number
+  monthly_page_quota: number
   created_at: string
   last_login_at: string | null
 }

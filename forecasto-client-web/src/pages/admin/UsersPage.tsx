@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,7 +31,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { adminApi } from '@/api/admin'
 import type { AdminUser, UserFilter } from '@/types/admin'
-import { Search, Ban, CheckCircle, Shield, Handshake, Settings } from 'lucide-react'
+import { Search, Ban, CheckCircle, Shield, Handshake, Settings, Building2, Crown, ExternalLink } from 'lucide-react'
 import { toast } from '@/hooks/useToast'
 
 function formatDate(date: string | null): string {
@@ -57,11 +58,13 @@ function getUserStatus(user: AdminUser): { label: string; variant: 'default' | '
     if (ptLabel) badges.push({ label: ptLabel, variant: 'outline' })
   }
   if (user.is_blocked) badges.push({ label: 'Bloccato', variant: 'destructive' })
+  if (user.is_billing_master) badges.push({ label: 'Master', variant: 'outline' })
   if (badges.length === 0) badges.push({ label: 'Attivo', variant: 'secondary' })
   return badges
 }
 
 export function UsersPage() {
+  const navigate = useNavigate()
   const [users, setUsers] = useState<AdminUser[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -276,6 +279,7 @@ export function UsersPage() {
                   <TableHead className="min-w-[160px]">Email</TableHead>
                   <TableHead className="w-[130px]">Stato</TableHead>
                   <TableHead className="w-[105px] whitespace-nowrap">Registrato il</TableHead>
+                  <TableHead className="w-[120px]">Profilo</TableHead>
                   <TableHead className="w-[105px] whitespace-nowrap">Ultimo accesso</TableHead>
                   <TableHead className="w-[150px] whitespace-nowrap">Azioni</TableHead>
                 </TableRow>
@@ -306,10 +310,30 @@ export function UsersPage() {
                         )}
                       </TableCell>
                       <TableCell>{formatDate(user.created_at)}</TableCell>
+                      <TableCell>
+                        {user.billing_profile_company ? (
+                          <span className="flex items-center gap-1 text-xs">
+                            <Building2 className="h-3 w-3" />
+                            {user.billing_profile_company}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Free</span>
+                        )}
+                      </TableCell>
                       <TableCell>{formatDate(user.last_login_at)}</TableCell>
                       <TableCell>
-                        {!user.is_admin && (
                           <div className="flex items-center gap-0.5">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => navigate(`/admin/users/${user.id}`)}
+                              title="Dettaglio utente"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Button>
+                        {!user.is_admin && (
+                          <>
                             {user.is_blocked ? (
                               <Button
                                 variant="ghost"
@@ -357,8 +381,9 @@ export function UsersPage() {
                                 </Button>
                               </>
                             )}
-                          </div>
+                          </>
                         )}
+                          </div>
                       </TableCell>
                     </TableRow>
                   )

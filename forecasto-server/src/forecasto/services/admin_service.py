@@ -18,6 +18,7 @@ from forecasto.models.registration_code import (
     RegistrationCodeBatch,
     generate_registration_code,
 )
+from forecasto.models.billing_profile import BillingProfile
 from forecasto.models.user import User
 from forecasto.schemas.admin import (
     ActivatedCodeReportRow,
@@ -25,6 +26,12 @@ from forecasto.schemas.admin import (
     AdminUserResponse,
     BatchResponse,
     BatchWithCodesResponse,
+    BillingProfileCreate,
+    BillingProfileDetailResponse,
+    BillingProfileListResponse,
+    BillingProfileResponse,
+    BillingProfileUpdate,
+    BillingProfileUserInfo,
     CodeFilter,
     CreateBatchRequest,
     PartnerBillingSummary,
@@ -464,44 +471,12 @@ class AdminService:
 
         response = []
         for user in users:
-            registration_code = None
-            if user.registration_code_id:
-                code_result = await self.db.execute(
-                    select(RegistrationCode).where(
-                        RegistrationCode.id == user.registration_code_id
-                    )
-                )
-                code = code_result.scalar_one_or_none()
-                if code:
-                    registration_code = code.code
-
-            response.append(
-                AdminUserResponse(
-                    id=user.id,
-                    email=user.email,
-                    name=user.name,
-                    is_admin=user.is_admin,
-                    is_partner=user.is_partner,
-                    partner_type=user.partner_type,
-                    is_blocked=user.is_blocked,
-                    blocked_at=user.blocked_at,
-                    blocked_reason=user.blocked_reason,
-                    registration_code_id=user.registration_code_id,
-                    registration_code=registration_code,
-                    created_at=user.created_at,
-                    last_login_at=user.last_login_at,
-                )
-            )
+            response.append(await self._build_admin_user_response(user))
 
         return response, total
 
-    async def get_user(self, user_id: str) -> AdminUserResponse:
-        """Get a single user."""
-        result = await self.db.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
-        if not user:
-            raise NotFoundException(f"User {user_id} not found")
-
+    async def _build_admin_user_response(self, user: User) -> AdminUserResponse:
+        """Build AdminUserResponse from a User model instance."""
         registration_code = None
         if user.registration_code_id:
             code_result = await self.db.execute(
@@ -512,6 +487,15 @@ class AdminService:
             code = code_result.scalar_one_or_none()
             if code:
                 registration_code = code.code
+
+        billing_profile_company = None
+        if user.billing_profile_id:
+            bp_result = await self.db.execute(
+                select(BillingProfile.company_name).where(
+                    BillingProfile.id == user.billing_profile_id
+                )
+            )
+            billing_profile_company = bp_result.scalar_one_or_none()
 
         return AdminUserResponse(
             id=user.id,
@@ -525,9 +509,23 @@ class AdminService:
             blocked_reason=user.blocked_reason,
             registration_code_id=user.registration_code_id,
             registration_code=registration_code,
+            billing_profile_id=user.billing_profile_id,
+            billing_profile_company=billing_profile_company,
+            is_billing_master=user.is_billing_master,
+            max_records_free=user.max_records_free,
+            monthly_page_quota=user.monthly_page_quota,
             created_at=user.created_at,
             last_login_at=user.last_login_at,
         )
+
+    async def get_user(self, user_id: str) -> AdminUserResponse:
+        """Get a single user."""
+        result = await self.db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise NotFoundException(f"User {user_id} not found")
+
+        return await self._build_admin_user_response(user)
 
     async def set_partner(
         self, user_id: str, is_partner: bool, admin_user: User
@@ -566,6 +564,251 @@ class AdminService:
             raise ValidationException("L'utente non e un partner")
 
         user.partner_type = partner_type
+        await self.db.flush()
+
+        return await self.get_user(user_id)
+
+    # --- Admin toggle ---
+
+    async def set_admin(
+        self, user_id: str, is_admin: bool, admin_user: User
+    ) -> AdminUserResponse:
+        """Set or unset admin role for a user."""
+        result = await self.db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise NotFoundException(f"User {user_id} not found")
+
+        if user.id == admin_user.id:
+            raise ForbiddenException("Non puoi modificare il tuo stesso ruolo admin")
+
+        user.is_admin = is_admin
+        await self.db.flush()
+
+        return await self.get_user(user_id)
+
+    # --- Billing Profile CRUD ---
+
+    async def create_billing_profile(
+        self, data: BillingProfileCreate
+    ) -> BillingProfileResponse:
+        """Create a new billing profile."""
+        profile = BillingProfile(
+            company_name=data.company_name,
+            legal_form=data.legal_form,
+            vat_number=data.vat_number,
+            billing_address=data.billing_address,
+            sdi_code=data.sdi_code,
+            iban=data.iban,
+            swift=data.swift,
+            iban_holder=data.iban_holder,
+            setup_cost=data.setup_cost,
+            monthly_cost_first_year=data.monthly_cost_first_year,
+            monthly_cost_after_first_year=data.monthly_cost_after_first_year,
+            monthly_page_quota=data.monthly_page_quota,
+            page_package_cost=data.page_package_cost,
+            max_users=data.max_users,
+        )
+        self.db.add(profile)
+        await self.db.flush()
+
+        return await self._build_billing_profile_response(profile)
+
+    async def list_billing_profiles(self) -> BillingProfileListResponse:
+        """List all billing profiles."""
+        result = await self.db.execute(
+            select(BillingProfile).order_by(BillingProfile.company_name)
+        )
+        profiles = result.scalars().all()
+
+        items = []
+        for p in profiles:
+            items.append(await self._build_billing_profile_response(p))
+
+        return BillingProfileListResponse(profiles=items, total=len(items))
+
+    async def get_billing_profile(self, profile_id: str) -> BillingProfileDetailResponse:
+        """Get a billing profile with user list."""
+        result = await self.db.execute(
+            select(BillingProfile).where(BillingProfile.id == profile_id)
+        )
+        profile = result.scalar_one_or_none()
+        if not profile:
+            raise NotFoundException(f"Profilo {profile_id} non trovato")
+
+        # Get users for this profile
+        users_result = await self.db.execute(
+            select(User).where(User.billing_profile_id == profile_id).order_by(User.name)
+        )
+        users = users_result.scalars().all()
+        user_infos = [
+            BillingProfileUserInfo(
+                id=u.id, email=u.email, name=u.name, is_billing_master=u.is_billing_master
+            )
+            for u in users
+        ]
+
+        master = next((u for u in users if u.is_billing_master), None)
+
+        return BillingProfileDetailResponse(
+            id=profile.id,
+            company_name=profile.company_name,
+            legal_form=profile.legal_form,
+            vat_number=profile.vat_number,
+            billing_address=profile.billing_address,
+            sdi_code=profile.sdi_code,
+            iban=profile.iban,
+            swift=profile.swift,
+            iban_holder=profile.iban_holder,
+            setup_cost=float(profile.setup_cost or 0),
+            monthly_cost_first_year=float(profile.monthly_cost_first_year or 0),
+            monthly_cost_after_first_year=float(profile.monthly_cost_after_first_year or 0),
+            monthly_page_quota=profile.monthly_page_quota,
+            page_package_cost=float(profile.page_package_cost or 0),
+            max_users=profile.max_users,
+            users_count=len(users),
+            master_user_id=master.id if master else None,
+            master_user_name=master.name if master else None,
+            users=user_infos,
+            created_at=profile.created_at,
+            updated_at=profile.updated_at,
+        )
+
+    async def update_billing_profile(
+        self, profile_id: str, data: BillingProfileUpdate
+    ) -> BillingProfileResponse:
+        """Update a billing profile."""
+        result = await self.db.execute(
+            select(BillingProfile).where(BillingProfile.id == profile_id)
+        )
+        profile = result.scalar_one_or_none()
+        if not profile:
+            raise NotFoundException(f"Profilo {profile_id} non trovato")
+
+        update_data = data.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(profile, key, value)
+
+        await self.db.flush()
+        return await self._build_billing_profile_response(profile)
+
+    async def delete_billing_profile(self, profile_id: str) -> None:
+        """Delete a billing profile (only if no users linked)."""
+        result = await self.db.execute(
+            select(BillingProfile).where(BillingProfile.id == profile_id)
+        )
+        profile = result.scalar_one_or_none()
+        if not profile:
+            raise NotFoundException(f"Profilo {profile_id} non trovato")
+
+        # Check no users linked
+        count_result = await self.db.execute(
+            select(func.count()).select_from(User).where(
+                User.billing_profile_id == profile_id
+            )
+        )
+        count = count_result.scalar() or 0
+        if count > 0:
+            raise ValidationException(
+                f"Impossibile eliminare: {count} utenti collegati al profilo"
+            )
+
+        await self.db.delete(profile)
+        await self.db.flush()
+
+    async def _build_billing_profile_response(
+        self, profile: BillingProfile
+    ) -> BillingProfileResponse:
+        """Build response for a billing profile."""
+        # Count users and find master
+        users_result = await self.db.execute(
+            select(User.id, User.name, User.is_billing_master).where(
+                User.billing_profile_id == profile.id
+            )
+        )
+        users_rows = users_result.all()
+        master = next((r for r in users_rows if r[2]), None)
+
+        return BillingProfileResponse(
+            id=profile.id,
+            company_name=profile.company_name,
+            legal_form=profile.legal_form,
+            vat_number=profile.vat_number,
+            billing_address=profile.billing_address,
+            sdi_code=profile.sdi_code,
+            iban=profile.iban,
+            swift=profile.swift,
+            iban_holder=profile.iban_holder,
+            setup_cost=float(profile.setup_cost or 0),
+            monthly_cost_first_year=float(profile.monthly_cost_first_year or 0),
+            monthly_cost_after_first_year=float(profile.monthly_cost_after_first_year or 0),
+            monthly_page_quota=profile.monthly_page_quota,
+            page_package_cost=float(profile.page_package_cost or 0),
+            max_users=profile.max_users,
+            users_count=len(users_rows),
+            master_user_id=master[0] if master else None,
+            master_user_name=master[1] if master else None,
+            created_at=profile.created_at,
+            updated_at=profile.updated_at,
+        )
+
+    # --- User-Profile Association ---
+
+    async def set_user_billing_profile(
+        self, user_id: str, billing_profile_id: str | None, is_billing_master: bool
+    ) -> AdminUserResponse:
+        """Associate or dissociate a user with a billing profile."""
+        result = await self.db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise NotFoundException(f"User {user_id} not found")
+
+        if billing_profile_id is None:
+            # Dissociate
+            user.billing_profile_id = None
+            user.is_billing_master = False
+            await self.db.flush()
+            return await self.get_user(user_id)
+
+        # Verify profile exists
+        bp_result = await self.db.execute(
+            select(BillingProfile).where(BillingProfile.id == billing_profile_id)
+        )
+        profile = bp_result.scalar_one_or_none()
+        if not profile:
+            raise NotFoundException(f"Profilo {billing_profile_id} non trovato")
+
+        # If setting as master, ensure no other master exists for this profile
+        if is_billing_master:
+            existing_master = await self.db.execute(
+                select(User).where(
+                    User.billing_profile_id == billing_profile_id,
+                    User.is_billing_master == True,  # noqa: E712
+                    User.id != user_id,
+                )
+            )
+            if existing_master.scalar_one_or_none():
+                raise ValidationException(
+                    "Esiste già un utente master per questo profilo. "
+                    "Rimuovi il master attuale prima di impostarne uno nuovo."
+                )
+
+        user.billing_profile_id = billing_profile_id
+        user.is_billing_master = is_billing_master
+        await self.db.flush()
+
+        return await self.get_user(user_id)
+
+    async def set_max_records_free(
+        self, user_id: str, max_records_free: int
+    ) -> AdminUserResponse:
+        """Set the max records limit for a free user."""
+        result = await self.db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise NotFoundException(f"User {user_id} not found")
+
+        user.max_records_free = max_records_free
         await self.db.flush()
 
         return await self.get_user(user_id)

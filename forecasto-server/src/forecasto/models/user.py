@@ -15,6 +15,7 @@ from forecasto.models.base import Base, TimestampMixin, UUIDMixin, generate_uuid
 
 if TYPE_CHECKING:
     from forecasto.models.agent_token import AgentToken
+    from forecasto.models.billing_profile import BillingProfile
     from forecasto.models.registration_code import RegistrationCode
     from forecasto.models.workspace import WorkspaceMember
 
@@ -71,6 +72,13 @@ class User(Base, UUIDMixin, TimestampMixin):
     # AI document processing quota (pages per month, 0 = unlimited)
     monthly_page_quota: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
 
+    # Billing profile association
+    billing_profile_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("billing_profiles.id", ondelete="SET NULL"), nullable=True
+    )
+    is_billing_master: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    max_records_free: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
+
     # Relationships
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"
@@ -83,6 +91,9 @@ class User(Base, UUIDMixin, TimestampMixin):
     )
     agent_tokens: Mapped[list["AgentToken"]] = relationship(
         "AgentToken", back_populates="user", cascade="all, delete-orphan"
+    )
+    billing_profile: Mapped[Optional["BillingProfile"]] = relationship(
+        "BillingProfile", back_populates="users"
     )
 
 

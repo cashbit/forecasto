@@ -11,7 +11,7 @@ import { SupportPage } from '@/pages/SupportPage'
 import { SkillsPage } from '@/pages/SkillsPage'
 import { InboxPage } from '@/pages/InboxPage'
 import { UsagePage } from '@/pages/UsagePage'
-import { AdminLayout, AdminDashboard, RegistrationCodesPage, UsersPage, ActivatedCodesReportPage, BillingSummaryPage } from '@/pages/admin'
+import { AdminLayout, AdminDashboard, RegistrationCodesPage, UsersPage, ActivatedCodesReportPage, BillingSummaryPage, BillingProfilesPage, BillingProfileDetailPage, UserDetailPage } from '@/pages/admin'
 import { MobileLayout } from '@/pages/mobile/MobileLayout'
 import { MobileQuickEntry } from '@/pages/mobile/MobileQuickEntry'
 import { useAuthStore } from '@/stores/authStore'
@@ -96,6 +96,9 @@ export const router = createBrowserRouter([
       { index: true, element: <AdminDashboard /> },
       { path: 'codes', element: <RegistrationCodesPage /> },
       { path: 'users', element: <UsersPage /> },
+      { path: 'users/:userId', element: <UserDetailPage /> },
+      { path: 'billing-profiles', element: <BillingProfilesPage /> },
+      { path: 'billing-profiles/:profileId', element: <BillingProfileDetailPage /> },
       { path: 'reports/activations', element: <ActivatedCodesReportPage /> },
       { path: 'reports/billing', element: <BillingSummaryPage /> },
     ],
