@@ -238,3 +238,4 @@ class AuthService:
             raise ValidationException(error_msg)
 
         user.password_hash = hash_password(new_password)
+        await self.db.flush()

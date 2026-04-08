@@ -7,11 +7,13 @@ from forecasto.api import (
     auth,
     bank_accounts,
     cashflow,
+    document_upload,
     inbox,
     partner,
     records,
     sessions,
     transfers,
+    usage,
     users,
     vat,
     vat_registry,
@@ -31,5 +33,7 @@ __all__ = [
     "vat",
     "vat_registry",
     "inbox",
+    "document_upload",
+    "usage",
 ]
 

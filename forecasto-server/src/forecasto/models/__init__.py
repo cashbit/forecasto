@@ -5,6 +5,11 @@ from __future__ import annotations
 
 from forecasto.models.agent_token import AgentToken
 from forecasto.models.audit import AuditLog
+from forecasto.models.document_processing import (
+    DocumentProcessingJob,
+    LLMPricingConfig,
+    UsageRecord,
+)
 from forecasto.models.inbox import InboxItem
 from forecasto.models.bank_account import BankAccount, BankAccountBalance
 from forecasto.models.base import Base
@@ -23,6 +28,9 @@ from forecasto.models.workspace import ApiKey, Invitation, Workspace, WorkspaceM
 __all__ = [
     "AgentToken",
     "Base",
+    "DocumentProcessingJob",
+    "LLMPricingConfig",
+    "UsageRecord",
     "User",
     "RefreshToken",
     "EmailVerificationToken",

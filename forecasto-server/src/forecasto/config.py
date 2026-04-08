@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     session_expire_timeout_hours: int = 4
     session_cleanup_days: int = 7
 
+    # Document processing
+    anthropic_api_key: str = ""
+    document_upload_dir: str = "./uploads"
+    document_max_size_mb: int = 20
+    document_default_model: str = "claude-sonnet-4-6"
+    processing_max_concurrent: int = 2
+    processing_max_queue_size: int = 50
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 settings = Settings()

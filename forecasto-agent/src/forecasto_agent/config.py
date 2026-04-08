@@ -103,6 +103,7 @@ class WatchedFolder:
     system_prompt: str = DEFAULT_SYSTEM_PROMPT
     user_prompt: str = ""
     agent_token: str = ""
+    processing_mode: str = "local"  # "local" | "server"
 
     @property
     def config_dir(self) -> Path:
@@ -114,6 +115,8 @@ class WatchedFolder:
         config_dir = path / FOLDER_CONFIG_DIR
         llm = FolderLLMConfig()
         per_folder_api_key = global_server.api_key
+
+        processing_mode = "local"
 
         config_file = config_dir / "config.toml"
         if config_file.exists():
@@ -129,6 +132,8 @@ class WatchedFolder:
                 workspace_id = ws_id
             server_data = data.get("server", {})
             per_folder_api_key = server_data.get("api_key", per_folder_api_key)
+            processing_data = data.get("processing", {})
+            processing_mode = processing_data.get("mode", processing_mode)
 
         system_prompt = DEFAULT_SYSTEM_PROMPT
         sp_file = config_dir / "system-prompt.md"
@@ -150,6 +155,7 @@ class WatchedFolder:
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             agent_token=resolved_agent_token,
+            processing_mode=processing_mode,
         )
 
 

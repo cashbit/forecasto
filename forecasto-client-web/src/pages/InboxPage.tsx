@@ -4,6 +4,7 @@ import { Inbox, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { InboxItemCard } from '@/components/inbox/InboxItemCard'
+import { DocumentUploadZone } from '@/components/inbox/DocumentUploadZone'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { inboxApi } from '@/api/inbox'
 import { toast } from '@/hooks/useToast'
@@ -125,6 +126,16 @@ export function InboxPage() {
           Aggiorna
         </Button>
       </div>
+
+      {/* Upload zone */}
+      {workspaceId && (
+        <DocumentUploadZone
+          workspaceId={workspaceId}
+          onProcessingComplete={() => {
+            invalidate()
+          }}
+        />
+      )}
 
       {/* Tabs */}
       <Tabs value={statusFilter ?? 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? undefined : v as StatusFilter)}>

@@ -447,3 +447,41 @@ async def sync_activecampaign_contact(
     except Exception as e:
         logger.error(f"ActiveCampaign sync failed for {code.recipient_email}: {e}")
         raise HTTPException(status_code=502, detail=f"Errore ActiveCampaign: {e}")
+
+
+# --- LLM Pricing Management ---
+
+@router.get("/llm-pricing", response_model=dict)
+async def list_llm_pricing(
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """List all LLM pricing configs (admin only)."""
+    from forecasto.services.document_processing_service import DocumentProcessingService
+    from forecasto.schemas.document_processing import LLMPricingResponse
+    configs = await DocumentProcessingService.list_pricing(db)
+    return {
+        "success": True,
+        "configs": [LLMPricingResponse.model_validate(c) for c in configs],
+    }
+
+
+@router.put("/llm-pricing/{config_id}", response_model=dict)
+async def update_llm_pricing(
+    config_id: str,
+    body: dict,
+    admin: Annotated[User, Depends(require_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Update a LLM pricing config (admin only)."""
+    from forecasto.services.document_processing_service import DocumentProcessingService
+    from forecasto.schemas.document_processing import LLMPricingResponse, LLMPricingUpdate
+    update_data = LLMPricingUpdate(**body)
+    config = await DocumentProcessingService.update_pricing(
+        db, config_id, **update_data.model_dump(exclude_none=True)
+    )
+    if not config:
+        from forecasto.exceptions import NotFoundException
+        raise NotFoundException("Pricing config non trovato")
+    await db.commit()
+    return {"success": True, "config": LLMPricingResponse.model_validate(config)}

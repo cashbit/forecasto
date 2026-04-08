@@ -17,6 +17,7 @@ from forecasto.api import (
     auth,
     bank_accounts,
     cashflow,
+    document_upload,
     events,
     inbox,
     oauth,
@@ -24,6 +25,7 @@ from forecasto.api import (
     records,
     sessions,
     transfers,
+    usage,
     users,
     vat,
     vat_registry,
@@ -64,7 +66,19 @@ async def lifespan(app: FastAPI):
 
     await init_db()
     await seed_default_admin()
+
+    # Start processing queue
+    from forecasto.services.processing_queue import processing_queue
+    await processing_queue.start()
+
+    # Create upload directory
+    from pathlib import Path
+    Path(settings.document_upload_dir).mkdir(parents=True, exist_ok=True)
+
     yield
+
+    # Shutdown
+    await processing_queue.stop()
 
 app = FastAPI(
     title="Forecasto API",
@@ -122,6 +136,8 @@ app.include_router(events.router, prefix="/api/v1", tags=["Events"])
 app.include_router(oauth.router, prefix="/oauth", tags=["OAuth"])
 app.include_router(inbox.router, prefix="/api/v1/workspaces", tags=["Inbox"])
 app.include_router(agent.router, prefix="/api/v1", tags=["Agent"])
+app.include_router(document_upload.router, prefix="/api/v1/workspaces", tags=["Document Upload"])
+app.include_router(usage.router, prefix="/api/v1/workspaces", tags=["Usage"])
 
 @app.get("/health")
 async def health_check():

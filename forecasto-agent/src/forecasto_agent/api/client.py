@@ -90,6 +90,32 @@ class ForecastoClient:
             data = resp.json()
             return data.get("workspaces", [])
 
+    async def upload_document(
+        self,
+        workspace_id: str,
+        file_path: "Path",
+        content_type: str | None = None,
+    ) -> dict:
+        """Upload a raw file to the server for processing.
+
+        Returns {job_id, status, queue_position}.
+        """
+        import mimetypes
+        from pathlib import Path as _Path
+
+        if content_type is None:
+            content_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
+
+        async with httpx.AsyncClient(timeout=120) as client:
+            with open(file_path, "rb") as f:
+                resp = await client.post(
+                    f"{self.base_url}/api/v1/workspaces/{workspace_id}/inbox/upload",
+                    headers=self._auth_headers(),
+                    files={"file": (file_path.name, f, content_type)},
+                )
+                resp.raise_for_status()
+        return resp.json()
+
     async def search_payment_matches(
         self,
         workspace_id: str,

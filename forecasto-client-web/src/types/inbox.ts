@@ -61,3 +61,46 @@ export interface InboxItemUpdate {
 export interface InboxCountResponse {
   pending: number
 }
+
+export interface ProcessingJob {
+  id: string
+  workspace_id: string
+  status: 'queued' | 'processing' | 'completed' | 'failed'
+  source_filename: string
+  source_hash: string
+  file_size_bytes: number
+  file_content_type: string
+  upload_source: string
+  llm_model: string
+  inbox_item_id?: string
+  error_message?: string
+  started_at?: string
+  completed_at?: string
+  created_at: string
+  usage?: UsageRecordDetail
+}
+
+export interface UsageRecordDetail {
+  id: string
+  workspace_id: string
+  job_id: string
+  llm_provider: string
+  llm_model: string
+  input_tokens: number
+  output_tokens: number
+  cache_creation_tokens: number
+  cache_read_tokens: number
+  input_cost_usd: number
+  output_cost_usd: number
+  total_cost_usd: number
+  billed_cost_usd: number
+  multiplier: number
+  created_at: string
+}
+
+export interface QueueStatus {
+  queued: number
+  processing: number
+  max_concurrent: number
+  max_queue_size: number
+}

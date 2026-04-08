@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { LogOut, Settings, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy, ArrowUpDown, FileJson, Calculator } from 'lucide-react'
+import { LogOut, Settings, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy, ArrowUpDown, FileJson, Calculator, BarChart3 } from 'lucide-react'
 import logoIcon from '@/assets/logo-icon.png'
 import logoText from '@/assets/logo-text.png'
 import { Link, useLocation } from 'react-router-dom'
@@ -286,6 +286,19 @@ export function Header() {
                   {inboxCount!.pending}
                 </span>
               )}
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className={cn(
+              location.pathname === '/usage' && 'bg-primary/10 text-primary font-semibold'
+            )}
+          >
+            <Link to="/usage">
+              <BarChart3 className="h-4 w-4 mr-1" />
+              Consumo
             </Link>
           </Button>
         </nav>

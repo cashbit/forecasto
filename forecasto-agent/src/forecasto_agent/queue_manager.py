@@ -130,6 +130,29 @@ class DocumentQueue:
         logger.info("Processing %s", path.name)
         file_cache.mark_processing(str(path), file_hash)
 
+        # Server-side processing mode: just upload the raw file
+        if getattr(folder, 'processing_mode', 'local') == 'server':
+            try:
+                api_client = ForecastoClient(
+                    base_url=self.config.server.base_url,
+                    api_key=self.config.server.api_key,
+                    agent_token=self.config.agent_token,
+                )
+                result = await api_client.upload_document(
+                    workspace_id=folder.workspace_id,
+                    file_path=path,
+                )
+                job_id = result.get("job_id", "")
+                file_cache.mark_sent(str(path), file_hash, job_id)
+                logger.info("Uploaded %s for server processing (job_id=%s)", path.name, job_id)
+                if self.on_processed:
+                    self.on_processed(1)
+                return
+            except Exception:
+                logger.exception("Failed to upload %s to server", path.name)
+                file_cache.mark_error(str(path), file_hash)
+                return
+
         try:
             # Convert file to vision blocks
             if path.suffix.lower() == ".pdf":

@@ -28,8 +28,10 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      // Clear auth data and redirect to login
+    const url = error.config?.url || ''
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/reset-password')
+    if (error.response?.status === 401 && !isAuthEndpoint) {
+      // Clear auth data and redirect to login (only for protected API calls)
       localStorage.removeItem('forecasto-auth')
       window.location.href = '/login'
     }
