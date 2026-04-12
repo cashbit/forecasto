@@ -166,6 +166,10 @@ async def create_record(
 
     await event_bus.publish("records_changed", workspace_id, {"action": "create"})
 
+    from forecasto.services import prompt_auto_regen
+    await prompt_auto_regen.increment_workspace_record_counter(workspace_id, db, count=1)
+    await prompt_auto_regen.maybe_trigger_workspace_regen(workspace_id, db)
+
     return {
         "success": True,
         "record": _record_to_response(record),
@@ -213,6 +217,10 @@ async def bulk_import_records(
     created = list(result.scalars().all())
 
     await event_bus.publish("records_changed", workspace_id, {"action": "bulk_create"})
+
+    from forecasto.services import prompt_auto_regen
+    await prompt_auto_regen.increment_workspace_record_counter(workspace_id, db, count=len(created))
+    await prompt_auto_regen.maybe_trigger_workspace_regen(workspace_id, db)
 
     return {
         "success": True,
@@ -262,6 +270,10 @@ async def bulk_import_sdi_records(
     created = list(result.scalars().all())
 
     await event_bus.publish("records_changed", workspace_id, {"action": "bulk_create"})
+
+    from forecasto.services import prompt_auto_regen
+    await prompt_auto_regen.increment_workspace_record_counter(workspace_id, db, count=len(created))
+    await prompt_auto_regen.maybe_trigger_workspace_regen(workspace_id, db)
 
     return {
         "success": True,

@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,11 +82,22 @@ function WorkspacePromptCard({ workspace, queryClient }: { workspace: Workspace;
   })
 
   const saveMutation = useMutation({
-    mutationFn: (prompt: string) => promptBuilderApi.updateWorkspacePrompt(workspace.id, prompt),
+    mutationFn: (prompt: string) => promptBuilderApi.updateWorkspacePrompt(workspace.id, { prompt }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workspace-prompt', workspace.id] })
       setEditing(false)
       toast({ title: 'Prompt salvato', variant: 'success' })
+    },
+  })
+
+  const autoUpdateMutation = useMutation({
+    mutationFn: (enabled: boolean) => promptBuilderApi.updateWorkspacePrompt(workspace.id, { auto_update: enabled }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['workspace-prompt', workspace.id] })
+      toast({
+        title: 'Impostazione aggiornata',
+        variant: 'success',
+      })
     },
   })
 
@@ -101,11 +114,16 @@ function WorkspacePromptCard({ workspace, queryClient }: { workspace: Workspace;
               Regole specifiche per la classificazione documenti in "{workspace.name}"
             </CardDescription>
           </div>
-          {promptData?.prompt && (
-            <Badge variant="secondary">
-              {promptData.last_generated_at ? 'Auto-generato' : 'Manuale'}
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {promptData?.auto_update && (
+              <Badge variant="default" className="bg-green-600">Auto</Badge>
+            )}
+            {promptData?.prompt && (
+              <Badge variant="secondary">
+                {promptData.last_generated_at ? 'Auto-generato' : 'Manuale'}
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -177,6 +195,31 @@ function WorkspacePromptCard({ workspace, queryClient }: { workspace: Workspace;
               Storico
               {showHistory ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />}
             </Button>
+          </div>
+        )}
+
+        {/* Auto-update toggle */}
+        {!editing && promptData?.prompt && (
+          <div className="flex items-center justify-between rounded-md border p-3 bg-muted/30">
+            <div className="space-y-0.5">
+              <Label htmlFor="ws-auto-update" className="text-sm font-medium">
+                Aggiornamento automatico
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Rigenera il prompt dopo circa 20 nuovi record
+                {promptData.auto_update && promptData.records_since_regen > 0 && (
+                  <span className="ml-1 text-foreground font-medium">
+                    ({promptData.records_since_regen} record dall'ultimo aggiornamento)
+                  </span>
+                )}
+              </p>
+            </div>
+            <Switch
+              id="ws-auto-update"
+              checked={promptData.auto_update}
+              onCheckedChange={(checked) => autoUpdateMutation.mutate(checked)}
+              disabled={autoUpdateMutation.isPending}
+            />
           </div>
         )}
 
@@ -384,11 +427,19 @@ function UserPromptCard({ queryClient }: { queryClient: ReturnType<typeof useQue
   })
 
   const saveMutation = useMutation({
-    mutationFn: (prompt: string) => promptBuilderApi.updateUserPrompt(prompt),
+    mutationFn: (prompt: string) => promptBuilderApi.updateUserPrompt({ prompt }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-prompt'] })
       setEditing(false)
       toast({ title: 'Prompt salvato', variant: 'success' })
+    },
+  })
+
+  const autoUpdateMutation = useMutation({
+    mutationFn: (enabled: boolean) => promptBuilderApi.updateUserPrompt({ auto_update: enabled }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-prompt'] })
+      toast({ title: 'Impostazione aggiornata', variant: 'success' })
     },
   })
 
@@ -451,6 +502,26 @@ function UserPromptCard({ queryClient }: { queryClient: ReturnType<typeof useQue
               <Pencil className="mr-2 h-4 w-4" />
               Modifica
             </Button>
+          </div>
+        )}
+
+        {/* Auto-update toggle */}
+        {!editing && promptData?.prompt && (
+          <div className="flex items-center justify-between rounded-md border p-3 bg-muted/30">
+            <div className="space-y-0.5">
+              <Label htmlFor="user-auto-update" className="text-sm font-medium">
+                Aggiornamento automatico
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Rigenera il prompt utente quando un workspace viene aggiornato
+              </p>
+            </div>
+            <Switch
+              id="user-auto-update"
+              checked={promptData.auto_update}
+              onCheckedChange={(checked) => autoUpdateMutation.mutate(checked)}
+              disabled={autoUpdateMutation.isPending}
+            />
           </div>
         )}
 

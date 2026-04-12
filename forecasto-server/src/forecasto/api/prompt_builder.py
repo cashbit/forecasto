@@ -129,10 +129,13 @@ async def get_workspace_prompt(
     )
     last_job = result.scalar_one_or_none()
 
+    settings = workspace.settings or {}
     return AgentPromptResponse(
         prompt=prompt,
         last_generated_at=last_job.created_at if last_job else None,
         records_analyzed=last_job.records_analyzed if last_job else 0,
+        auto_update=bool(settings.get("agent_prompt_auto_update", False)),
+        records_since_regen=settings.get("agent_prompt_records_since_regen", 0),
     )
 
 
@@ -143,12 +146,23 @@ async def update_workspace_prompt(
     db: Annotated[AsyncSession, Depends(get_db)],
     body: AgentPromptUpdate,
 ):
-    """Manually update the workspace agent prompt."""
-    _, member = workspace_data
+    """Manually update the workspace agent prompt and/or auto_update flag."""
+    workspace, member = workspace_data
     _require_owner_or_admin(member)
 
     service = PromptBuilderService(db)
-    await service.save_workspace_prompt(workspace_id, body.prompt)
+
+    if body.prompt is not None:
+        await service.save_workspace_prompt(workspace_id, body.prompt)
+
+    if body.auto_update is not None:
+        settings = dict(workspace.settings or {})
+        settings["agent_prompt_auto_update"] = body.auto_update
+        if not body.auto_update:
+            # Reset counter when disabling
+            settings["agent_prompt_records_since_regen"] = 0
+        workspace.settings = settings
+
     await db.commit()
     return {"success": True}
 
@@ -255,6 +269,7 @@ async def get_user_prompt(
     """Get the current user agent prompt."""
     return AgentPromptResponse(
         prompt=current_user.agent_prompt,
+        auto_update=current_user.agent_prompt_auto_update,
     )
 
 
@@ -264,9 +279,15 @@ async def update_user_prompt(
     db: Annotated[AsyncSession, Depends(get_db)],
     body: AgentPromptUpdate,
 ):
-    """Manually update the user agent prompt."""
+    """Manually update the user agent prompt and/or auto_update flag."""
     service = PromptBuilderService(db)
-    await service.save_user_prompt(current_user.id, body.prompt)
+
+    if body.prompt is not None:
+        await service.save_user_prompt(current_user.id, body.prompt)
+
+    if body.auto_update is not None:
+        current_user.agent_prompt_auto_update = body.auto_update
+
     await db.commit()
     return {"success": True}
 

@@ -17,6 +17,8 @@ export interface AgentPromptResponse {
   prompt: string | null
   last_generated_at: string | null
   records_analyzed: number
+  auto_update: boolean
+  records_since_regen: number
 }
 
 export interface PatternAnalysisResponse {

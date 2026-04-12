@@ -38,12 +38,15 @@ class AgentPromptResponse(BaseModel):
     prompt: str | None = None
     last_generated_at: datetime | None = None
     records_analyzed: int = 0
+    auto_update: bool = False
+    records_since_regen: int = 0
 
 
 class AgentPromptUpdate(BaseModel):
     """Manual prompt update."""
 
-    prompt: str
+    prompt: str | None = None
+    auto_update: bool | None = None
 
 
 class PatternAnalysisResponse(BaseModel):

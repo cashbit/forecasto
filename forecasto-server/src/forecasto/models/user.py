@@ -74,6 +74,7 @@ class User(Base, UUIDMixin, TimestampMixin):
 
     # Agent prompt (user-level, auto-generated or manually edited)
     agent_prompt: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    agent_prompt_auto_update: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
 
     # Billing profile association
     billing_profile_id: Mapped[Optional[str]] = mapped_column(

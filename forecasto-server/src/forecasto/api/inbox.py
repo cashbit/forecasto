@@ -216,6 +216,15 @@ async def confirm_inbox_item(
         data={"action": "bulk_create"},
     )
 
+    # Auto-regen prompt if enabled
+    confirmed_count = len(item.confirmed_record_ids or [])
+    if confirmed_count > 0:
+        from forecasto.services import prompt_auto_regen
+        await prompt_auto_regen.increment_workspace_record_counter(
+            workspace_id, db, count=confirmed_count
+        )
+        await prompt_auto_regen.maybe_trigger_workspace_regen(workspace_id, db)
+
     return {"success": True, "item": InboxItemResponse.model_validate(item)}
 
 

@@ -14,8 +14,8 @@ export const promptBuilderApi = {
     return response.data
   },
 
-  updateWorkspacePrompt: async (workspaceId: string, prompt: string): Promise<void> => {
-    await apiClient.put(`/workspaces/${workspaceId}/agent-prompt`, { prompt })
+  updateWorkspacePrompt: async (workspaceId: string, data: { prompt?: string; auto_update?: boolean }): Promise<void> => {
+    await apiClient.put(`/workspaces/${workspaceId}/agent-prompt`, data)
   },
 
   generateWorkspacePrompt: async (workspaceId: string, forceRegenerate = false): Promise<GeneratePromptResponse> => {
@@ -42,8 +42,8 @@ export const promptBuilderApi = {
     return response.data
   },
 
-  updateUserPrompt: async (prompt: string): Promise<void> => {
-    await apiClient.put('/users/me/agent-prompt', { prompt })
+  updateUserPrompt: async (data: { prompt?: string; auto_update?: boolean }): Promise<void> => {
+    await apiClient.put('/users/me/agent-prompt', data)
   },
 
   generateUserPrompt: async (forceRegenerate = false): Promise<GeneratePromptResponse> => {
