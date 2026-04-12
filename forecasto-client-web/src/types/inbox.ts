@@ -1,3 +1,5 @@
+export type MatchType = 'payment' | 'update' | 'duplicate'
+
 export interface ReconciliationMatch {
   record_id: string
   reference: string
@@ -6,7 +8,14 @@ export interface ReconciliationMatch {
   date_cashflow: string | null
   date_offer: string | null
   stage: string
+  area?: string
+  note?: string
+  transaction_id?: string
   match_score: number
+  match_reasons?: string[]
+  match_type?: MatchType
+  match_reason?: string  // legacy compatibility
+  suggested_transfer_area?: string | null
   confirmed?: boolean  // set by user when they check the match
 }
 
@@ -29,6 +38,9 @@ export interface RecordSuggestion {
   project_code?: string
   withholding_rate?: string | null
   classification?: Record<string, unknown> | null
+  // Populated by server-side similarity search
+  matched_record?: ReconciliationMatch | null
+  similar_records?: ReconciliationMatch[]
 }
 
 export type InboxStatus = 'pending' | 'confirmed' | 'rejected'

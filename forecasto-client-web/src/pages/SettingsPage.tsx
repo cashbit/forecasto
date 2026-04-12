@@ -16,6 +16,7 @@ import { PartnershipTab } from '@/components/settings/PartnershipTab'
 import { WorkspaceBankAccountsSection } from '@/components/settings/WorkspaceBankAccountsSection'
 import { DeleteAccountDialog } from '@/components/settings/DeleteAccountDialog'
 import { AgentTokensTab } from '@/components/settings/AgentTokensTab'
+import { AgentPromptSection } from '@/components/settings/AgentPromptSection'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/hooks/useToast'
 import { authApi } from '@/api/auth'
@@ -125,7 +126,7 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Impostazioni</h1>
 
       <Tabs defaultValue="profile" className="space-y-6">
@@ -281,32 +282,20 @@ export function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="members">
-          <Card>
-            <CardHeader>
-              <CardTitle>Membri del Workspace</CardTitle>
-              <CardDescription>Gestisci i membri e i permessi del workspace corrente</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {primaryWorkspace ? (
-                <>
-                  <p className="text-sm text-muted-foreground">
-                    Gestisci chi ha accesso al workspace "{primaryWorkspace.name}" e configura i permessi granulari per ogni membro.
-                  </p>
-                  <Button onClick={() => setMembersDialogOpen(true)}>
-                    <Users className="mr-2 h-4 w-4" />
-                    Gestisci Membri
-                  </Button>
-                  <MembersDialog
-                    workspaceId={primaryWorkspace.id}
-                    open={membersDialogOpen}
-                    onOpenChange={setMembersDialogOpen}
-                  />
-                </>
-              ) : (
-                <p className="text-muted-foreground">Seleziona un workspace per gestire i membri</p>
-              )}
-            </CardContent>
-          </Card>
+          {primaryWorkspace ? (
+            <MembersDialog
+              workspaceId={primaryWorkspace.id}
+              open={true}
+              onOpenChange={() => {}}
+              inline
+            />
+          ) : (
+            <Card>
+              <CardContent className="py-8">
+                <p className="text-muted-foreground text-center">Seleziona un workspace per gestire i membri</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="bank-accounts">
@@ -324,7 +313,7 @@ export function SettingsPage() {
         )}
 
         <TabsContent value="agent">
-          <AgentTokensTab />
+          <AgentPromptSection />
         </TabsContent>
 
         <TabsContent value="notifications">

@@ -25,6 +25,7 @@ const schema = z.object({
   note: z.string().optional(),
   date_cashflow: z.string().min(1, 'Data cashflow obbligatoria'),
   date_offer: z.string().min(1, 'Data offerta obbligatoria'),
+  date_document: z.string().optional(),
   owner: z.string().optional(),
   amount: z.string().min(1, 'Imponibile obbligatorio'),
   total: z.string().min(1, 'Totale obbligatorio'),
@@ -102,6 +103,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
       note: record?.note || '',
       date_cashflow: record?.date_cashflow?.split('T')[0] || '',
       date_offer: record?.date_offer?.split('T')[0] || new Date().toISOString().split('T')[0],
+      date_document: record?.date_document?.split('T')[0] || '',
       owner: record?.owner || '',
       amount: record?.amount ? Math.abs(parseFloat(record.amount)).toString() : '',
       total: record?.total ? Math.abs(parseFloat(record.total)).toString() : '',
@@ -354,17 +356,21 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
             />
           </div>
 
-          {/* Data Cashflow + Data Offerta (grid 2 col) */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <Label htmlFor="date_cashflow">Data Cashflow</Label>
-              <Input id="date_cashflow" type="date" {...register('date_cashflow')} />
-              {errors.date_cashflow && <p className="text-sm text-destructive">{errors.date_cashflow.message}</p>}
-            </div>
+          {/* Data Offerta + Data Documento + Data Cashflow (grid 3 col) */}
+          <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
               <Label htmlFor="date_offer">Data Offerta</Label>
               <Input id="date_offer" type="date" {...register('date_offer')} />
               {errors.date_offer && <p className="text-sm text-destructive">{errors.date_offer.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="date_document">Data Documento</Label>
+              <Input id="date_document" type="date" {...register('date_document')} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="date_cashflow">Data Cashflow</Label>
+              <Input id="date_cashflow" type="date" {...register('date_cashflow')} />
+              {errors.date_cashflow && <p className="text-sm text-destructive">{errors.date_cashflow.message}</p>}
             </div>
           </div>
 

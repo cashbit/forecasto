@@ -10,6 +10,7 @@ from forecasto.api import (
     document_upload,
     inbox,
     partner,
+    prompt_builder,
     records,
     sessions,
     transfers,
@@ -35,5 +36,6 @@ __all__ = [
     "inbox",
     "document_upload",
     "usage",
+    "prompt_builder",
 ]
 

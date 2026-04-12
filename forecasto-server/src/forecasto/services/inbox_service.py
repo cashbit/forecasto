@@ -196,6 +196,66 @@ class InboxService:
                 date_offer = date.today()
                 date_cashflow = date.today()
 
+            # Parse optional date_document
+            date_document = None
+            if suggestion.date_document:
+                try:
+                    date_document = date.fromisoformat(suggestion.date_document)
+                except ValueError:
+                    pass
+
+            # Check if this suggestion has a per-row matched_record to update
+            matched = suggestion.matched_record
+            if matched and matched.get("match_type") in ("update", "payment"):
+                from forecasto.models.record import Record as RecordModel
+                from datetime import datetime as dt_cls
+
+                rec_result = await self.db.execute(
+                    select(RecordModel).where(
+                        RecordModel.id == matched["record_id"],
+                        RecordModel.workspace_id == workspace_id,
+                    )
+                )
+                existing = rec_result.scalar_one_or_none()
+                if existing:
+                    if matched.get("match_type") == "payment":
+                        existing.stage = "1"
+                    else:
+                        # Update fields from suggestion
+                        existing.amount = suggestion.amount
+                        existing.total = suggestion.total
+                        existing.vat = suggestion.vat
+                        if suggestion.note:
+                            existing.note = suggestion.note
+                        if suggestion.transaction_id:
+                            existing.transaction_id = suggestion.transaction_id
+                        existing.date_offer = date_offer
+                        existing.date_cashflow = date_cashflow
+                        if date_document:
+                            existing.date_document = date_document
+
+                        # Transfer area if suggested
+                        transfer_to = matched.get("suggested_transfer_area")
+                        if transfer_to and transfer_to != existing.area:
+                            old_area = existing.area
+                            existing.area = transfer_to
+                            history = list(existing.transfer_history) if existing.transfer_history else []
+                            history.append({
+                                "from_area": old_area,
+                                "to_area": transfer_to,
+                                "transferred_at": dt_cls.utcnow().isoformat(),
+                                "transferred_by": user.id,
+                                "note": f"Auto-transfer from inbox: {item.document_type}",
+                            })
+                            existing.transfer_history = history
+
+                    existing.updated_by = user.id
+                    existing.updated_at = dt_cls.utcnow()
+                    existing.version += 1
+                    record_ids.append(existing.id)
+                    continue
+
+            # No match — create new record
             record_data = RecordCreate(
                 area=suggestion.area,
                 type=suggestion.type,
@@ -203,6 +263,7 @@ class InboxService:
                 reference=suggestion.reference,
                 note=suggestion.note,
                 date_offer=date_offer,
+                date_document=date_document,
                 date_cashflow=date_cashflow,
                 amount=suggestion.amount,
                 vat=suggestion.vat,
@@ -227,12 +288,16 @@ class InboxService:
         item.status = "confirmed"
         item.confirmed_record_ids = record_ids
 
-        # Mark matched records as paid for wire_transfer / bank_statement
-        if item.document_type in ("wire_transfer", "bank_statement") and item.reconciliation_matches:
+        # Process confirmed matches based on match_type
+        if item.reconciliation_matches:
             from forecasto.models.record import Record
+            from datetime import datetime as dt_cls
+
             for match in item.reconciliation_matches:
                 if not match.get("confirmed"):
                     continue
+
+                match_type = match.get("match_type", "payment")
                 rec_result = await self.db.execute(
                     select(Record).where(
                         Record.id == match["record_id"],
@@ -240,8 +305,61 @@ class InboxService:
                     )
                 )
                 rec = rec_result.scalar_one_or_none()
-                if rec:
+                if not rec:
+                    continue
+
+                if match_type == "payment":
+                    # Mark as paid
                     rec.stage = "1"
+
+                elif match_type == "update":
+                    # Update fields from the first suggestion that matches this record's reference
+                    for suggestion_dict in item.extracted_data:
+                        s = RecordSuggestion(**suggestion_dict)
+                        if s.reference and s.reference.lower().strip() == (rec.reference or "").lower().strip():
+                            if s.amount:
+                                rec.amount = s.amount
+                            if s.total:
+                                rec.total = s.total
+                            if s.vat:
+                                rec.vat = s.vat
+                            if s.note:
+                                rec.note = s.note
+                            if s.transaction_id:
+                                rec.transaction_id = s.transaction_id
+                            if s.date_offer:
+                                try:
+                                    rec.date_offer = date.fromisoformat(s.date_offer)
+                                except ValueError:
+                                    pass
+                            if s.date_cashflow:
+                                try:
+                                    rec.date_cashflow = date.fromisoformat(s.date_cashflow)
+                                except ValueError:
+                                    pass
+                            break
+
+                    # Transfer area if suggested
+                    transfer_to = match.get("suggested_transfer_area")
+                    if transfer_to and transfer_to != rec.area:
+                        old_area = rec.area
+                        rec.area = transfer_to
+                        history = list(rec.transfer_history) if rec.transfer_history else []
+                        history.append({
+                            "from_area": old_area,
+                            "to_area": transfer_to,
+                            "transferred_at": dt_cls.utcnow().isoformat(),
+                            "transferred_by": user.id,
+                            "note": f"Auto-transfer from inbox: {item.document_type}",
+                        })
+                        rec.transfer_history = history
+
+                    rec.updated_by = user.id
+                    rec.updated_at = dt_cls.utcnow()
+                    rec.version += 1
+
+                # match_type == "duplicate": no action on existing record
+
             await self.db.flush()
 
         await self.db.flush()
@@ -257,6 +375,20 @@ class InboxService:
         if item.status != "pending":
             raise ForbiddenException("Solo gli item in stato 'pending' possono essere rifiutati")
         item.status = "rejected"
+        await self.db.flush()
+        await self.db.refresh(item)
+        return item
+
+    async def restore_item(
+        self,
+        workspace_id: str,
+        item_id: str,
+    ) -> InboxItem:
+        """Restore a rejected item back to pending."""
+        item = await self.get_item(workspace_id, item_id)
+        if item.status != "rejected":
+            raise ForbiddenException("Solo gli item rifiutati possono essere ripristinati")
+        item.status = "pending"
         await self.db.flush()
         await self.db.refresh(item)
         return item
@@ -493,3 +625,117 @@ class InboxService:
                 })
 
         return sorted(candidates, key=lambda x: x["match_score"], reverse=True)[:limit]
+
+    async def find_similar_records(
+        self,
+        workspace_id: str,
+        reference: str,
+        account: str,
+        amount: float | None = None,
+        transaction_id: str | None = None,
+        note: str | None = None,
+        document_type: str | None = None,
+        limit: int = 5,
+    ) -> list[dict]:
+        """Find existing records similar to a new document extraction.
+
+        Uses FTS5 for candidate pre-filtering, then multi-field scoring.
+        Searches in appropriate upstream areas based on document_type.
+        """
+        from forecasto.models.record import Record
+        from forecasto.services.similarity import (
+            compute_similarity_score,
+            get_search_areas,
+            get_suggested_transfer_area,
+        )
+
+        search_areas = get_search_areas(document_type)
+        is_payment = document_type in ("wire_transfer", "bank_statement")
+
+        # Pre-filter candidates via reference ILIKE (most selective)
+        hint_words = [w.strip() for w in reference.split() if len(w.strip()) > 2]
+        candidate_records = []
+        seen_ids: set[str] = set()
+
+        # Strategy 1: reference word match
+        for word in hint_words[:3]:
+            result = await self.db.execute(
+                select(Record).where(
+                    Record.workspace_id == workspace_id,
+                    Record.deleted_at.is_(None),
+                    Record.area.in_(search_areas),
+                    or_(
+                        Record.reference.ilike(f"%{word}%"),
+                        Record.transaction_id.ilike(f"%{word}%"),
+                    ),
+                    *([Record.stage != "1"] if is_payment else []),
+                ).limit(25)
+            )
+            for rec in result.scalars().all():
+                if rec.id not in seen_ids:
+                    seen_ids.add(rec.id)
+                    candidate_records.append(rec)
+
+        # Strategy 2: amount match (if we have an amount)
+        if amount is not None and abs(amount) > 0:
+            amount_dec = Decimal(str(amount))
+            tolerance = abs(amount_dec) * Decimal("0.20")  # 20% tolerance
+            result = await self.db.execute(
+                select(Record).where(
+                    Record.workspace_id == workspace_id,
+                    Record.deleted_at.is_(None),
+                    Record.area.in_(search_areas),
+                    func.abs(Record.total - amount_dec) <= tolerance,
+                    *([Record.stage != "1"] if is_payment else []),
+                ).limit(25)
+            )
+            for rec in result.scalars().all():
+                if rec.id not in seen_ids:
+                    seen_ids.add(rec.id)
+                    candidate_records.append(rec)
+
+        if not candidate_records:
+            return []
+
+        # Score all candidates
+        query = {
+            "reference": reference,
+            "account": account,
+            "total": amount,
+            "transaction_id": transaction_id,
+            "note": note,
+        }
+
+        scored = []
+        for rec in candidate_records:
+            cand = {
+                "reference": rec.reference,
+                "account": rec.account,
+                "total": float(rec.total),
+                "transaction_id": rec.transaction_id,
+                "note": rec.note,
+                "stage": rec.stage,
+                "area": rec.area,
+            }
+            score, reasons, match_type = compute_similarity_score(cand, query, document_type)
+            if score >= 0.3:
+                transfer_to = get_suggested_transfer_area(document_type, rec.area)
+                scored.append({
+                    "record_id": rec.id,
+                    "reference": rec.reference,
+                    "account": rec.account,
+                    "total": float(rec.total),
+                    "transaction_id": rec.transaction_id,
+                    "date_cashflow": rec.date_cashflow.isoformat() if rec.date_cashflow else None,
+                    "date_offer": rec.date_offer.isoformat() if rec.date_offer else None,
+                    "stage": rec.stage,
+                    "area": rec.area,
+                    "note": rec.note,
+                    "match_score": round(score, 2),
+                    "match_reasons": reasons,
+                    "match_type": match_type,
+                    "suggested_transfer_area": transfer_to,
+                })
+
+        scored.sort(key=lambda x: x["match_score"], reverse=True)
+        return scored[:limit]

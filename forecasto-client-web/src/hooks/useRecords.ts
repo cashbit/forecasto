@@ -9,7 +9,7 @@ export function useRecords() {
   // Use selectors for better performance and proper reactivity
   const selectedWorkspaceIds = useWorkspaceStore(state => state.selectedWorkspaceIds)
   const {
-    selectedAreas, dateRange, yearFilter, monthFilter, dayFilter,
+    selectedAreas, dateRange, dateField, yearFilter, monthFilter, dayFilter,
     sign, stageFilter, ownerFilter, nextactionFilter, expiredFilter,
     textFilter, textFilterField, projectCodeFilter, bankAccountFilter, includeDeleted
   } = useFilterStore()
@@ -19,6 +19,7 @@ export function useRecords() {
   const baseFilters = {
     date_start: dateRange?.start,
     date_end: dateRange?.end,
+    date_field: dateField !== 'date_cashflow' ? dateField : undefined,
     sign: sign !== 'all' ? sign : undefined,
     text_filter: textFilter || undefined,
     text_filter_field: textFilter && textFilterField ? textFilterField : undefined,
@@ -62,10 +63,12 @@ export function useRecords() {
         filteredRecords = filteredRecords.filter((r) => validStages.includes(r.stage))
       }
 
-      // Apply date filters
+      // Apply date filters (using selected date field)
       if (yearFilter !== null) {
         filteredRecords = filteredRecords.filter((r) => {
-          const date = new Date(r.date_cashflow)
+          const dateStr = dateField === 'date_document' ? r.date_document : dateField === 'date_offer' ? r.date_offer : r.date_cashflow
+          if (!dateStr) return false
+          const date = new Date(dateStr)
           if (date.getFullYear() !== yearFilter) return false
           if (monthFilter !== null && (date.getMonth() + 1) !== monthFilter) return false
           if (dayFilter !== null && date.getDate() !== dayFilter) return false

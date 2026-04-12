@@ -267,6 +267,7 @@ class RecordService:
             note=data.note,
             date_cashflow=data.date_cashflow,
             date_offer=data.date_offer,
+            date_document=data.date_document,
             owner=data.owner,
             nextaction=data.nextaction,
             amount=data.amount,
@@ -327,11 +328,19 @@ class RecordService:
         if filters.area:
             query = query.where(Record.area == filters.area)
 
+        # Dynamic date field filtering
+        date_col_map = {
+            "date_cashflow": Record.date_cashflow,
+            "date_offer": Record.date_offer,
+            "date_document": Record.date_document,
+        }
+        date_col = date_col_map.get(filters.date_field, Record.date_cashflow)
+
         if filters.date_start:
-            query = query.where(Record.date_cashflow >= filters.date_start)
+            query = query.where(date_col >= filters.date_start)
 
         if filters.date_end:
-            query = query.where(Record.date_cashflow <= filters.date_end)
+            query = query.where(date_col <= filters.date_end)
 
         if filters.sign == "in":
             query = query.where(Record.amount > 0)

@@ -18,6 +18,7 @@ class RecordCreate(BaseModel):
     note: str | None = None
     date_cashflow: date
     date_offer: date
+    date_document: date | None = None
     owner: str | None = None
     nextaction: str | None = None
     amount: Decimal
@@ -50,6 +51,7 @@ class RecordUpdate(BaseModel):
     note: str | None = None
     date_cashflow: date | None = None
     date_offer: date | None = None
+    date_document: date | None = None
     owner: str | None = None
     nextaction: str | None = None
     amount: Decimal | None = None
@@ -86,6 +88,7 @@ class RecordResponse(BaseModel):
     note: str | None = None
     date_cashflow: date
     date_offer: date
+    date_document: date | None = None
     owner: str | None = None
     nextaction: str | None = None
     amount: Decimal
@@ -131,6 +134,7 @@ class RecordFilter(BaseModel):
     area: str | None = None
     date_start: date | None = None
     date_end: date | None = None
+    date_field: str = "date_cashflow"  # date_cashflow, date_offer, date_document
     sign: str | None = None  # in, out, all
     text_filter: str | None = None
     text_filter_field: str | None = None  # account, reference, note, owner, transaction_id — None = all

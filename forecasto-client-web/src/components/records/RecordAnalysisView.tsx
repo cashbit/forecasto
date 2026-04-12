@@ -16,7 +16,7 @@ import { AREA_LABELS } from '@/lib/constants'
 import type { Record } from '@/types/record'
 
 type Dimension = 'account' | 'reference' | 'project' | 'yearmonth' | 'year' | 'bank' | 'owner' | 'area' | 'workspace'
-type DateField = 'date_cashflow' | 'date_offer'
+type DateField = 'date_cashflow' | 'date_offer' | 'date_document'
 type ValueField = 'total' | 'amount'
 
 const DIMENSION_LABELS: Record<Dimension, string> = {
@@ -241,7 +241,15 @@ export function RecordAnalysisView({ records, isLoading, onToggleAnalysis }: Rec
             className="h-8 px-2 text-xs"
             onClick={() => setDateField('date_offer')}
           >
-            Ordine
+            Offerta
+          </Button>
+          <Button
+            variant={dateField === 'date_document' ? 'default' : 'outline'}
+            size="sm"
+            className="h-8 px-2 text-xs"
+            onClick={() => setDateField('date_document')}
+          >
+            Documento
           </Button>
         </div>
 

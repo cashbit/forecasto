@@ -37,6 +37,7 @@ class Record(Base, UUIDMixin, TimestampMixin):
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     date_cashflow: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     date_offer: Mapped[date] = mapped_column(Date, nullable=False)
+    date_document: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
     amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
     vat: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal("0"))
     vat_deduction: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("100"))

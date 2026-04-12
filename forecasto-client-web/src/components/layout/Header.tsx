@@ -224,7 +224,7 @@ export function Header() {
           {sidebarOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
         </Button>
 
-        <Link to="/dashboard" className="flex items-center gap-2">
+        <Link to="/movimenti" className="flex items-center gap-2">
           <img src={logoIcon} alt="Forecasto" className="h-8" />
           <img src={logoText} alt="Forecasto" className="h-6" />
         </Link>
@@ -273,10 +273,10 @@ export function Header() {
             size="sm"
             asChild
             className={cn(
-              location.pathname === '/dashboard' && 'bg-primary/10 text-primary font-semibold'
+              location.pathname === '/movimenti' && 'bg-primary/10 text-primary font-semibold'
             )}
           >
-            <Link to="/dashboard">Dashboard</Link>
+            <Link to="/movimenti">Movimenti</Link>
           </Button>
           <Button
             variant="ghost"

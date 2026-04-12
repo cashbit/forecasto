@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, X, Trash2, FileText, AlertTriangle, ChevronDown, ChevronUp, Pencil, StickyNote } from 'lucide-react'
+import { Check, X, Trash2, FileText, AlertTriangle, ChevronDown, ChevronUp, Pencil, StickyNote, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -35,9 +35,10 @@ interface InboxItemCardProps {
   onReject: (item: InboxItem) => Promise<void>
   onDelete: (item: InboxItem) => Promise<void>
   onUpdate: (item: InboxItem, suggestions: RecordSuggestion[], reconciliationMatches?: ReconciliationMatch[]) => Promise<void>
+  onRestore?: (item: InboxItem) => Promise<void>
 }
 
-export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate }: InboxItemCardProps) {
+export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate, onRestore }: InboxItemCardProps) {
   const [isExpanded, setIsExpanded] = useState(item.status === 'pending')
   const [isEditing, setIsEditing] = useState(false)
   const [editedSuggestions, setEditedSuggestions] = useState<RecordSuggestion[]>(item.extracted_data)
@@ -81,14 +82,15 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate }:
   const handleConfirm = async () => {
     setIsLoading(true)
     try {
-      if (selectedMatchIds.size > 0) {
-        const updatedMatches = (item.reconciliation_matches ?? []).map(m => ({
-          ...m,
-          confirmed: selectedMatchIds.has(m.record_id),
-        }))
-        await onUpdate(item, editedSuggestions, updatedMatches)
+      // Build reconciliation_matches from per-row matched_record (confirmed)
+      const confirmedMatches = suggestions
+        .filter(s => s.matched_record)
+        .map(s => ({ ...s.matched_record!, confirmed: true }))
+
+      if (confirmedMatches.length > 0) {
+        await onUpdate(item, suggestions, confirmedMatches)
       }
-      await onConfirm(item, editedSuggestions)
+      await onConfirm(item, suggestions)
     } finally {
       setIsLoading(false)
     }
@@ -101,6 +103,17 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate }:
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleRestore = async () => {
+    if (!onRestore) return
+    setIsLoading(true)
+    try {
+      await onRestore(item)
+    } catch {
+      // ignore — component may unmount as item moves back to pending tab
+    }
+    // Don't setIsLoading(false) — component will unmount
   }
 
   const handleDelete = async () => {
@@ -118,7 +131,8 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate }:
     return <Badge className="bg-amber-100 text-amber-800 border-amber-200">In attesa</Badge>
   }
 
-  const suggestions = isEditing ? editedSuggestions : item.extracted_data
+  // Always use editedSuggestions — they track match changes even outside edit mode
+  const suggestions = editedSuggestions
 
   return (
     <div
@@ -174,55 +188,85 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate }:
       {/* Expanded body */}
       {isExpanded && (
         <div className="border-t px-4 pb-4 pt-3">
-          {/* Reconciliation panel */}
-          {(item.document_type === 'wire_transfer' || item.document_type === 'bank_statement') &&
-            item.reconciliation_matches && item.reconciliation_matches.length > 0 && (
-            <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50/50 p-3">
-              <p className="text-xs font-semibold text-emerald-800 mb-2 flex items-center gap-1">
-                <span>🔗</span> Riconciliazione — possibili corrispondenze
+          {/* Reconciliation / Similarity panel — shown for ALL document types when matches exist */}
+          {item.reconciliation_matches && item.reconciliation_matches.length > 0 && (
+            <div className="mb-3 rounded-md border border-amber-200 bg-amber-50/50 p-3">
+              <p className="text-xs font-semibold text-amber-800 mb-2 flex items-center gap-1">
+                <span>🔗</span> Record simili trovati ({item.reconciliation_matches.length})
               </p>
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-muted-foreground">
                     <th className="text-left pb-1 pr-2 w-5"></th>
+                    <th className="text-left pb-1 pr-2">Tipo</th>
                     <th className="text-left pb-1 pr-2">Riferimento</th>
                     <th className="text-left pb-1 pr-2">Conto</th>
                     <th className="text-right pb-1 pr-2">Importo</th>
-                    <th className="text-left pb-1">Data cassa</th>
+                    <th className="text-left pb-1 pr-2">Area</th>
+                    <th className="text-left pb-1 pr-2">Score</th>
+                    <th className="text-left pb-1">Motivo</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {item.reconciliation_matches.map((m) => (
-                    <tr key={m.record_id} className={selectedMatchIds.has(m.record_id) ? 'bg-emerald-100/50' : ''}>
-                      <td className="pr-2 py-1">
-                        <input
-                          type="checkbox"
-                          checked={selectedMatchIds.has(m.record_id)}
-                          onChange={(e) => {
-                            setSelectedMatchIds(prev => {
-                              const next = new Set(prev)
-                              if (e.target.checked) next.add(m.record_id)
-                              else next.delete(m.record_id)
-                              return next
-                            })
-                          }}
-                          className="h-3 w-3"
-                          disabled={!isPending}
-                        />
-                      </td>
-                      <td className="pr-2 py-1 truncate max-w-[12rem]">{m.reference}</td>
-                      <td className="pr-2 py-1 text-muted-foreground truncate max-w-[8rem]">{m.account}</td>
-                      <td className="pr-2 py-1 text-right font-medium">
-                        {Number(m.total).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="py-1 text-muted-foreground">{m.date_cashflow ?? '—'}</td>
-                    </tr>
-                  ))}
+                  {item.reconciliation_matches.map((m) => {
+                    const matchType = m.match_type || 'payment'
+                    const badgeColors = {
+                      payment: 'bg-emerald-100 text-emerald-800',
+                      update: 'bg-amber-100 text-amber-800',
+                      duplicate: 'bg-red-100 text-red-800',
+                    }
+                    const badgeLabels = {
+                      payment: 'Pagamento',
+                      update: 'Aggiornamento',
+                      duplicate: 'Duplicato',
+                    }
+                    return (
+                      <tr key={m.record_id} className={selectedMatchIds.has(m.record_id) ? 'bg-amber-100/50' : ''}>
+                        <td className="pr-2 py-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedMatchIds.has(m.record_id)}
+                            onChange={(e) => {
+                              setSelectedMatchIds(prev => {
+                                const next = new Set(prev)
+                                if (e.target.checked) next.add(m.record_id)
+                                else next.delete(m.record_id)
+                                return next
+                              })
+                            }}
+                            className="h-3 w-3"
+                            disabled={!isPending}
+                          />
+                        </td>
+                        <td className="pr-2 py-1">
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${badgeColors[matchType]}`}>
+                            {badgeLabels[matchType]}
+                          </span>
+                        </td>
+                        <td className="pr-2 py-1 truncate max-w-[10rem]">{m.reference}</td>
+                        <td className="pr-2 py-1 text-muted-foreground truncate max-w-[8rem]">{m.account}</td>
+                        <td className="pr-2 py-1 text-right font-medium">
+                          {Number(m.total).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="pr-2 py-1 text-muted-foreground">{m.area || '—'}</td>
+                        <td className="pr-2 py-1 text-muted-foreground">{Math.round(m.match_score * 100)}%</td>
+                        <td className="py-1 text-muted-foreground truncate max-w-[14rem]">
+                          {m.match_reasons?.join(', ') || m.match_reason || '—'}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
               {selectedMatchIds.size > 0 && isPending && (
-                <p className="text-xs text-emerald-700 mt-2">
-                  {selectedMatchIds.size} record selezionati — verranno marcati come pagati alla conferma.
+                <p className="text-xs text-amber-700 mt-2">
+                  {selectedMatchIds.size} record selezionati
+                  {item.reconciliation_matches.some(m => selectedMatchIds.has(m.record_id) && m.match_type === 'payment')
+                    && ' — pagamenti verranno marcati come pagati'}
+                  {item.reconciliation_matches.some(m => selectedMatchIds.has(m.record_id) && m.match_type === 'update')
+                    && ' — record verranno aggiornati'}
+                  {item.reconciliation_matches.some(m => selectedMatchIds.has(m.record_id) && m.match_type === 'update' && m.suggested_transfer_area)
+                    && ` e spostati in ${item.reconciliation_matches.find(m => selectedMatchIds.has(m.record_id) && m.suggested_transfer_area)?.suggested_transfer_area}`}
                 </p>
               )}
             </div>
@@ -255,6 +299,19 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate }:
                 <StickyNote className="h-3.5 w-3.5" />
                 {allNotesExpanded ? 'Nascondi note' : 'Note'}
               </Button>
+              {/* Clear all matches button — shown when any row has a match */}
+              {editedSuggestions.some(s => s.matched_record) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1 text-muted-foreground hover:text-red-600 hover:border-red-200"
+                  onClick={() => {
+                    setEditedSuggestions(prev => prev.map(s => ({ ...s, matched_record: null })))
+                  }}
+                >
+                  Ignora match
+                </Button>
+              )}
             </div>
           )}
 
@@ -283,7 +340,15 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate }:
                       editable={isEditing}
                       workspaceId={item.workspace_id}
                       onChange={handleFieldChange}
+                      onMatchChange={(idx, match) => {
+                        setEditedSuggestions(prev => {
+                          const updated = [...prev]
+                          updated[idx] = { ...updated[idx], matched_record: match }
+                          return updated
+                        })
+                      }}
                       forceNoteExpanded={allNotesExpanded}
+                      isPending={isPending}
                     />
                   ))}
                 </tbody>
@@ -357,7 +422,19 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate }:
           )}
 
           {!isPending && (
-            <div className="flex justify-end mt-3">
+            <div className="flex items-center gap-2 mt-3">
+              {isRejected && onRestore && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRestore}
+                  disabled={isLoading}
+                >
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                  Ripristina
+                </Button>
+              )}
+              <div className="flex-1" />
               <Button
                 size="sm"
                 variant="ghost"

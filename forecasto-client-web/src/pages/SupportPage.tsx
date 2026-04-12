@@ -111,7 +111,7 @@ export function SupportPage() {
 
         {/* Header */}
         <div className="flex flex-col items-center gap-4 text-center">
-          <Link to={isAuthenticated ? '/dashboard' : '/login'} className="flex items-center gap-2">
+          <Link to={isAuthenticated ? '/movimenti' : '/login'} className="flex items-center gap-2">
             <img src={logoIcon} alt="Forecasto" className="h-12" />
             <img src={logoText} alt="Forecasto" className="h-8" />
           </Link>
@@ -121,7 +121,7 @@ export function SupportPage() {
           </div>
           {isAuthenticated ? (
             <Button variant="outline" size="sm" asChild>
-              <Link to="/dashboard">
+              <Link to="/movimenti">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Torna all'app
               </Link>

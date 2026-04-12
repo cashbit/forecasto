@@ -72,6 +72,9 @@ class User(Base, UUIDMixin, TimestampMixin):
     # AI document processing quota (pages per month, 0 = unlimited)
     monthly_page_quota: Mapped[int] = mapped_column(Integer, default=50, nullable=False)
 
+    # Agent prompt (user-level, auto-generated or manually edited)
+    agent_prompt: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     # Billing profile association
     billing_profile_id: Mapped[Optional[str]] = mapped_column(
         String(36), ForeignKey("billing_profiles.id", ondelete="SET NULL"), nullable=True

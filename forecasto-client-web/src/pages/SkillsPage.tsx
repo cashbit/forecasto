@@ -55,9 +55,9 @@ export function SkillsPage() {
           <div className="flex items-center gap-2">
             {isAuthenticated ? (
               <Button variant="outline" size="sm" asChild>
-                <Link to="/dashboard">
+                <Link to="/movimenti">
                   <ArrowLeft className="h-4 w-4 mr-1" />
-                  Dashboard
+                  Movimenti
                 </Link>
               </Button>
             ) : (

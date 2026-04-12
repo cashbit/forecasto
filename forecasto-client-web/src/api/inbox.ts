@@ -52,6 +52,13 @@ export const inboxApi = {
     return response.data.item
   },
 
+  restore: async (workspaceId: string, itemId: string): Promise<InboxItem> => {
+    const response = await apiClient.post<{ success: boolean; item: InboxItem }>(
+      `/workspaces/${workspaceId}/inbox/${itemId}/restore`
+    )
+    return response.data.item
+  },
+
   delete: async (workspaceId: string, itemId: string): Promise<void> => {
     await apiClient.delete(`/workspaces/${workspaceId}/inbox/${itemId}`)
   },

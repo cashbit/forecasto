@@ -12,9 +12,9 @@ export function NotFoundPage() {
           La pagina che stai cercando non esiste o e stata spostata.
         </p>
         <Button asChild className="mt-6">
-          <Link to="/dashboard">
+          <Link to="/movimenti">
             <Home className="mr-2 h-4 w-4" />
-            Torna alla Dashboard
+            Torna ai Movimenti
           </Link>
         </Button>
       </div>

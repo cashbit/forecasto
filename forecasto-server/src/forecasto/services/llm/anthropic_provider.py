@@ -57,22 +57,39 @@ EXTRACT_TOOL = {
                                 "payment terms or period covered. 2-4 sentences. Never leave empty."
                             ),
                         },
-                        "date_offer": {"type": "string", "description": "Document/order date YYYY-MM-DD."},
+                        "date_offer": {"type": "string", "description": "Offer/order date YYYY-MM-DD. When the deal/order originated."},
+                        "date_document": {
+                            "type": "string",
+                            "description": "Document/invoice date YYYY-MM-DD. The date printed on the document itself (e.g. invoice date, credit note date). May differ from date_offer.",
+                        },
                         "date_cashflow": {
                             "type": "string",
-                            "description": "Expected payment date YYYY-MM-DD. Calculate from payment terms if stated. Default: date_offer + 30 days.",
+                            "description": "Expected payment date YYYY-MM-DD. Calculate from payment terms if stated. Default: date_document + 30 days (or date_offer + 30 if no date_document).",
                         },
-                        "amount": {"type": "number", "description": "Net amount excl. VAT. Negative=expense, positive=income."},
+                        "amount": {
+                            "type": "number",
+                            "description": (
+                                "Net amount EXCLUDING VAT. Negative=expense, positive=income. "
+                                "For payment tranches: calculate percentage on the COMPONENT price, NOT on the total document value. "
+                                "Example: 50% of a €50,000 license = amount 25,000 (not 50,000). "
+                                "Verify: sum of all tranche amounts for one component must equal the component net price."
+                            ),
+                        },
                         "vat": {"type": "number", "description": "VAT amount. Negative=expense, positive=income. 0 if N/A."},
                         "vat_deduction": {"type": "number", "description": "VAT deductibility % (0-100). Default 100."},
-                        "total": {"type": "number", "description": "amount + vat."},
+                        "total": {"type": "number", "description": "amount + vat. Must equal amount + vat exactly."},
                         "stage": {"type": "string", "enum": ["0", "1"], "description": "'0'=unpaid, '1'=paid."},
                         "project_code": {"type": "string", "description": "Project code if mentioned."},
                         "withholding_rate": {"type": "number", "description": "Withholding tax rate % if applicable."},
                         "document_type": {
                             "type": "string",
                             "enum": ["invoice", "quote", "bank_statement", "wire_transfer", "receipt", "credit_note", "other"],
-                            "description": "Classify the document type.",
+                            "description": (
+                                "Classify the document type. "
+                                "For 'quote': if payment milestones/tranches are specified, create one record per tranche. "
+                                "If recurring fees (annual/monthly) are included, create separate records. "
+                                "For 'invoice': if payment terms specify installments (30/60/90 days), create one record per installment."
+                            ),
                         },
                     },
                     "required": ["area", "type", "account", "reference",

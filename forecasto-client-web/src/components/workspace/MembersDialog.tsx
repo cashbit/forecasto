@@ -74,6 +74,7 @@ interface MembersDialogProps {
   workspaceId: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  inline?: boolean
 }
 
 // Helper to format invite code as user types
@@ -85,7 +86,7 @@ function formatInviteCode(value: string): string {
   return parts.slice(0, 3).join('-')
 }
 
-export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialogProps) {
+export function MembersDialog({ workspaceId, open, onOpenChange, inline }: MembersDialogProps) {
   const { user: currentUser } = useAuthStore()
   const { workspaces } = useWorkspaceStore()
   const currentWorkspace = workspaces.find(w => w.id === workspaceId)
@@ -446,19 +447,7 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
     return member.role !== 'owner'
   }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Gestione Membri
-          </DialogTitle>
-          <DialogDescription>
-            Gestisci i membri e i permessi del workspace <strong className="text-foreground">{currentWorkspace?.name || 'Workspace'}</strong>
-          </DialogDescription>
-        </DialogHeader>
-
+  const content = (
         <div className="grid grid-cols-[300px_1fr] gap-4 min-h-[400px]">
           {/* Members List */}
           <div className="border rounded-lg">
@@ -1066,7 +1055,25 @@ export function MembersDialog({ workspaceId, open, onOpenChange }: MembersDialog
             )}
           </div>
         </div>
+  )
 
+  if (inline) {
+    return content
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Gestione Membri
+          </DialogTitle>
+          <DialogDescription>
+            Gestisci i membri e i permessi del workspace <strong className="text-foreground">{currentWorkspace?.name || 'Workspace'}</strong>
+          </DialogDescription>
+        </DialogHeader>
+        {content}
       </DialogContent>
     </Dialog>
   )

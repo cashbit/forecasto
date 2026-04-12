@@ -137,12 +137,20 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">Data Cashflow</p>
-            <DateDisplay date={record.date_cashflow} />
-          </div>
-          <div>
             <p className="text-sm text-muted-foreground">Data Offerta</p>
             <DateDisplay date={record.date_offer} />
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Data Documento</p>
+            {record.date_document ? (
+              <DateDisplay date={record.date_document} />
+            ) : (
+              <p className="text-lg font-medium text-muted-foreground">-</p>
+            )}
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Data Cashflow</p>
+            <DateDisplay date={record.date_cashflow} />
           </div>
         </div>
 

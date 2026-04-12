@@ -53,7 +53,7 @@ export function RegisterPage() {
     setError('')
     try {
       await registerUser(data.email, data.password, data.name, data.registrationCode)
-      navigate('/dashboard')
+      navigate('/movimenti')
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Errore durante la registrazione'
       setError(errorMessage)

@@ -30,7 +30,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore()
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/movimenti" replace />
   }
 
   return <>{children}</>
@@ -77,8 +77,9 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
-      { path: 'dashboard', element: <DashboardPage /> },
+      { index: true, element: <Navigate to="/movimenti" replace /> },
+      { path: 'movimenti', element: <DashboardPage /> },
+      { path: 'dashboard', element: <Navigate to="/movimenti" replace /> },
       { path: 'cashflow', element: <CashflowPage /> },
       { path: 'inbox', element: <InboxPage /> },
       { path: 'usage', element: <UsagePage /> },

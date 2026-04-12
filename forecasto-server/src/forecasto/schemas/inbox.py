@@ -18,6 +18,7 @@ class RecordSuggestion(BaseModel):
     reference: str = ""
     note: str | None = None
     date_offer: str = ""      # YYYY-MM-DD string (easier for LLM + JSON editing)
+    date_document: str | None = None  # YYYY-MM-DD document/invoice date
     date_cashflow: str = ""   # YYYY-MM-DD string
     amount: Decimal = Decimal("0")
     vat: Decimal = Decimal("0")
@@ -30,6 +31,9 @@ class RecordSuggestion(BaseModel):
     project_code: str | None = None
     withholding_rate: Decimal | None = None
     classification: dict[str, Any] | None = None
+    # Populated by server-side similarity search (not from LLM)
+    matched_record: dict[str, Any] | None = None  # best match auto-assigned
+    similar_records: list[dict[str, Any]] = Field(default_factory=list)  # all candidates
 
 
 class InboxItemCreate(BaseModel):

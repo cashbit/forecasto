@@ -4,6 +4,7 @@ import type { Area, TextFilterField } from '@/types/record'
 interface FilterState {
   selectedAreas: Area[]
   dateRange: { start: string; end: string } | null
+  dateField: 'date_cashflow' | 'date_offer' | 'date_document'
   yearFilter: number | null
   monthFilter: number | null
   dayFilter: number | null
@@ -22,6 +23,7 @@ interface FilterState {
   selectSingleArea: (area: Area) => void
   toggleAreaSelection: (area: Area) => void
   setDateRange: (range: { start: string; end: string } | null) => void
+  setDateField: (field: 'date_cashflow' | 'date_offer' | 'date_document') => void
   setYearFilter: (year: number | null) => void
   setMonthFilter: (month: number | null) => void
   setDayFilter: (day: number | null) => void
@@ -43,6 +45,7 @@ interface FilterState {
 const initialState = {
   selectedAreas: ['actual'] as Area[],
   dateRange: null,
+  dateField: 'date_cashflow' as const,
   yearFilter: null as number | null,
   monthFilter: null as number | null,
   dayFilter: null as number | null,
@@ -76,6 +79,8 @@ export const useFilterStore = create<FilterState>()((set) => ({
   }),
 
   setDateRange: (range) => set({ dateRange: range }),
+
+  setDateField: (field) => set({ dateField: field }),
 
   setYearFilter: (year) => set({ yearFilter: year, monthFilter: null, dayFilter: null }),
 

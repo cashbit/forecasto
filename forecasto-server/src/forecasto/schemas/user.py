@@ -32,6 +32,7 @@ class UserUpdate(BaseModel):
     name: str | None = None
     notification_preferences: dict | None = None
     ui_preferences: dict | None = None
+    agent_prompt: str | None = None
 
 
 class PasswordChange(BaseModel):
@@ -55,6 +56,7 @@ class UserResponse(BaseModel):
     last_login_at: datetime | None = None
     notification_preferences: dict
     ui_preferences: dict = {}
+    agent_prompt: str | None = None
 
     model_config = {"from_attributes": True}
 

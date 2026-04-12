@@ -15,7 +15,7 @@ export function MobileLayout() {
 
   // Se non siamo su mobile, redirect alla versione desktop
   if (!isMobile) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to="/movimenti" replace />
   }
 
   const workspace = getPrimaryWorkspace()
@@ -33,7 +33,7 @@ export function MobileLayout() {
           )}
         </div>
         <Link
-          to="/dashboard"
+          to="/movimenti"
           className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
         >
           <Monitor className="h-4 w-4" />

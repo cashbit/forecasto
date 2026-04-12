@@ -22,6 +22,7 @@ from forecasto.api import (
     inbox,
     oauth,
     partner,
+    prompt_builder,
     records,
     sessions,
     transfers,
@@ -138,6 +139,7 @@ app.include_router(inbox.router, prefix="/api/v1/workspaces", tags=["Inbox"])
 app.include_router(agent.router, prefix="/api/v1", tags=["Agent"])
 app.include_router(document_upload.router, prefix="/api/v1/workspaces", tags=["Document Upload"])
 app.include_router(usage.router, prefix="/api/v1/workspaces", tags=["Usage"])
+app.include_router(prompt_builder.router, prefix="/api/v1", tags=["Prompt Builder"])
 
 @app.get("/health")
 async def health_check():

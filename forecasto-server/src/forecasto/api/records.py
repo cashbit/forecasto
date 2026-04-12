@@ -49,6 +49,7 @@ async def list_records(
     area: str | None = Query(None),
     date_start: date | None = Query(None),
     date_end: date | None = Query(None),
+    date_field: str = Query("date_cashflow", description="Which date field to filter on"),
     sign: str | None = Query(None),
     text_filter: str | None = Query(None),
     text_filter_field: str | None = Query(None),
@@ -61,6 +62,10 @@ async def list_records(
     """List records with filters and optional pagination."""
     workspace, member = workspace_data
 
+    # Validate date_field
+    if date_field not in ("date_cashflow", "date_offer", "date_document"):
+        date_field = "date_cashflow"
+
     # Check area permission if area specified
     if area:
         check_area_permission(member, area, "read")
@@ -71,6 +76,7 @@ async def list_records(
         area=area,
         date_start=date_start,
         date_end=date_end,
+        date_field=date_field,
         sign=sign,
         text_filter=text_filter,
         text_filter_field=text_filter_field,
@@ -382,9 +388,13 @@ async def export_records(
     area: str | None = Query(None),
     date_start: date | None = Query(None),
     date_end: date | None = Query(None),
+    date_field: str = Query("date_cashflow"),
 ):
     """Export records with export permission checks."""
     workspace, member = workspace_data
+
+    if date_field not in ("date_cashflow", "date_offer", "date_document"):
+        date_field = "date_cashflow"
 
     from forecasto.dependencies import check_export_permission
 
@@ -406,6 +416,7 @@ async def export_records(
         area=area,
         date_start=date_start,
         date_end=date_end,
+        date_field=date_field,
     )
 
     records = await service.list_records(

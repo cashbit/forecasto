@@ -10,7 +10,7 @@ const STAGE = z.enum(["0", "1"]).describe(
 // CSV column order — matches RecordResponse fields (excludes workspace_id, transfer_history, classification)
 const CSV_COLUMNS = [
   "id", "area", "type", "account", "reference", "note",
-  "date_cashflow", "date_offer",
+  "date_cashflow", "date_offer", "date_document",
   "amount", "vat", "vat_deduction", "vat_month", "total", "withholding_rate", "withholding_amount",
   "stage", "transaction_id", "bank_account_id", "project_code",
   "owner", "nextaction", "review_date",
@@ -48,6 +48,7 @@ export function registerRecordTools(
       area: AREA.optional().describe("Filter by financial area"),
       date_start: z.string().optional().describe("Start date filter (YYYY-MM-DD)"),
       date_end: z.string().optional().describe("End date filter (YYYY-MM-DD)"),
+      date_field: z.enum(["date_cashflow", "date_offer", "date_document"]).optional().default("date_cashflow").describe("Which date field to filter on (default: date_cashflow)"),
       sign: z.enum(["in", "out", "all"]).optional().describe("Filter by cash flow direction"),
       text_filter: z.string().optional().describe("Text search in account, reference, note"),
       text_filter_field: z.enum(["account", "reference", "note", "owner", "transaction_id"]).optional().describe("Limit text search to a specific field (default: all fields)"),
@@ -58,9 +59,9 @@ export function registerRecordTools(
       offset: z.number().int().min(0).default(0).describe("Pagination offset (default 0)"),
     },
     { title: "List Records", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    async ({ workspace_id, area, date_start, date_end, sign, text_filter, text_filter_field, project_code, bank_account_id, include_deleted, limit, offset }) => {
+    async ({ workspace_id, area, date_start, date_end, date_field, sign, text_filter, text_filter_field, project_code, bank_account_id, include_deleted, limit, offset }) => {
       const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/records`, {
-        area, date_start, date_end, sign, text_filter, text_filter_field, project_code, bank_account_id,
+        area, date_start, date_end, date_field, sign, text_filter, text_filter_field, project_code, bank_account_id,
         include_deleted: include_deleted ? "true" : undefined,
         limit: String(limit),
         offset: String(offset),
@@ -97,6 +98,7 @@ export function registerRecordTools(
       reference: z.string().describe("Reference description"),
       date_cashflow: z.string().describe("Cash flow date (YYYY-MM-DD)"),
       date_offer: z.string().describe("Offer/document date (YYYY-MM-DD)"),
+      date_document: z.string().optional().describe("Document/invoice date (YYYY-MM-DD). The actual date printed on the document."),
       amount: z.number().describe("Net amount (without VAT)"),
       vat: z.number().default(0).describe("VAT amount"),
       total: z.number().describe("Total amount (amount + vat)"),
@@ -131,6 +133,7 @@ export function registerRecordTools(
       reference: z.string().optional(),
       date_cashflow: z.string().optional().describe("YYYY-MM-DD"),
       date_offer: z.string().optional().describe("YYYY-MM-DD"),
+      date_document: z.string().optional().nullable().describe("Document/invoice date (YYYY-MM-DD)"),
       amount: z.number().optional(),
       vat: z.number().optional(),
       total: z.number().optional(),
@@ -196,12 +199,13 @@ export function registerRecordTools(
       area: AREA.optional(),
       date_start: z.string().optional().describe("Start date (YYYY-MM-DD)"),
       date_end: z.string().optional().describe("End date (YYYY-MM-DD)"),
+      date_field: z.enum(["date_cashflow", "date_offer", "date_document"]).optional().default("date_cashflow").describe("Which date field to filter on"),
       sign: z.enum(["in", "out", "all"]).optional(),
     },
     { title: "Export Records", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    async ({ workspace_id, area, date_start, date_end, sign }) => {
+    async ({ workspace_id, area, date_start, date_end, date_field, sign }) => {
       const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/records/export`, {
-        area, date_start, date_end, sign,
+        area, date_start, date_end, date_field, sign,
       }) as { records: RecordRow[] };
       const csv = recordsToCsv(data.records ?? []);
       return { content: [{ type: "text" as const, text: csv }] };
@@ -234,6 +238,7 @@ export function registerRecordTools(
         reference: z.string().describe("Reference description"),
         date_cashflow: z.string().describe("Cash flow date (YYYY-MM-DD)"),
         date_offer: z.string().describe("Offer/document date (YYYY-MM-DD)"),
+        date_document: z.string().optional().describe("Document/invoice date (YYYY-MM-DD)"),
         amount: z.number().describe("Net amount (without VAT)"),
         vat: z.number().default(0).describe("VAT amount"),
         total: z.number().describe("Total amount (amount + vat)"),
@@ -325,6 +330,7 @@ export function registerRecordTools(
           note: original.note,
           date_cashflow: newDateCashflow,
           date_offer: newDateOffer,
+          date_document: original.date_document || undefined,
           amount: original.amount,
           vat: original.vat,
           vat_deduction: original.vat_deduction,
@@ -398,6 +404,7 @@ export function registerRecordTools(
           note: original.note,
           date_cashflow: inst.date,
           date_offer: original.date_offer,
+          date_document: original.date_document || undefined,
           amount: newAmount,
           vat: newVat,
           vat_deduction: original.vat_deduction,

@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, StickyNote } from 'lucide-react'
+import { ChevronDown, ChevronRight, StickyNote, Link2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AutocompleteInput } from '@/components/ui/AutocompleteInput'
 import { cn } from '@/lib/utils'
-import type { RecordSuggestion } from '@/types/inbox'
+import type { RecordSuggestion, ReconciliationMatch } from '@/types/inbox'
 import { AREAS, AREA_LABELS } from '@/lib/constants'
 
 interface InboxRecordRowProps {
@@ -14,20 +14,33 @@ interface InboxRecordRowProps {
   editable: boolean
   workspaceId: string
   onChange: (index: number, field: keyof RecordSuggestion, value: string) => void
+  onMatchChange?: (index: number, match: ReconciliationMatch | null) => void
   forceNoteExpanded?: boolean
+  isPending?: boolean
 }
 
 // Number of <td> columns in the main row (used for colSpan in note row)
 const COL_COUNT = 9
 
-export function InboxRecordRow({ suggestion, index, editable, workspaceId, onChange, forceNoteExpanded }: InboxRecordRowProps) {
+const MATCH_BADGE: Record<string, { bg: string; label: string }> = {
+  payment: { bg: 'bg-emerald-100 text-emerald-800', label: 'Pagamento' },
+  update: { bg: 'bg-amber-100 text-amber-800', label: 'Aggiorna' },
+  duplicate: { bg: 'bg-red-100 text-red-800', label: 'Duplicato' },
+}
+
+export function InboxRecordRow({ suggestion, index, editable, workspaceId, onChange, onMatchChange, forceNoteExpanded, isPending }: InboxRecordRowProps) {
   const [noteExpanded, setNoteExpanded] = useState(false)
+  const [matchExpanded, setMatchExpanded] = useState(false)
   const hasNote = Boolean(suggestion.note?.trim())
   const showNote = noteExpanded || forceNoteExpanded
+  const matched = suggestion.matched_record
+  const alternatives = suggestion.similar_records || []
+
+  const hadMatchRemoved = !matched && alternatives.length > 0
 
   return (
     <>
-      <tr className="border-b last:border-0 group">
+      <tr className={cn("border-b last:border-0 group", hadMatchRemoved && "bg-green-50/30")}>
         {/* Area */}
         <td className="py-1.5 pr-2">
           {editable ? (
@@ -140,9 +153,16 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
           )}
         </td>
 
-        {/* Tipo — read-only */}
+        {/* Tipo — read-only + match status badge */}
         <td className="py-1.5 pr-2 text-xs text-muted-foreground whitespace-nowrap">
-          {suggestion.type}
+          <span className="flex items-center gap-1">
+            {suggestion.type}
+            {hadMatchRemoved && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800">
+                Nuovo
+              </span>
+            )}
+          </span>
         </td>
 
         {/* Note toggle */}
@@ -185,6 +205,100 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
             </div>
           </td>
         </tr>
+      )}
+
+      {/* Match row — auto-assigned match or alternatives */}
+      {matched && (
+        <tr className="bg-blue-50/50 border-b last:border-0">
+          <td colSpan={COL_COUNT} className="px-3 py-1.5">
+            <div className="flex items-center gap-2 text-xs">
+              <Link2 className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${MATCH_BADGE[matched.match_type || 'update']?.bg || 'bg-gray-100'}`}>
+                {MATCH_BADGE[matched.match_type || 'update']?.label || 'Match'}
+              </span>
+              <span className="text-muted-foreground">
+                {matched.reference} &middot; {matched.account} &middot;{' '}
+                {Number(matched.total).toLocaleString('it-IT', { minimumFractionDigits: 2 })} &middot;{' '}
+                {matched.area}
+                {matched.suggested_transfer_area && (
+                  <span className="text-blue-600 font-medium"> &rarr; {matched.suggested_transfer_area}</span>
+                )}
+              </span>
+              <span className="text-muted-foreground/60">{Math.round(matched.match_score * 100)}%</span>
+              <span className="text-muted-foreground/60 truncate max-w-[14rem]">
+                {matched.match_reasons?.join(', ')}
+              </span>
+              {isPending && alternatives.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setMatchExpanded(v => !v)}
+                  className="text-blue-500 hover:underline ml-auto"
+                >
+                  {matchExpanded ? 'Chiudi' : `${alternatives.length - 1} altri`}
+                </button>
+              )}
+              {isPending && onMatchChange && (
+                <button
+                  type="button"
+                  onClick={() => onMatchChange(index, null)}
+                  className="text-muted-foreground hover:text-red-500 ml-1"
+                  title="Rimuovi associazione (crea nuovo record)"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+
+      {/* Match removed indicator — show option to restore */}
+      {hadMatchRemoved && isPending && onMatchChange && (
+        <tr className="bg-green-50/30 border-b last:border-0">
+          <td colSpan={COL_COUNT} className="px-3 py-1">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800">
+                Nuovo record
+              </span>
+              <span>Match ignorato — verrà creato un nuovo record</span>
+              <button
+                type="button"
+                onClick={() => onMatchChange(index, alternatives[0])}
+                className="text-blue-500 hover:underline ml-auto"
+              >
+                Ripristina match ({alternatives[0].reference}, {Math.round(alternatives[0].match_score * 100)}%)
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
+
+      {/* Alternative matches */}
+      {matchExpanded && alternatives.length > 0 && (
+        <>
+          {alternatives.filter(m => m.record_id !== matched?.record_id).map((m) => (
+            <tr key={m.record_id} className="bg-blue-50/30 border-b last:border-0">
+              <td colSpan={COL_COUNT} className="px-3 py-1 pl-10">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${MATCH_BADGE[m.match_type || 'duplicate']?.bg || 'bg-gray-100'}`}>
+                    {MATCH_BADGE[m.match_type || 'duplicate']?.label}
+                  </span>
+                  <span>{m.reference} &middot; {m.account} &middot; {Number(m.total).toLocaleString('it-IT', { minimumFractionDigits: 2 })} &middot; {m.area}</span>
+                  <span className="text-muted-foreground/60">{Math.round(m.match_score * 100)}%</span>
+                  {isPending && onMatchChange && (
+                    <button
+                      type="button"
+                      onClick={() => { onMatchChange(index, m); setMatchExpanded(false) }}
+                      className="text-blue-500 hover:underline ml-auto"
+                    >
+                      Usa questo
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </>
       )}
     </>
   )

@@ -94,6 +94,15 @@ export function InboxPage() {
     onError: () => toast({ title: 'Errore nel rifiuto', variant: 'destructive' }),
   })
 
+  const restoreMutation = useMutation({
+    mutationFn: (item: InboxItem) => inboxApi.restore(workspaceId, item.id),
+    onSuccess: () => {
+      toast({ title: 'Documento ripristinato', description: 'Torna in attesa di conferma.' })
+      invalidate()
+    },
+    onError: () => toast({ title: 'Errore nel ripristino', variant: 'destructive' }),
+  })
+
   const deleteMutation = useMutation({
     mutationFn: (item: InboxItem) => inboxApi.delete(workspaceId, item.id),
     onSuccess: () => {
@@ -204,6 +213,7 @@ export function InboxPage() {
               onReject={(i) => rejectMutation.mutateAsync(i)}
               onDelete={(i) => deleteMutation.mutateAsync(i)}
               onUpdate={(i, suggestions, reconciliationMatches) => updateMutation.mutateAsync({ item: i, suggestions, reconciliationMatches })}
+              onRestore={(i) => restoreMutation.mutateAsync(i)}
             />
           ))}
           {total > items.length && (

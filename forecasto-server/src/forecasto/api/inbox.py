@@ -242,6 +242,29 @@ async def reject_inbox_item(
     return {"success": True, "item": InboxItemResponse.model_validate(item)}
 
 
+@router.post("/{workspace_id}/inbox/{item_id}/restore", response_model=dict)
+async def restore_inbox_item(
+    workspace_id: str,
+    item_id: str,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Restore a rejected inbox item back to pending."""
+    service = InboxService(db)
+    item = await service.restore_item(workspace_id=workspace_id, item_id=item_id)
+    await db.commit()
+
+    await event_bus.publish(
+        "inbox_changed",
+        workspace_id=workspace_id,
+        data={"action": "restored", "item_id": item.id},
+    )
+
+    return {"success": True, "item": InboxItemResponse.model_validate(item)}
+
+
 @router.delete("/{workspace_id}/inbox/{item_id}", response_model=dict)
 async def delete_inbox_item(
     workspace_id: str,

@@ -25,6 +25,7 @@ export interface Record {
   note?: string
   date_cashflow: string
   date_offer: string
+  date_document?: string
   owner?: string
   amount: string
   vat: string
@@ -64,6 +65,7 @@ export interface RecordCreate {
   note?: string
   date_cashflow: string
   date_offer: string
+  date_document?: string
   owner?: string
   amount: string
   vat?: string
@@ -87,6 +89,7 @@ export interface RecordUpdate {
   note?: string
   date_cashflow?: string
   date_offer?: string
+  date_document?: string
   owner?: string
   amount?: string
   vat?: string
@@ -109,6 +112,7 @@ export interface RecordFilters {
   area: Area
   date_start?: string
   date_end?: string
+  date_field?: 'date_cashflow' | 'date_offer' | 'date_document'
   sign?: 'in' | 'out' | 'all'
   text_filter?: string
   text_filter_field?: TextFilterField

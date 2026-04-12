@@ -55,10 +55,13 @@ FIELD DEFINITIONS — read carefully:
   Use the full Italian document type name (not abbreviations like FT or FPR).
   Include the year as 4 digits. Do NOT leave this empty.
 
-- date_offer: document/order date as YYYY-MM-DD.
+- date_offer: offer/order date as YYYY-MM-DD. When the deal/order originated.
+
+- date_document: document/invoice date as YYYY-MM-DD. The date printed on the document
+  itself (e.g. invoice date, credit note date). May differ from date_offer.
 
 - date_cashflow: expected payment or cash movement date as YYYY-MM-DD.
-  Calculate from payment terms if stated. If not stated, default to date_offer + 30 days.
+  Calculate from payment terms if stated. Default: date_document + 30 days (or date_offer + 30).
 
 - amount: net amount excluding VAT. Negative for expenses/costs, positive for income/revenue.
 
@@ -75,6 +78,50 @@ FIELD DEFINITIONS — read carefully:
 - document_type: classify the document as one of:
   "invoice", "quote", "bank_statement", "wire_transfer", "receipt", "credit_note", "other"
   For bank_statement and wire_transfer, stage should be "1" and area should be "actual".
+
+SPLITTING IN TRANCHE E RATE DI PAGAMENTO:
+Regola fondamentale: ogni movimento di cassa distinto = un record separato.
+
+REGOLA CRITICA SUL CALCOLO IMPORTI:
+Le percentuali di pagamento si applicano SEMPRE al prezzo della SINGOLA COMPONENTE,
+MAI al totale complessivo del documento.
+Esempio: se un'offerta ha Licenza €50.000 e Canone €20.000/anno:
+  - "50% all'ordine" della licenza = 50% di €50.000 = €25.000 (NON 50% di €70.000)
+  - "30% al go-live" della licenza = 30% di €50.000 = €15.000
+  - "20% alla validazione" della licenza = 20% di €50.000 = €10.000
+  - Canone annuale = €20.000 (importo intero, non frazionato)
+Verifica: la somma delle tranche di ogni componente DEVE essere uguale al prezzo della componente.
+I campi amount e total devono essere NETTI (senza IVA) rispettivamente e LORDI (con IVA).
+amount = prezzo netto della tranche. total = amount + vat. NON mettere il prezzo lordo in amount.
+
+1. OFFERTE/PREVENTIVI con milestone di pagamento:
+   - Prima identifica OGNI COMPONENTE separata con il suo prezzo (licenza, canone, servizi)
+   - Poi per ogni componente che ha condizioni di pagamento, crea UN RECORD per ogni tranche
+   - Calcola: importo_tranche_netto = prezzo_componente_netto * percentuale / 100
+   - date_cashflow diversa per ogni tranche in base alla milestone
+   - transaction_id: "Offerta X/YYYY (tranche N/M)"
+   - note: descrivere quale milestone e componente
+
+2. FATTURE con pagamento rateale (30/60/90 gg, ecc.):
+   - Crea UN RECORD per ogni rata
+   - Dividi l'importo totale della fattura in parti uguali (o come specificato)
+   - date_cashflow: data fattura + 30gg, + 60gg, + 90gg rispettivamente
+   - transaction_id: "Fattura X/YYYY (rata N/M)"
+
+3. CONTRATTI con canoni ricorrenti (affitto, leasing, abbonamento):
+   - Crea record separati: uno per eventuali costi una tantum, poi uno per ogni canone periodico
+   - Per canoni mensili: un record per mese con date_cashflow scalate
+   - Per canoni annuali: un record per anno
+   - NON aggregare costo una tantum e canone ricorrente in un unico record
+
+4. OFFERTE con componenti miste (licenza + canone):
+   - Crea record separati per ogni componente: licenza una tantum, canone annuale, servizi
+   - Se la licenza ha milestone di pagamento, applica anche regola 1
+   - Verifica: somma tranche licenza = prezzo licenza. Canone = importo intero separato.
+
+5. FATTURE con voci distinte:
+   - Se le voci hanno nature diverse (servizi diversi, periodi diversi) -> record separati
+   - Se le voci sono dello stesso servizio/fornitura -> un unico record aggregato
 
 Return a valid JSON array of records. Extract ALL transactions found in the document.
 """
@@ -240,6 +287,18 @@ class ProcessingQueue:
                 system_prompt = doc_settings.get("system_prompt") or DEFAULT_SYSTEM_PROMPT
                 user_prompt = doc_settings.get("user_prompt", "")
 
+                # Compose agent prompts (user-level + workspace-level)
+                from forecasto.models.user import User as UserModel
+                user_result = await db.execute(
+                    select(UserModel).where(UserModel.id == job.uploaded_by_user_id)
+                )
+                upload_user = user_result.scalar_one_or_none()
+                if upload_user and upload_user.agent_prompt:
+                    system_prompt += "\n\n## Regole Generali Utente\n" + upload_user.agent_prompt
+                ws_agent_prompt = (workspace.settings or {}).get("agent_prompt") if workspace else None
+                if ws_agent_prompt:
+                    system_prompt += "\n\n## Regole Specifiche Workspace\n" + ws_agent_prompt
+
                 # Call Anthropic API
                 from forecasto.services.llm.anthropic_provider import extract_records_with_usage
 
@@ -261,6 +320,32 @@ class ProcessingQueue:
                 # Create InboxItem
                 from forecasto.services.inbox_service import InboxService
                 inbox_service = InboxService(db)
+
+                # Find similar records PER ROW and auto-assign best match
+                claimed_ids: set[str] = set()  # prevent same record matched to multiple rows
+                for rec in records:
+                    try:
+                        matches = await inbox_service.find_similar_records(
+                            workspace_id=job.workspace_id,
+                            reference=rec.get("reference", ""),
+                            account=rec.get("account", ""),
+                            amount=rec.get("total"),
+                            transaction_id=rec.get("transaction_id"),
+                            note=rec.get("note"),
+                            document_type=doc_type,
+                        )
+                        # Filter out already-claimed records
+                        available = [m for m in matches if m["record_id"] not in claimed_ids]
+                        rec["similar_records"] = available
+                        if available and available[0]["match_score"] >= 0.4:
+                            rec["matched_record"] = available[0]
+                            claimed_ids.add(available[0]["record_id"])
+                        else:
+                            rec["matched_record"] = None
+                    except Exception as e:
+                        logger.warning(f"Similarity search failed for record: {e}")
+                        rec["similar_records"] = []
+                        rec["matched_record"] = None
 
                 inbox_data = InboxItemCreate(
                     source_path=job.file_storage_path,
