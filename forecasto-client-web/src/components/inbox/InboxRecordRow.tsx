@@ -25,7 +25,7 @@ const COL_COUNT = 9
 const MATCH_BADGE: Record<string, { bg: string; label: string }> = {
   payment: { bg: 'bg-emerald-100 text-emerald-800', label: 'Pagamento' },
   update: { bg: 'bg-amber-100 text-amber-800', label: 'Aggiorna' },
-  duplicate: { bg: 'bg-red-100 text-red-800', label: 'Duplicato' },
+  duplicate: { bg: 'bg-red-100 text-red-800', label: 'Possibile duplicato di:' },
 }
 
 export function InboxRecordRow({ suggestion, index, editable, workspaceId, onChange, onMatchChange, forceNoteExpanded, isPending }: InboxRecordRowProps) {
@@ -138,17 +138,17 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
           )}
         </td>
 
-        {/* Totale */}
+        {/* Imponibile (amount) */}
         <td className="py-1.5 pr-2 text-right">
           {editable ? (
             <Input
               className="h-7 text-xs w-full min-w-[5.5rem] text-right"
-              value={suggestion.total ?? ''}
-              onChange={(e) => onChange(index, 'total', e.target.value)}
+              value={suggestion.amount ?? ''}
+              onChange={(e) => onChange(index, 'amount', e.target.value)}
             />
           ) : (
-            <span className={`text-xs font-medium ${Number(suggestion.total) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {Number(suggestion.total).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+            <span className={`text-xs font-medium ${Number(suggestion.amount) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {Number(suggestion.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
             </span>
           )}
         </td>

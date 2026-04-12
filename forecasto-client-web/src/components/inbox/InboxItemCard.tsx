@@ -326,7 +326,7 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate, o
                     <th className="text-left pb-2 pr-2 font-medium">N. Transazione</th>
                     <th className="text-left pb-2 pr-2 font-medium">Data ordine</th>
                     <th className="text-left pb-2 pr-2 font-medium">Data cassa</th>
-                    <th className="text-right pb-2 pr-2 font-medium">Totale</th>
+                    <th className="text-right pb-2 pr-2 font-medium">Imponibile</th>
                     <th className="text-left pb-2 pr-2 font-medium">Tipo</th>
                     <th className="pb-2 w-7" title="Note" />
                   </tr>
