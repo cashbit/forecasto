@@ -685,7 +685,7 @@ class InboxService:
                     Record.workspace_id == workspace_id,
                     Record.deleted_at.is_(None),
                     Record.area.in_(search_areas),
-                    func.abs(Record.total - amount_dec) <= tolerance,
+                    func.abs(Record.amount - amount_dec) <= tolerance,
                     *([Record.stage != "1"] if is_payment else []),
                 ).limit(25)
             )
@@ -701,7 +701,7 @@ class InboxService:
         query = {
             "reference": reference,
             "account": account,
-            "total": amount,
+            "amount": amount,
             "transaction_id": transaction_id,
             "note": note,
         }
@@ -711,6 +711,7 @@ class InboxService:
             cand = {
                 "reference": rec.reference,
                 "account": rec.account,
+                "amount": float(rec.amount),
                 "total": float(rec.total),
                 "transaction_id": rec.transaction_id,
                 "note": rec.note,
@@ -724,6 +725,7 @@ class InboxService:
                     "record_id": rec.id,
                     "reference": rec.reference,
                     "account": rec.account,
+                    "amount": float(rec.amount),
                     "total": float(rec.total),
                     "transaction_id": rec.transaction_id,
                     "date_cashflow": rec.date_cashflow.isoformat() if rec.date_cashflow else None,

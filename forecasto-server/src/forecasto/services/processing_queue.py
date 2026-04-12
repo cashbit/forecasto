@@ -63,11 +63,15 @@ FIELD DEFINITIONS — read carefully:
 - date_cashflow: expected payment or cash movement date as YYYY-MM-DD.
   Calculate from payment terms if stated. Default: date_document + 30 days (or date_offer + 30).
 
-- amount: net amount excluding VAT. Negative for expenses/costs, positive for income/revenue.
+- amount: net amount excluding VAT (IMPONIBILE). This is the PRIMARY amount field.
+  Negative for expenses/costs, positive for income/revenue.
 
-- vat: VAT (IVA) amount. Negative for expenses, positive for income. 0 if not applicable.
+- vat: VAT (IVA) amount. Negative for expenses, positive for income.
+  If the document does NOT specify the VAT rate, use 22% as default (Italian standard rate).
+  Calculate: vat = amount × 0.22 (or the rate specified in the document).
+  Set to 0 only for VAT-exempt operations (esente IVA, fuori campo IVA, reverse charge).
 
-- total: amount + vat (must equal amount + vat exactly).
+- total: amount + vat (must equal amount + vat exactly). This is the IVA-inclusive amount.
 
 - stage: "0" if not yet paid/invoiced, "1" if already paid/settled.
 
@@ -92,7 +96,8 @@ Esempio: se un'offerta ha Licenza €50.000 e Canone €20.000/anno:
   - Canone annuale = €20.000 (importo intero, non frazionato)
 Verifica: la somma delle tranche di ogni componente DEVE essere uguale al prezzo della componente.
 I campi amount e total devono essere NETTI (senza IVA) rispettivamente e LORDI (con IVA).
-amount = prezzo netto della tranche. total = amount + vat. NON mettere il prezzo lordo in amount.
+amount = prezzo netto della tranche (IMPONIBILE). vat = amount × aliquota IVA (default 22%). total = amount + vat.
+NON mettere il prezzo lordo in amount. Se il documento mostra solo l'imponibile, calcola vat = amount × 0.22 e total = amount + vat.
 
 1. OFFERTE/PREVENTIVI con milestone di pagamento:
    - Prima identifica OGNI COMPONENTE separata con il suo prezzo (licenza, canone, servizi)
@@ -329,7 +334,7 @@ class ProcessingQueue:
                             workspace_id=job.workspace_id,
                             reference=rec.get("reference", ""),
                             account=rec.get("account", ""),
-                            amount=rec.get("total"),
+                            amount=rec.get("amount"),
                             transaction_id=rec.get("transaction_id"),
                             note=rec.get("note"),
                             document_type=doc_type,

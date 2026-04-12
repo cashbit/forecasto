@@ -164,10 +164,10 @@ def compute_similarity_score(
     else:
         scores["account"] = 0.0
 
-    # 3. Amount similarity
+    # 3. Amount similarity (compare imponibile/net amount, fallback to total)
     try:
-        amt_a = float(candidate.get("total") or 0)
-        amt_b = float(query.get("total") or 0)
+        amt_a = float(candidate.get("amount") or candidate.get("total") or 0)
+        amt_b = float(query.get("amount") or query.get("total") or 0)
     except (ValueError, TypeError):
         amt_a, amt_b = 0.0, 0.0
     amt_sim = _amount_similarity(amt_a, amt_b)

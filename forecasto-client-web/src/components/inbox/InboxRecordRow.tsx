@@ -218,7 +218,7 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
               </span>
               <span className="text-muted-foreground">
                 {matched.reference} &middot; {matched.account} &middot;{' '}
-                {Number(matched.total).toLocaleString('it-IT', { minimumFractionDigits: 2 })} &middot;{' '}
+                {Number(matched.amount ?? matched.total).toLocaleString('it-IT', { minimumFractionDigits: 2 })} &middot;{' '}
                 {matched.area}
                 {matched.suggested_transfer_area && (
                   <span className="text-blue-600 font-medium"> &rarr; {matched.suggested_transfer_area}</span>
@@ -283,7 +283,7 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${MATCH_BADGE[m.match_type || 'duplicate']?.bg || 'bg-gray-100'}`}>
                     {MATCH_BADGE[m.match_type || 'duplicate']?.label}
                   </span>
-                  <span>{m.reference} &middot; {m.account} &middot; {Number(m.total).toLocaleString('it-IT', { minimumFractionDigits: 2 })} &middot; {m.area}</span>
+                  <span>{m.reference} &middot; {m.account} &middot; {Number(m.amount ?? m.total).toLocaleString('it-IT', { minimumFractionDigits: 2 })} &middot; {m.area}</span>
                   <span className="text-muted-foreground/60">{Math.round(m.match_score * 100)}%</span>
                   {isPending && onMatchChange && (
                     <button

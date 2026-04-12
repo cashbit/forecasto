@@ -4,6 +4,7 @@ export interface ReconciliationMatch {
   record_id: string
   reference: string
   account: string
+  amount?: string
   total: string
   date_cashflow: string | null
   date_offer: string | null
