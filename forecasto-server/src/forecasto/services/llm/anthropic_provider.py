@@ -116,7 +116,7 @@ async def extract_records_with_usage(
     cache_creation_input_tokens, cache_read_input_tokens
     """
     client = anthropic.AsyncAnthropic(
-        api_key=api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        api_key=api_key or None
     )
 
     content: list[dict] = list(image_blocks)

@@ -364,9 +364,8 @@ Sii conciso (max 500 parole). Solo regole operative, no esempi."""
     async def _call_llm(self, system_msg: str, user_msg: str) -> tuple[str, dict]:
         """Call Claude Haiku and return (text, usage_dict)."""
         from forecasto.config import settings
-        client = anthropic.AsyncAnthropic(
-            api_key=settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY", "")
-        )
+        api_key = settings.anthropic_api_key or None
+        client = anthropic.AsyncAnthropic(api_key=api_key)
 
         response = await client.messages.create(
             model=DEFAULT_MODEL,
