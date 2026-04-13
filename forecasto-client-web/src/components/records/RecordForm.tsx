@@ -213,7 +213,7 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
       : undefined
 
     // Remove sign and vat from data (UI-only fields); normalize bank_account_id empty string to undefined
-    const { sign, vat: _vat, vat_deduction: _vatDed, vat_month, withholding_rate: _whRate, review_date, bank_account_id, ...submitData } = data
+    const { sign, vat: _vat, vat_deduction: _vatDed, vat_month, withholding_rate: _whRate, review_date, date_document, bank_account_id, ...submitData } = data
 
     // In create mode: '' → undefined (don't send field)
     // In update mode: '' → null (explicitly clear the field on server)
@@ -221,32 +221,32 @@ export function RecordForm({ record, area, onSubmit, onCancel, onClose, isLoadin
       ? bank_account_id
       : record ? null : undefined
 
-    return { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth: vat_month || undefined, withholdingRate, review_date, bank_account_id: normalizedBankAccountId }
+    return { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth: vat_month || undefined, withholdingRate, review_date, date_document, bank_account_id: normalizedBankAccountId }
   }
 
   const handleFormSubmit = (data: FormData) => {
-    const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, withholdingRate, review_date, bank_account_id } = processFormData(data)
+    const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, withholdingRate, review_date, date_document, bank_account_id } = processFormData(data)
 
     if (record) {
-      onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, withholding_rate: withholdingRate || null, review_date: review_date || undefined, bank_account_id } as RecordUpdate)
+      onSubmit({ ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, withholding_rate: withholdingRate || null, review_date: review_date || undefined, date_document: date_document || null, bank_account_id } as RecordUpdate)
     } else {
       // Add default type for new records
-      onSubmit({ ...submitData, area, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, withholding_rate: withholdingRate, review_date: review_date || undefined, bank_account_id, type: 'standard' } as RecordCreate)
+      onSubmit({ ...submitData, area, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, withholding_rate: withholdingRate, review_date: review_date || undefined, date_document: date_document || undefined, bank_account_id, type: 'standard' } as RecordCreate)
     }
   }
 
   const handleReviewClick = (days: number) => {
     handleSubmit((data: FormData) => {
-      const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, withholdingRate, bank_account_id } = processFormData(data)
-      onReview?.(days, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, withholding_rate: withholdingRate || null, bank_account_id } as RecordUpdate)
+      const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, withholdingRate, date_document, bank_account_id } = processFormData(data)
+      onReview?.(days, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, withholding_rate: withholdingRate || null, date_document: date_document || null, bank_account_id } as RecordUpdate)
     })()
   }
 
   const handlePromoteClick = (toArea: Area) => {
     if (!record) return
     handleSubmit((data: FormData) => {
-      const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, withholdingRate, bank_account_id } = processFormData(data)
-      onPromote?.(record.id, toArea, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, withholding_rate: withholdingRate || null, bank_account_id } as RecordUpdate)
+      const { submitData, signedAmount, signedTotal, vat, vatDeduction, vatMonth, withholdingRate, date_document, bank_account_id } = processFormData(data)
+      onPromote?.(record.id, toArea, { ...submitData, amount: signedAmount, total: signedTotal, vat, vat_deduction: vatDeduction, vat_month: vatMonth, withholding_rate: withholdingRate || null, date_document: date_document || null, bank_account_id } as RecordUpdate)
     })()
   }
 

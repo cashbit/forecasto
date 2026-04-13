@@ -42,6 +42,13 @@ class RecordCreate(BaseModel):
             raise ValueError(f"Area must be one of: {valid_areas}")
         return v
 
+    @field_validator("date_document", "review_date", mode="before")
+    @classmethod
+    def empty_string_to_none(cls, v):
+        if v == "":
+            return None
+        return v
+
 class RecordUpdate(BaseModel):
     """Record update request."""
 
@@ -66,6 +73,13 @@ class RecordUpdate(BaseModel):
     review_date: date | None = None
     withholding_rate: Decimal | None = None
     classification: dict | None = None
+
+    @field_validator("date_document", "review_date", mode="before")
+    @classmethod
+    def empty_string_to_none(cls, v):
+        if v == "":
+            return None
+        return v
 
 class TransferHistoryEntry(BaseModel):
     """Entry in transfer history."""
