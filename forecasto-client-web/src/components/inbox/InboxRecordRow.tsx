@@ -146,30 +146,14 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
           )}
         </td>
 
-        {/* Imponibile (amount) + segno */}
+        {/* Imponibile (amount) */}
         <td className="py-1.5 pr-2 text-right">
           {editable ? (
-            <div className="flex flex-col gap-1 items-end">
-              <div className="flex gap-0.5">
-                {SIGN_OPTIONS.map((opt) => (
-                  <Button
-                    key={opt.value}
-                    type="button"
-                    size="sm"
-                    variant={currentSign === opt.value ? (opt.value === 'in' ? 'default' : 'destructive') : 'outline'}
-                    className="h-5 px-1.5 text-[10px] leading-none"
-                    onClick={() => handleSignToggle(opt.value as 'in' | 'out')}
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
-              </div>
-              <Input
-                className="h-7 text-xs w-full min-w-[5.5rem] text-right"
-                value={suggestion.amount ?? ''}
-                onChange={(e) => onChange(index, 'amount', e.target.value)}
-              />
-            </div>
+            <Input
+              className="h-7 text-xs w-full min-w-[5.5rem] text-right"
+              value={suggestion.amount ?? ''}
+              onChange={(e) => onChange(index, 'amount', e.target.value)}
+            />
           ) : (
             <span className={`text-xs font-medium ${Number(suggestion.amount) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {Number(suggestion.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
@@ -177,16 +161,33 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
           )}
         </td>
 
-        {/* Tipo — read-only + match status badge */}
+        {/* Tipo / Segno — sign toggle in edit, type label in view */}
         <td className="py-1.5 pr-2 text-xs text-muted-foreground whitespace-nowrap">
-          <span className="flex items-center gap-1">
-            {suggestion.type}
-            {hadMatchRemoved && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800">
-                Nuovo
-              </span>
-            )}
-          </span>
+          {editable ? (
+            <div className="flex flex-col gap-0.5">
+              {SIGN_OPTIONS.map((opt) => (
+                <Button
+                  key={opt.value}
+                  type="button"
+                  size="sm"
+                  variant={currentSign === opt.value ? (opt.value === 'in' ? 'default' : 'destructive') : 'outline'}
+                  className="h-5 w-full px-1.5 text-[10px] leading-none"
+                  onClick={() => handleSignToggle(opt.value as 'in' | 'out')}
+                >
+                  {opt.label}
+                </Button>
+              ))}
+            </div>
+          ) : (
+            <span className="flex items-center gap-1">
+              {suggestion.type}
+              {hadMatchRemoved && (
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800">
+                  Nuovo
+                </span>
+              )}
+            </span>
+          )}
         </td>
 
         {/* Note toggle */}
