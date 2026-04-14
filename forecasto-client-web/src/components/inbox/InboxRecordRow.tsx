@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight, StickyNote, Link2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AutocompleteInput } from '@/components/ui/AutocompleteInput'
 import { cn } from '@/lib/utils'
 import type { RecordSuggestion, ReconciliationMatch } from '@/types/inbox'
-import { AREAS, AREA_LABELS } from '@/lib/constants'
+import { AREAS, AREA_LABELS, SIGN_OPTIONS } from '@/lib/constants'
 
 interface InboxRecordRowProps {
   suggestion: RecordSuggestion
@@ -31,6 +32,13 @@ const MATCH_BADGE: Record<string, { bg: string; label: string }> = {
 export function InboxRecordRow({ suggestion, index, editable, workspaceId, onChange, onMatchChange, forceNoteExpanded, isPending }: InboxRecordRowProps) {
   const [noteExpanded, setNoteExpanded] = useState(false)
   const [matchExpanded, setMatchExpanded] = useState(false)
+
+  const currentSign: 'in' | 'out' = parseFloat(suggestion.amount || '0') >= 0 ? 'in' : 'out'
+
+  const handleSignToggle = (newSign: 'in' | 'out') => {
+    const abs = Math.abs(parseFloat(suggestion.amount || '0'))
+    onChange(index, 'amount', String(newSign === 'out' ? -abs : abs))
+  }
   const hasNote = Boolean(suggestion.note?.trim())
   const showNote = noteExpanded || forceNoteExpanded
   const matched = suggestion.matched_record
@@ -138,14 +146,30 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
           )}
         </td>
 
-        {/* Imponibile (amount) */}
+        {/* Imponibile (amount) + segno */}
         <td className="py-1.5 pr-2 text-right">
           {editable ? (
-            <Input
-              className="h-7 text-xs w-full min-w-[5.5rem] text-right"
-              value={suggestion.amount ?? ''}
-              onChange={(e) => onChange(index, 'amount', e.target.value)}
-            />
+            <div className="flex flex-col gap-1 items-end">
+              <div className="flex gap-0.5">
+                {SIGN_OPTIONS.map((opt) => (
+                  <Button
+                    key={opt.value}
+                    type="button"
+                    size="sm"
+                    variant={currentSign === opt.value ? (opt.value === 'in' ? 'default' : 'destructive') : 'outline'}
+                    className="h-5 px-1.5 text-[10px] leading-none"
+                    onClick={() => handleSignToggle(opt.value as 'in' | 'out')}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+              <Input
+                className="h-7 text-xs w-full min-w-[5.5rem] text-right"
+                value={suggestion.amount ?? ''}
+                onChange={(e) => onChange(index, 'amount', e.target.value)}
+              />
+            </div>
           ) : (
             <span className={`text-xs font-medium ${Number(suggestion.amount) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {Number(suggestion.amount).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
