@@ -277,13 +277,7 @@ class ProcessingQueue:
                     raise FileNotFoundError(f"Upload file missing: {file_path}")
                 file_bytes = file_path.read_bytes()
 
-                # Convert to vision blocks (CPU-bound → run in thread)
-                image_blocks, page_count = await asyncio.to_thread(
-                    _convert_to_images, file_bytes, job.file_content_type
-                )
-                job.pages_processed = page_count
-
-                # Load workspace for custom prompts
+                # Load workspace (needed for prompts and XML classification)
                 ws_result = await db.execute(
                     select(Workspace).where(Workspace.id == job.workspace_id)
                 )
@@ -304,6 +298,58 @@ class ProcessingQueue:
                 if ws_agent_prompt:
                     system_prompt += "\n\n## Regole Specifiche Workspace\n" + ws_agent_prompt
 
+                # --- XML/P7M branch: deterministic parsing + text-based LLM ---
+                _XML_CONTENT_TYPES = {"application/xml", "text/xml"}
+                _P7M_CONTENT_TYPES = {"application/pkcs7-mime", "application/x-pkcs7-mime"}
+
+                text_content_for_llm: str | None = None
+
+                if job.file_content_type in _XML_CONTENT_TYPES | _P7M_CONTENT_TYPES:
+                    from forecasto.services.processors.sdi_xml import (
+                        parse_sdi_xml,
+                        classify_invoice,
+                        format_invoice_for_llm,
+                        extract_xml_from_p7m,
+                        decode_xml_bytes,
+                    )
+
+                    # Extract XML from P7M or decode raw XML
+                    if job.file_content_type in _P7M_CONTENT_TYPES:
+                        xml_content = await asyncio.to_thread(extract_xml_from_p7m, file_bytes)
+                    else:
+                        xml_content = decode_xml_bytes(file_bytes)
+
+                    invoice = parse_sdi_xml(xml_content, job.source_filename)
+
+                    # Load workspace VAT number for classification
+                    workspace_vat = ""
+                    if workspace and workspace.vat_registry_id:
+                        from forecasto.models.vat_registry import VatRegistry
+                        vat_reg_result = await db.execute(
+                            select(VatRegistry).where(VatRegistry.id == workspace.vat_registry_id)
+                        )
+                        vat_reg = vat_reg_result.scalar_one_or_none()
+                        if vat_reg:
+                            workspace_vat = vat_reg.vat_number or ""
+
+                    classification = classify_invoice(invoice, workspace_vat)
+                    text_content_for_llm = format_invoice_for_llm(invoice, classification)
+                    page_count = 1
+                    job.pages_processed = page_count
+                    image_blocks = []
+
+                    logger.info(
+                        "Job %s: XML parsed (%s, %s %s, %d linee, %d rate) → sending to LLM as text",
+                        job_id, invoice.tipo_documento, classification.direction,
+                        classification.counterpart_name, len(invoice.linee_dettaglio), len(invoice.rate),
+                    )
+                else:
+                    # --- Standard vision path (PDF/images) ---
+                    image_blocks, page_count = await asyncio.to_thread(
+                        _convert_to_images, file_bytes, job.file_content_type
+                    )
+                    job.pages_processed = page_count
+
                 # Call Anthropic API
                 from forecasto.services.llm.anthropic_provider import extract_records_with_usage
 
@@ -313,6 +359,7 @@ class ProcessingQueue:
                     user_prompt=user_prompt,
                     model=job.llm_model,
                     api_key=settings.anthropic_api_key or None,
+                    text_content=text_content_for_llm,
                 )
 
                 # Free memory

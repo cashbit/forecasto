@@ -30,6 +30,16 @@ SUPPORTED_CONTENT_TYPES = {
     "image/png",
     "image/webp",
     "image/gif",
+    "application/xml",
+    "text/xml",
+    "application/pkcs7-mime",
+    "application/x-pkcs7-mime",
+}
+
+# Fallback: browsers often send application/octet-stream for XML/P7M files
+_EXTENSION_CONTENT_TYPE_MAP = {
+    ".xml": "text/xml",
+    ".p7m": "application/pkcs7-mime",
 }
 
 
@@ -47,9 +57,12 @@ class DocumentProcessingService:
         user_id: str | None = None,
     ) -> DocumentProcessingJob:
         """Save file to disk, create job, enqueue for processing."""
-        # Validate
+        # Validate — with extension-based fallback for XML/P7M
         if content_type not in SUPPORTED_CONTENT_TYPES:
-            raise ValueError(f"Tipo file non supportato: {content_type}")
+            ext = Path(filename).suffix.lower()
+            content_type = _EXTENSION_CONTENT_TYPE_MAP.get(ext, content_type)
+            if content_type not in SUPPORTED_CONTENT_TYPES:
+                raise ValueError(f"Tipo file non supportato: {content_type}")
 
         max_bytes = settings.document_max_size_mb * 1024 * 1024
         if len(file_bytes) > max_bytes:

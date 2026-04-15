@@ -109,8 +109,12 @@ async def extract_records_with_usage(
     user_prompt: str,
     model: str = "claude-sonnet-4-6",
     api_key: str | None = None,
+    text_content: str | None = None,
 ) -> tuple[list[dict], dict]:
     """Call Anthropic API and return (records, usage_dict).
+
+    If text_content is provided, it's used as the message content instead of
+    image_blocks (e.g. for pre-parsed XML invoices sent as structured text).
 
     usage_dict contains: input_tokens, output_tokens,
     cache_creation_input_tokens, cache_read_input_tokens
@@ -119,7 +123,11 @@ async def extract_records_with_usage(
         api_key=api_key or None
     )
 
-    content: list[dict] = list(image_blocks)
+    if text_content:
+        # Text-only mode (e.g. parsed XML invoice data)
+        content: list[dict] = [{"type": "text", "text": text_content}]
+    else:
+        content: list[dict] = list(image_blocks)
     user_text = user_prompt.strip() or "Extract all financial records from this document."
     content.append({"type": "text", "text": user_text})
 

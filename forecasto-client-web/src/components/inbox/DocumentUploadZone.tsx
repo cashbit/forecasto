@@ -9,9 +9,17 @@ const ACCEPTED_TYPES = [
   'image/png',
   'image/webp',
   'image/gif',
+  'application/xml',
+  'text/xml',
+  'application/pkcs7-mime',
+  'application/x-pkcs7-mime',
 ]
 
-const ACCEPTED_EXTENSIONS = '.pdf,.jpg,.jpeg,.png,.webp,.gif'
+// Extensions accepted by file input (browsers may send octet-stream for xml/p7m)
+const ACCEPTED_EXTENSIONS = '.pdf,.jpg,.jpeg,.png,.webp,.gif,.xml,.p7m'
+
+// For drag&drop, also check by extension since browsers may not set MIME for p7m
+const ACCEPTED_FILE_EXTENSIONS = new Set(['xml', 'p7m'])
 
 interface UploadJob {
   id: string
@@ -82,7 +90,12 @@ export function DocumentUploadZone({ workspaceId, onProcessingComplete, quotaExc
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragOver(false)
-    const files = Array.from(e.dataTransfer.files).filter(f => ACCEPTED_TYPES.includes(f.type))
+    const files = Array.from(e.dataTransfer.files).filter(f => {
+      if (ACCEPTED_TYPES.includes(f.type)) return true
+      // Fallback: check file extension (browsers send octet-stream for .p7m/.xml)
+      const ext = f.name.split('.').pop()?.toLowerCase()
+      return ext ? ACCEPTED_FILE_EXTENSIONS.has(ext) : false
+    })
     files.forEach(processFile)
   }, [processFile])
 
@@ -153,7 +166,7 @@ export function DocumentUploadZone({ workspaceId, onProcessingComplete, quotaExc
               Trascina qui i documenti o <span className="text-foreground font-medium">clicca per selezionare</span>
             </p>
             <p className="text-xs text-muted-foreground/70 mt-0.5">
-              PDF, JPG, PNG, WEBP, GIF — max 20MB per file
+              PDF, JPG, PNG, WEBP, GIF, XML, P7M — max 20MB per file
             </p>
           </>
         )}
