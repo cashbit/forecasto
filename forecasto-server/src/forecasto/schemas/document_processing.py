@@ -2,8 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from pydantic import BaseModel, model_validator
+from datetime import datetime, timezone
+from pydantic import BaseModel, field_serializer, model_validator
+
+
+def _iso_utc(v: datetime | None) -> str | None:
+    """Serialize naive UTC datetimes with explicit timezone so the browser
+    doesn't interpret them as local time."""
+    if v is None:
+        return None
+    if v.tzinfo is None:
+        v = v.replace(tzinfo=timezone.utc)
+    return v.isoformat()
 
 
 class DocumentUploadResponse(BaseModel):
@@ -33,6 +43,10 @@ class ProcessingJobResponse(BaseModel):
     created_at: datetime
     usage: UsageRecordResponse | None = None
 
+    @field_serializer("started_at", "completed_at", "created_at")
+    def _serialize_utc(self, v: datetime | None) -> str | None:
+        return _iso_utc(v)
+
     model_config = {"from_attributes": True}
 
 
@@ -50,6 +64,10 @@ class UsageRecordResponse(BaseModel):
     cache_read_tokens: int
     total_tokens: int = 0
     created_at: datetime
+
+    @field_serializer("created_at")
+    def _serialize_utc(self, v: datetime) -> str:
+        return _iso_utc(v)  # type: ignore[return-value]
 
     @model_validator(mode="after")
     def compute_total_tokens(self) -> "UsageRecordResponse":

@@ -350,6 +350,30 @@ class ProcessingQueue:
                     )
                     job.pages_processed = page_count
 
+                # --- Pre-flight page quota check (now that page_count is known) ---
+                if user_id != "__no_user__":
+                    from forecasto.services.document_processing_service import DocumentProcessingService
+                    svc = DocumentProcessingService(db)
+                    quota_info = await svc.get_user_monthly_usage(user_id)
+                    if (
+                        quota_info["monthly_page_quota"] > 0
+                        and page_count > quota_info["pages_remaining"]
+                    ):
+                        job.status = "failed"
+                        job.error_message = (
+                            f"Documento di {page_count} pagine eccede la quota residua di "
+                            f"{quota_info['pages_remaining']} pagine (quota mensile "
+                            f"{quota_info['monthly_page_quota']}). Caricamento rifiutato."
+                        )
+                        job.pages_processed = 0
+                        job.completed_at = datetime.utcnow()
+                        await db.commit()
+                        logger.info(
+                            "Job %s rejected: %d pages > %d remaining",
+                            job_id, page_count, quota_info["pages_remaining"],
+                        )
+                        return
+
                 # Call Anthropic API
                 from forecasto.services.llm.anthropic_provider import extract_records_with_usage
 
