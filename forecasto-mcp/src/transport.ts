@@ -9,15 +9,29 @@ import { oauthProvider } from "./oauth/provider.js";
 import { ForecastoClient } from "./api/client.js";
 import { registerAllTools } from "./tools/index.js";
 
-// Map of sessionId → McpServer+Transport pairs (stateful mode)
-const sessions = new Map<string, { server: McpServer; transport: StreamableHTTPServerTransport }>();
+// Mutable token holder so tool calls always use the freshest token Claude sent
+// on the current MCP request, not the one captured when the session was opened.
+interface TokenRef {
+  value: string;
+}
 
-function createSessionServer(accessToken: string): { server: McpServer; sessionId: string } {
+interface SessionEntry {
+  server: McpServer;
+  transport: StreamableHTTPServerTransport;
+  tokenRef: TokenRef;
+}
+
+// Map of sessionId → session entry (stateful mode)
+const sessions = new Map<string, SessionEntry>();
+
+function createSessionServer(tokenRef: TokenRef): { server: McpServer; sessionId: string } {
   const sessionId = randomUUID();
   const mcpServer = new McpServer({ name: "forecasto", version: "1.0.0" });
 
   function getClient(): ForecastoClient {
-    return new ForecastoClient(accessToken, async () => null);
+    // Read the latest token each call — do NOT close over a string that was
+    // valid only when the session was created.
+    return new ForecastoClient(tokenRef.value, async () => null);
   }
 
   registerAllTools(mcpServer, getClient);
@@ -124,20 +138,23 @@ export function createExpressApp(): express.Express {
       return;
     }
 
-    // Case 2: Known session → delegate to existing transport
+    // Case 2: Known session → refresh the per-session token with the one
+    // Claude just sent (already verified by bearerAuth), then delegate.
     if (sessionId) {
       const entry = sessions.get(sessionId)!;
+      entry.tokenRef.value = accessToken;
       await entry.transport.handleRequest(req, res, req.body);
       return;
     }
 
     // Case 3: No session ID → new session (expects InitializeRequest)
-    const { server: sessionServer, sessionId: newSessionId } = createSessionServer(accessToken);
+    const tokenRef: TokenRef = { value: accessToken };
+    const { server: sessionServer, sessionId: newSessionId } = createSessionServer(tokenRef);
 
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => newSessionId,
       onsessioninitialized: (sid) => {
-        sessions.set(sid, { server: sessionServer, transport });
+        sessions.set(sid, { server: sessionServer, transport, tokenRef });
       },
     });
 
