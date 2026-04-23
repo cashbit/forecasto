@@ -33,6 +33,7 @@ class RecordCreate(BaseModel):
     review_date: date | None = None
     withholding_rate: Decimal | None = None
     classification: dict | None = None
+    seq_num: int | None = None  # Optional: override auto-generated seq_num (e.g. legacy import)
 
     @field_validator("area")
     @classmethod
@@ -119,6 +120,8 @@ class RecordResponse(BaseModel):
     withholding_rate: Decimal | None = None
     classification: dict
     seq_num: int | None = None
+    reminder_count: int = -1
+    last_reminder_sent_at: date | None = None
     transfer_history: list[TransferHistoryEntry]
     version: int
     is_draft: bool = False
@@ -146,6 +149,7 @@ class RecordFilter(BaseModel):
     """Record filter parameters."""
 
     area: str | None = None
+    stage: str | None = None
     date_start: date | None = None
     date_end: date | None = None
     date_field: str = "date_cashflow"  # date_cashflow, date_offer, date_document
@@ -176,4 +180,22 @@ class TransferResponse(BaseModel):
     success: bool = True
     record: RecordResponse
     operation: dict
+
+
+class BulkDeleteRequest(BaseModel):
+    """Bulk delete request — list of record IDs to soft-delete."""
+
+    ids: list[str]
+
+
+class SendReminderRequest(BaseModel):
+    """Request to send reminder/sollecito for one or more records."""
+
+    record_ids: list[str]
+
+
+class SendReminderResponse(BaseModel):
+    """Result of a reminder/undo operation."""
+
+    updated: list[RecordResponse]
 

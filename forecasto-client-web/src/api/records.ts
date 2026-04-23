@@ -61,13 +61,37 @@ export const recordsApi = {
     return response.data
   },
 
-  bulkDelete: async (workspaceId: string, recordIds: string[]): Promise<void> => {
-    await apiClient.delete(`/workspaces/${workspaceId}/records/bulk`, { data: { ids: recordIds } })
+  bulkDelete: async (
+    workspaceId: string,
+    recordIds: string[]
+  ): Promise<{ success: boolean; deleted_count: number; errors: Array<{ id: string; error: string }> }> => {
+    const response = await apiClient.delete<{
+      success: boolean
+      deleted_count: number
+      errors: Array<{ id: string; error: string }>
+    }>(`/workspaces/${workspaceId}/records/bulk`, { data: { ids: recordIds } })
+    return response.data
   },
 
   restore: async (workspaceId: string, recordId: string): Promise<Record> => {
     const response = await apiClient.post<{ success: boolean; record: Record }>(`/workspaces/${workspaceId}/records/${recordId}/restore`)
     return response.data.record
+  },
+
+  sendReminders: async (workspaceId: string, recordIds: string[]): Promise<Record[]> => {
+    const response = await apiClient.post<{ success: boolean; updated: Record[] }>(
+      `/workspaces/${workspaceId}/records/send-reminder`,
+      { record_ids: recordIds },
+    )
+    return response.data.updated
+  },
+
+  undoReminder: async (workspaceId: string, recordIds: string[]): Promise<Record[]> => {
+    const response = await apiClient.post<{ success: boolean; updated: Record[] }>(
+      `/workspaces/${workspaceId}/records/undo-reminder`,
+      { record_ids: recordIds },
+    )
+    return response.data.updated
   },
 
   getFieldValues: async (

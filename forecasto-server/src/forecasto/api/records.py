@@ -18,10 +18,12 @@ from forecasto.dependencies import (
 from forecasto.models.user import User
 from forecasto.models.workspace import Workspace, WorkspaceMember
 from forecasto.schemas.record import (
+    BulkDeleteRequest,
     RecordCreate,
     RecordFilter,
     RecordResponse,
     RecordUpdate,
+    SendReminderRequest,
 )
 from forecasto.services.event_bus import event_bus
 from forecasto.services.record_service import RecordService
@@ -47,6 +49,7 @@ async def list_records(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     area: str | None = Query(None),
+    stage: str | None = Query(None),
     date_start: date | None = Query(None),
     date_end: date | None = Query(None),
     date_field: str = Query("date_cashflow", description="Which date field to filter on"),
@@ -74,6 +77,7 @@ async def list_records(
 
     filters = RecordFilter(
         area=area,
+        stage=stage,
         date_start=date_start,
         date_end=date_end,
         date_field=date_field,
@@ -282,6 +286,44 @@ async def bulk_import_sdi_records(
     }
 
 
+@router.delete("/{workspace_id}/records/bulk", response_model=dict)
+async def bulk_delete_records(
+    workspace_id: str,
+    body: BulkDeleteRequest,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Soft delete multiple records with a single SSE event at the end."""
+    workspace, member = workspace_data
+    service = RecordService(db)
+
+    deleted = 0
+    errors: list[dict] = []
+    for rid in body.ids:
+        try:
+            record = await service.get_record(rid, workspace_id)
+            check_area_permission(member, record.area, "write")
+            await service.delete_record(record, current_user, member=member)
+            deleted += 1
+        except Exception as exc:
+            errors.append({"id": rid, "error": str(exc)})
+
+    await event_bus.publish(
+        "records_changed",
+        workspace_id,
+        {"action": "bulk_delete", "count": deleted},
+    )
+
+    return {
+        "success": len(errors) == 0,
+        "deleted_count": deleted,
+        "errors": errors,
+    }
+
+
 @router.get("/{workspace_id}/records/{record_id}", response_model=dict)
 async def get_record(
     workspace_id: str,
@@ -387,6 +429,56 @@ async def restore_record(
     await event_bus.publish("records_changed", workspace_id, {"action": "restore"})
 
     return {"success": True, "record": _record_to_response(record)}
+
+
+@router.post("/{workspace_id}/records/send-reminder", response_model=dict)
+async def send_reminder(
+    workspace_id: str,
+    body: SendReminderRequest,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Invia promemoria (count=-1 → 0) o sollecito (count>=0 → +1, data spostata)."""
+    workspace, member = workspace_data
+    check_area_permission(member, "actual", "write")
+
+    service = RecordService(db)
+    updated = await service.send_reminders(workspace_id, body.record_ids, current_user)
+
+    await event_bus.publish("records_changed", workspace_id, {"action": "send_reminder"})
+
+    return {
+        "success": True,
+        "updated": [_record_to_response(r) for r in updated],
+    }
+
+
+@router.post("/{workspace_id}/records/undo-reminder", response_model=dict)
+async def undo_reminder(
+    workspace_id: str,
+    body: SendReminderRequest,
+    workspace_data: Annotated[
+        tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Annulla l'ultimo promemoria/sollecito (rollback count + data)."""
+    workspace, member = workspace_data
+    check_area_permission(member, "actual", "write")
+
+    service = RecordService(db)
+    updated = await service.undo_reminder(workspace_id, body.record_ids, current_user)
+
+    await event_bus.publish("records_changed", workspace_id, {"action": "undo_reminder"})
+
+    return {
+        "success": True,
+        "updated": [_record_to_response(r) for r in updated],
+    }
 
 
 @router.get("/{workspace_id}/records/export", response_model=dict)

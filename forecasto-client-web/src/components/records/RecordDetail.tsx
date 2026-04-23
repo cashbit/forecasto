@@ -173,6 +173,35 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
           </>
         )}
 
+        {record.area === 'actual' && (
+          <>
+            <Separator />
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">Promemoria e solleciti</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Stato invio</p>
+                  <p className="text-sm font-medium">
+                    {record.reminder_count === -1
+                      ? 'Nessun promemoria inviato'
+                      : record.reminder_count === 0
+                      ? 'Promemoria inviato'
+                      : `${record.reminder_count}° sollecito inviato`}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Ultimo invio</p>
+                  {record.last_reminder_sent_at ? (
+                    <DateDisplay date={record.last_reminder_sent_at} />
+                  ) : (
+                    <p className="text-sm">-</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
         {record.transfer_history && record.transfer_history.length > 0 && (
           <>
             <Separator />

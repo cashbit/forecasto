@@ -255,8 +255,14 @@ class RecordService:
             select(User).where(User.id == owner_id).with_for_update()
         )
         owner_user = owner_result.scalar_one()
-        seq_num = owner_user.next_seq_num
-        owner_user.next_seq_num = seq_num + 1
+        if data.seq_num is not None:
+            # Use provided seq_num (e.g. legacy import) and advance counter if needed
+            seq_num = data.seq_num
+            if seq_num >= owner_user.next_seq_num:
+                owner_user.next_seq_num = seq_num + 1
+        else:
+            seq_num = owner_user.next_seq_num
+            owner_user.next_seq_num = seq_num + 1
 
         record = Record(
             workspace_id=workspace_id,
@@ -327,6 +333,9 @@ class RecordService:
 
         if filters.area:
             query = query.where(Record.area == filters.area)
+
+        if filters.stage:
+            query = query.where(Record.stage == filters.stage)
 
         # Dynamic date field filtering
         date_col_map = {
@@ -470,6 +479,124 @@ class RecordService:
         record.version += 1
 
         return record
+
+    async def _load_records_for_reminder(
+        self, workspace_id: str, record_ids: list[str]
+    ) -> list[Record]:
+        """Load records by ID filtered by workspace. Raises NotFoundException if any are missing."""
+        if not record_ids:
+            return []
+        result = await self.db.execute(
+            select(Record)
+            .options(*self._audit_options)
+            .where(
+                Record.id.in_(record_ids),
+                Record.workspace_id == workspace_id,
+                Record.deleted_at.is_(None),
+            )
+        )
+        records = list(result.scalars().all())
+        if len(records) != len(set(record_ids)):
+            found = {r.id for r in records}
+            missing = [rid for rid in record_ids if rid not in found]
+            raise NotFoundException(f"Records not found: {missing}")
+        return records
+
+    async def send_reminders(
+        self,
+        workspace_id: str,
+        record_ids: list[str],
+        user: User,
+    ) -> list[Record]:
+        """Invia promemoria (count=-1 → 0) o sollecito (count>=0 → +1, shift date).
+
+        Validazione atomica: tutti i record devono essere area=actual, stage=0.
+        Se uno fallisce, nessun update viene applicato (la transazione viene rollbacked dal caller).
+        """
+        records = await self._load_records_for_reminder(workspace_id, record_ids)
+
+        offending: list[str] = []
+        for rec in records:
+            if rec.area != "actual" or rec.stage != "0":
+                offending.append(rec.id)
+        if offending:
+            raise ForbiddenException(
+                f"Records non validi per promemoria (richiesto area=actual, stage=0): {offending}"
+            )
+
+        # Read shift_days from workspace settings (default 7)
+        ws_result = await self.db.execute(
+            select(Workspace).where(Workspace.id == workspace_id)
+        )
+        workspace = ws_result.scalar_one()
+        settings = workspace.settings or {}
+        try:
+            shift_days = int(settings.get("reminder_shift_days", 7))
+        except (TypeError, ValueError):
+            shift_days = 7
+        if shift_days < 0:
+            shift_days = 0
+
+        today = date.today()
+        for rec in records:
+            if rec.reminder_count == -1:
+                # Invio promemoria: no shift, solo count -1 → 0
+                rec.reminder_count = 0
+            else:
+                rec.reminder_count += 1
+                rec.date_cashflow = rec.date_cashflow + timedelta(days=shift_days)
+            rec.last_reminder_sent_at = today
+            rec.updated_by = user.id
+            rec.updated_at = datetime.utcnow()
+            rec.version += 1
+
+        return records
+
+    async def undo_reminder(
+        self,
+        workspace_id: str,
+        record_ids: list[str],
+        user: User,
+    ) -> list[Record]:
+        """Rollback dell'ultimo promemoria/sollecito.
+
+        count==-1: errore (nulla da annullare).
+        count==0: count → -1, data invariata, last_reminder_sent_at=None.
+        count>=1: count -= 1, date_cashflow -= shift_days, last_reminder_sent_at=None.
+        """
+        records = await self._load_records_for_reminder(workspace_id, record_ids)
+
+        offending: list[str] = []
+        for rec in records:
+            if rec.reminder_count < 0:
+                offending.append(rec.id)
+        if offending:
+            raise ForbiddenException(
+                f"Nessun promemoria da annullare per i record: {offending}"
+            )
+
+        ws_result = await self.db.execute(
+            select(Workspace).where(Workspace.id == workspace_id)
+        )
+        workspace = ws_result.scalar_one()
+        settings = workspace.settings or {}
+        try:
+            shift_days = int(settings.get("reminder_shift_days", 7))
+        except (TypeError, ValueError):
+            shift_days = 7
+        if shift_days < 0:
+            shift_days = 0
+
+        for rec in records:
+            if rec.reminder_count >= 1:
+                rec.date_cashflow = rec.date_cashflow - timedelta(days=shift_days)
+            rec.reminder_count -= 1
+            rec.last_reminder_sent_at = None
+            rec.updated_by = user.id
+            rec.updated_at = datetime.utcnow()
+            rec.version += 1
+
+        return records
 
     async def restore_record(
         self,

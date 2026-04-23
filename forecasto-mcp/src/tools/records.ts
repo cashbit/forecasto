@@ -359,6 +359,127 @@ export function registerRecordTools(
   );
 
   server.tool(
+    "send_reminder",
+    "Invia un promemoria o sollecito di pagamento per uno o più record. Solo per area=actual, stage=0. Se reminder_count=-1: invia promemoria (count → 0, data invariata). Se count>=0: invia sollecito N+1 (count += 1, date_cashflow += reminder_shift_days dalle impostazioni workspace). Tutti i record del batch devono essere validi, altrimenti 400. Aggiorna last_reminder_sent_at = oggi. Non compone né invia email: solo la transizione di stato.",
+    {
+      workspace_id: z.string().describe("Workspace UUID"),
+      record_ids: z.array(z.string()).min(1).describe("UUID dei record da far avanzare nel ciclo promemoria/sollecito"),
+    },
+    { title: "Invia promemoria/sollecito", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    async ({ workspace_id, record_ids }) => {
+      const data = await getClient().post(
+        `/api/v1/workspaces/${workspace_id}/records/send-reminder`,
+        { record_ids },
+      );
+      return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    "undo_reminder",
+    "Annulla l'ultimo promemoria/sollecito inviato. Decrementa reminder_count di 1 e (se era un sollecito, cioè count pre-undo >= 1) ripristina date_cashflow sottraendo reminder_shift_days dalle impostazioni correnti del workspace. Fallisce se reminder_count è già -1 (nulla da annullare). Svuota last_reminder_sent_at.",
+    {
+      workspace_id: z.string().describe("Workspace UUID"),
+      record_ids: z.array(z.string()).min(1).describe("UUID dei record di cui annullare l'ultimo invio"),
+    },
+    { title: "Annulla promemoria/sollecito", readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    async ({ workspace_id, record_ids }) => {
+      const data = await getClient().post(
+        `/api/v1/workspaces/${workspace_id}/records/undo-reminder`,
+        { record_ids },
+      );
+      return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    "list_pending_reminders",
+    "Elenca i record actual stage=0 che richiedono azione di promemoria/sollecito oggi, raggruppati per colonna Kanban (promemoria, sollecito_1, sollecito_2, sollecito_3_plus) e per reference (cliente). Usa reminder_lead_days dalle impostazioni workspace per la colonna Promemoria (default 7). Un record appare in Promemoria se reminder_count=-1 AND date_cashflow-today<=lead_days. Nei solleciti se count>=0 AND date_cashflow<=today.",
+    {
+      workspace_id: z.string().describe("Workspace UUID"),
+      column: z.enum(["promemoria", "sollecito_1", "sollecito_2", "sollecito_3_plus"]).optional().describe("Restringi ad una singola colonna. Se omesso ritorna tutte e 4."),
+    },
+    { title: "Lista promemoria pendenti", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    async ({ workspace_id, column }) => {
+      const workspace = await getClient().get(`/api/v1/workspaces/${workspace_id}`) as { settings?: Record<string, unknown> };
+      const settings = (workspace.settings ?? {}) as Record<string, unknown>;
+      const leadDaysRaw = settings.reminder_lead_days;
+      const leadDays = typeof leadDaysRaw === "number" ? leadDaysRaw : 7;
+
+      const listing = await getClient().get(`/api/v1/workspaces/${workspace_id}/records`, {
+        area: "actual",
+        stage: "0",
+        limit: "1000",
+      }) as { records: RecordRow[] };
+
+      const records = listing.records ?? [];
+
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const todayYmd = today.toISOString().slice(0, 10);
+      const leadThreshold = new Date(today.getTime() + leadDays * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
+
+      type ColumnKey = "promemoria" | "sollecito_1" | "sollecito_2" | "sollecito_3_plus";
+      const buckets: Record<ColumnKey, RecordRow[]> = {
+        promemoria: [],
+        sollecito_1: [],
+        sollecito_2: [],
+        sollecito_3_plus: [],
+      };
+
+      for (const r of records) {
+        const count = typeof r.reminder_count === "number" ? r.reminder_count : -1;
+        const dateCashflow = String(r.date_cashflow ?? "");
+        if (count === -1) {
+          if (dateCashflow <= leadThreshold) buckets.promemoria.push(r);
+          continue;
+        }
+        if (dateCashflow > todayYmd) continue;
+        if (count === 0) buckets.sollecito_1.push(r);
+        else if (count === 1) buckets.sollecito_2.push(r);
+        else buckets.sollecito_3_plus.push(r);
+      }
+
+      function groupByReference(items: RecordRow[]) {
+        const out: Record<string, { reference: string; record_ids: string[]; total: number; next_action: string; count: number }> = {};
+        for (const r of items) {
+          const ref = (String(r.reference ?? "").trim()) || "(senza riferimento)";
+          const g = out[ref] ?? { reference: ref, record_ids: [], total: 0, next_action: "", count: 0 };
+          g.record_ids.push(String(r.id));
+          g.total += Math.abs(Number(r.total ?? r.amount ?? 0));
+          g.count = typeof r.reminder_count === "number" ? r.reminder_count : -1;
+          g.next_action = g.count === -1 ? "promemoria" : `sollecito_${g.count + 1}`;
+          out[ref] = g;
+        }
+        return Object.values(out).sort((a, b) => b.total - a.total);
+      }
+
+      function summarizeBucket(items: RecordRow[]) {
+        return {
+          row_count: items.length,
+          total: items.reduce((s, r) => s + Math.abs(Number(r.total ?? r.amount ?? 0)), 0),
+          groups: groupByReference(items),
+        };
+      }
+
+      const allColumns = {
+        promemoria: summarizeBucket(buckets.promemoria),
+        sollecito_1: summarizeBucket(buckets.sollecito_1),
+        sollecito_2: summarizeBucket(buckets.sollecito_2),
+        sollecito_3_plus: summarizeBucket(buckets.sollecito_3_plus),
+      };
+
+      const payload = column
+        ? { column, ...allColumns[column], lead_days: leadDays }
+        : { lead_days: leadDays, columns: allColumns };
+
+      return { content: [{ type: "text" as const, text: JSON.stringify(payload, null, 2) }] };
+    },
+  );
+
+  server.tool(
     "split_record",
     "Split a financial record into multiple installments with proportional amounts. The original record is deleted and replaced by the installments. Percentages must sum to 100.",
     {

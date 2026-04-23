@@ -174,7 +174,7 @@ export function CreateWorkspaceDialog() {
       setSelectedVatRegistryId('')
       setCreateWorkspaceDialogOpen(false)
 
-      // Refetch records after dialog closes so DashboardPage is active
+      // Refetch records after dialog closes so MovimentiPage is active
       if (loadDemo) {
         setTimeout(() => {
           queryClient.refetchQueries({ queryKey: ['records'] })

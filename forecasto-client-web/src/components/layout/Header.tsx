@@ -273,6 +273,16 @@ export function Header() {
             size="sm"
             asChild
             className={cn(
+              location.pathname === '/dashboard' && 'bg-primary/10 text-primary font-semibold'
+            )}
+          >
+            <Link to="/dashboard">Dashboard</Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className={cn(
               location.pathname === '/movimenti' && 'bg-primary/10 text-primary font-semibold'
             )}
           >

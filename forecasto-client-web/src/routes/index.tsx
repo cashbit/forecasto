@@ -3,6 +3,7 @@ import { MainLayout } from '@/components/layout/MainLayout'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
+import { MovimentiPage } from '@/pages/MovimentiPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { CashflowPage } from '@/pages/CashflowPage'
 import { SettingsPage } from '@/pages/SettingsPage'
@@ -78,8 +79,8 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Navigate to="/movimenti" replace /> },
-      { path: 'movimenti', element: <DashboardPage /> },
-      { path: 'dashboard', element: <Navigate to="/movimenti" replace /> },
+      { path: 'movimenti', element: <MovimentiPage /> },
+      { path: 'dashboard', element: <DashboardPage /> },
       { path: 'cashflow', element: <CashflowPage /> },
       { path: 'inbox', element: <InboxPage /> },
       { path: 'usage', element: <UsagePage /> },

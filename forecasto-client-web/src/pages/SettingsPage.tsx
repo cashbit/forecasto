@@ -18,6 +18,7 @@ import { DeleteAccountDialog } from '@/components/settings/DeleteAccountDialog'
 import { AgentTokensTab } from '@/components/settings/AgentTokensTab'
 import { AgentPromptSection } from '@/components/settings/AgentPromptSection'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/useToast'
 import { authApi } from '@/api/auth'
 import { useQuery } from '@tanstack/react-query'
@@ -62,6 +63,20 @@ export function SettingsPage() {
     primaryWorkspace?.vat_registry_id || ''
   )
 
+  const [reminderLeadDays, setReminderLeadDays] = useState<number>(
+    primaryWorkspace?.settings?.reminder_lead_days ?? 7,
+  )
+  const [reminderShiftDays, setReminderShiftDays] = useState<number>(
+    primaryWorkspace?.settings?.reminder_shift_days ?? 7,
+  )
+  const [reminderEmailSignature, setReminderEmailSignature] = useState<string>(
+    primaryWorkspace?.settings?.reminder_email_signature ?? '',
+  )
+  const [reminderEmailProvider, setReminderEmailProvider] = useState<'native' | 'gmail'>(
+    primaryWorkspace?.settings?.reminder_email_provider ?? 'native',
+  )
+  const [isSavingReminders, setIsSavingReminders] = useState(false)
+
   const { data: vatRegistries = [] } = useQuery({
     queryKey: ['vat-registries'],
     queryFn: vatRegistryApi.list,
@@ -75,8 +90,12 @@ export function SettingsPage() {
         description: primaryWorkspace.description || '',
       })
       setSelectedVatRegistryId(primaryWorkspace.vat_registry_id || '')
+      setReminderLeadDays(primaryWorkspace.settings?.reminder_lead_days ?? 7)
+      setReminderShiftDays(primaryWorkspace.settings?.reminder_shift_days ?? 7)
+      setReminderEmailSignature(primaryWorkspace.settings?.reminder_email_signature ?? '')
+      setReminderEmailProvider(primaryWorkspace.settings?.reminder_email_provider ?? 'native')
     }
-  }, [primaryWorkspace?.id, primaryWorkspace?.name, primaryWorkspace?.description, primaryWorkspace?.vat_registry_id])
+  }, [primaryWorkspace?.id, primaryWorkspace?.name, primaryWorkspace?.description, primaryWorkspace?.vat_registry_id, primaryWorkspace?.settings?.reminder_lead_days, primaryWorkspace?.settings?.reminder_shift_days, primaryWorkspace?.settings?.reminder_email_signature, primaryWorkspace?.settings?.reminder_email_provider])
 
   const handleProfileSave = async (data: { name: string; email: string }) => {
     setIsLoading(true)
@@ -105,6 +124,29 @@ export function SettingsPage() {
       toast({ title: 'Password attuale non corretta', variant: 'destructive' })
     } finally {
       setIsPasswordLoading(false)
+    }
+  }
+
+  const handleRemindersSave = async () => {
+    if (!primaryWorkspace) return
+    const lead = Math.max(0, Math.floor(reminderLeadDays))
+    const shift = Math.max(0, Math.floor(reminderShiftDays))
+    setIsSavingReminders(true)
+    try {
+      await updateWorkspace(primaryWorkspace.id, {
+        settings: {
+          ...primaryWorkspace.settings,
+          reminder_lead_days: lead,
+          reminder_shift_days: shift,
+          reminder_email_signature: reminderEmailSignature,
+          reminder_email_provider: reminderEmailProvider,
+        },
+      })
+      toast({ title: 'Impostazioni promemoria salvate', variant: 'success' })
+    } catch {
+      toast({ title: 'Errore durante il salvataggio', variant: 'destructive' })
+    } finally {
+      setIsSavingReminders(false)
     }
   }
 
@@ -276,6 +318,84 @@ export function SettingsPage() {
                     </div>
                   </div>
                 </div>
+              )}
+
+              {canEditWorkspace && primaryWorkspace && (
+                <>
+                  <Separator className="my-6" />
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-semibold">Promemoria e solleciti</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Configura quando far apparire i promemoria e di quanti giorni spostare la data di cashflow ad ogni sollecito.
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="reminder-lead">Giorni anticipo promemoria</Label>
+                        <Input
+                          id="reminder-lead"
+                          type="number"
+                          min={0}
+                          max={365}
+                          value={reminderLeadDays}
+                          onChange={(e) => setReminderLeadDays(Number(e.target.value))}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Quanti giorni prima della scadenza la riga appare in colonna "Promemoria".
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="reminder-shift">Giorni spostamento dopo sollecito</Label>
+                        <Input
+                          id="reminder-shift"
+                          type="number"
+                          min={0}
+                          max={365}
+                          value={reminderShiftDays}
+                          onChange={(e) => setReminderShiftDays(Number(e.target.value))}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Quanti giorni spostare in avanti la data di cashflow ad ogni sollecito inviato.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reminder-signature">Firma email (facoltativa)</Label>
+                      <Textarea
+                        id="reminder-signature"
+                        rows={4}
+                        placeholder="Es.&#10;Cordiali saluti,&#10;Mario Rossi&#10;Acme S.r.l.&#10;mario@acme.it"
+                        value={reminderEmailSignature}
+                        onChange={(e) => setReminderEmailSignature(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Aggiunta in coda al corpo di ogni promemoria/sollecito. Se vuota, la mail termina sulla frase di chiusura.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reminder-provider">Client di posta</Label>
+                      <Select
+                        value={reminderEmailProvider}
+                        onValueChange={(v) => setReminderEmailProvider(v as 'native' | 'gmail')}
+                      >
+                        <SelectTrigger id="reminder-provider">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="native">Client di posta di sistema (mailto:)</SelectItem>
+                          <SelectItem value="gmail">Gmail (compose web)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Dove si apre la finestra di composizione al clic su "Invia".
+                      </p>
+                    </div>
+                    <Button type="button" onClick={handleRemindersSave} disabled={isSavingReminders}>
+                      {isSavingReminders ? 'Salvataggio...' : 'Salva promemoria'}
+                    </Button>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

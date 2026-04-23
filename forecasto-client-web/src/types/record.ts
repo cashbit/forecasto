@@ -44,6 +44,8 @@ export interface Record {
   classification?: Classification
   transfer_history?: TransferEntry[]
   seq_num?: number
+  reminder_count: number
+  last_reminder_sent_at?: string | null
   version: number
   is_draft?: boolean
   created_by?: string
@@ -80,6 +82,7 @@ export interface RecordCreate {
   bank_account_id?: string
   project_code?: string
   classification?: Classification
+  seq_num?: number
 }
 
 export interface RecordUpdate {
@@ -110,6 +113,7 @@ export type TextFilterField = 'account' | 'reference' | 'note' | 'owner' | 'tran
 
 export interface RecordFilters {
   area: Area
+  stage?: string
   date_start?: string
   date_end?: string
   date_field?: 'date_cashflow' | 'date_offer' | 'date_document'

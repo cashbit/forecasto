@@ -69,6 +69,13 @@ class Record(Base, UUIDMixin, TimestampMixin):
     # Sequential number per owner
     seq_num: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
+    # Reminder / sollecito tracking
+    # -1 = mai inviato promemoria, 0 = promemoria inviato, >=1 = numero del sollecito inviato
+    reminder_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=-1, server_default="-1", index=True
+    )
+    last_reminder_sent_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+
     # Versioning for optimistic locking
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 

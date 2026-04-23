@@ -158,6 +158,14 @@ export function useRecords() {
     },
   })
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: ({ ids, workspaceId }: { ids: string[]; workspaceId?: string }) =>
+      recordsApi.bulkDelete(workspaceId || primaryWorkspaceId!, ids),
+    onSuccess: () => {
+      invalidateAllWorkspaces()
+    },
+  })
+
   const transferMutation = useMutation({
     mutationFn: ({ recordId, toArea, note, workspaceId }: { recordId: string; toArea: Area; note?: string; workspaceId?: string }) =>
       recordsApi.transfer(workspaceId || primaryWorkspaceId!, recordId, { to_area: toArea, note }),
@@ -174,6 +182,30 @@ export function useRecords() {
     },
   })
 
+  const invalidateReminderQueries = async (workspaceId: string | undefined) => {
+    const promises: Promise<unknown>[] = []
+    selectedWorkspaceIds.forEach((wsId) => {
+      promises.push(queryClient.invalidateQueries({ queryKey: ['records', wsId] }))
+    })
+    const targetWs = workspaceId || primaryWorkspaceId
+    if (targetWs) {
+      promises.push(queryClient.invalidateQueries({ queryKey: ['reminders', targetWs] }))
+    }
+    await Promise.all(promises)
+  }
+
+  const sendRemindersMutation = useMutation({
+    mutationFn: ({ recordIds, workspaceId }: { recordIds: string[]; workspaceId?: string }) =>
+      recordsApi.sendReminders(workspaceId || primaryWorkspaceId!, recordIds),
+    onSuccess: (_, variables) => invalidateReminderQueries(variables.workspaceId),
+  })
+
+  const undoReminderMutation = useMutation({
+    mutationFn: ({ recordIds, workspaceId }: { recordIds: string[]; workspaceId?: string }) =>
+      recordsApi.undoReminder(workspaceId || primaryWorkspaceId!, recordIds),
+    onSuccess: (_, variables) => invalidateReminderQueries(variables.workspaceId),
+  })
+
   return {
     records,
     total,
@@ -183,13 +215,19 @@ export function useRecords() {
     createRecord: createMutation.mutateAsync,
     updateRecord: (params: { recordId: string; data: RecordUpdate; workspaceId?: string }) => updateMutation.mutateAsync(params),
     deleteRecord: (recordId: string, workspaceId?: string) => deleteMutation.mutateAsync({ recordId, workspaceId }),
+    bulkDeleteRecords: (params: { ids: string[]; workspaceId?: string }) => bulkDeleteMutation.mutateAsync(params),
     transferRecord: (params: { recordId: string; toArea: Area; note?: string; workspaceId?: string }) => transferMutation.mutateAsync(params),
     restoreRecord: (recordId: string, workspaceId?: string) => restoreMutation.mutateAsync({ recordId, workspaceId }),
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    isBulkDeleting: bulkDeleteMutation.isPending,
     isTransferring: transferMutation.isPending,
     isRestoring: restoreMutation.isPending,
+    sendReminders: (params: { recordIds: string[]; workspaceId?: string }) => sendRemindersMutation.mutateAsync(params),
+    undoReminder: (params: { recordIds: string[]; workspaceId?: string }) => undoReminderMutation.mutateAsync(params),
+    isSendingReminder: sendRemindersMutation.isPending,
+    isUndoingReminder: undoReminderMutation.isPending,
     primaryWorkspaceId,
   }
 }

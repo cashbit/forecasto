@@ -38,6 +38,10 @@ export interface WorkspaceSettings {
   fiscal_year_start_month: number
   sdi_supplier_mappings?: Record<string, SdiSupplierMapping>
   excel_column_mappings?: ExcelColumnMappingEntry[]
+  reminder_lead_days?: number
+  reminder_shift_days?: number
+  reminder_email_signature?: string
+  reminder_email_provider?: 'native' | 'gmail'
 }
 
 export interface WorkspaceCreate {
