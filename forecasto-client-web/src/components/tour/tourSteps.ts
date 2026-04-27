@@ -165,12 +165,12 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
       id: 'form-account',
       elementSelector: '#account',
       popover: {
-        title: 'Conto',
-        description: 'Il nome del cliente o fornitore. Ad esempio: "Cliente Demo SpA".',
+        title: 'Conto (Categoria)',
+        description: 'La categoria del movimento — ciò che viene venduto o acquistato. Ad esempio: "Virtual Tour", "Consulenze", "Hardware". NON il nome del cliente.',
         side: 'left',
       },
       beforeStep: async () => {
-        setFormField('account', 'Cliente Demo SpA')
+        setFormField('account', 'Virtual Tour')
         await delay(200)
       },
       flashSelector: '#account',
@@ -181,12 +181,12 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
       id: 'form-reference',
       elementSelector: '#reference',
       popover: {
-        title: 'Riferimento',
-        description: 'Una descrizione della commessa o del motivo: "Progetto Sito Web".',
+        title: 'Riferimento (Controparte)',
+        description: 'Il nome del cliente o fornitore. Ad esempio: "Cliente Demo SpA".',
         side: 'left',
       },
       beforeStep: async () => {
-        setFormField('reference', 'Progetto Sito Web')
+        setFormField('reference', 'Cliente Demo SpA')
         await delay(200)
       },
       flashSelector: '#reference',
@@ -302,7 +302,7 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
       beforeStep: async () => {
         const tourRecord = await waitForRecord(
           () => ctx.dashboardActions.getRecords?.() || [],
-          (r) => r.account === 'Cliente Demo SpA',
+          (r) => r.reference === 'Cliente Demo SpA',
         )
         if (tourRecord) {
           ctx.setTourRecordId(tourRecord.id as string)
@@ -388,7 +388,7 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
       beforeStep: async () => {
         const tourRecord = await waitForRecord(
           () => ctx.dashboardActions.getRecords?.() || [],
-          (r) => r.account === 'Cliente Demo SpA',
+          (r) => r.reference === 'Cliente Demo SpA',
         )
         if (tourRecord) {
           ctx.dashboardActions.selectRecord?.(tourRecord)
@@ -473,7 +473,7 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
       beforeStep: async () => {
         const tourRecord = await waitForRecord(
           () => ctx.dashboardActions.getRecords?.() || [],
-          (r) => r.account === 'Cliente Demo SpA',
+          (r) => r.reference === 'Cliente Demo SpA',
         )
         if (tourRecord) {
           ctx.dashboardActions.openSplitForRecord?.(tourRecord)
@@ -552,7 +552,7 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
         // Track the new split record IDs (SplitDialog creates transaction_ids like "(1/2) ...")
         const records = (ctx.dashboardActions.getRecords?.() || []) as Record<string, unknown>[]
         const splitRecords = records.filter(r =>
-          (r.account as string) === 'Cliente Demo SpA' &&
+          (r.reference as string) === 'Cliente Demo SpA' &&
           (r.transaction_id as string)?.match(/^\(\d+\/\d+\)/)
         )
         const splitIds = splitRecords.map(r => r.id as string)

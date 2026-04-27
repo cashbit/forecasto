@@ -1,4 +1,5 @@
 import { createContext, useContext, useRef, useCallback, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { driver, type DriveStep, type Driver } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import './tourStyles.css'
@@ -20,12 +21,12 @@ interface DashboardActions {
 
 interface TourContextType {
   registerDashboardActions: (actions: DashboardActions) => void
-  startTour: () => void
+  startTour: () => Promise<void>
 }
 
 const TourCtx = createContext<TourContextType>({
   registerDashboardActions: () => {},
-  startTour: () => {},
+  startTour: async () => {},
 })
 
 export function useTourContext() {
@@ -80,6 +81,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const uiStore = useUiStore()
   const { selectedWorkspaceIds } = useWorkspaceStore()
   const { updateRecord, transferRecord, records, primaryWorkspaceId } = useRecords()
+  const navigate = useNavigate()
+  const location = useLocation()
 
   const handleTourEnd = useCallback(async (completed: boolean) => {
     isRunningRef.current = false
@@ -183,10 +186,22 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     }
   }, [handleTourEnd])
 
-  const startTour = useCallback(() => {
+  const startTour = useCallback(async () => {
     if (selectedWorkspaceIds.length === 0) {
       toast({ title: 'Seleziona un workspace', description: 'Seleziona almeno un workspace prima di iniziare la guida.', variant: 'destructive' })
       return
+    }
+
+    // Tour is built for the Movimenti page — navigate there first if needed
+    if (location.pathname !== '/movimenti') {
+      navigate('/movimenti')
+      const areaTabs = await waitForElement('[data-tour="area-tabs"]', 5000)
+      if (!areaTabs) {
+        toast({ title: 'Impossibile avviare la guida', description: 'Non è stato possibile caricare la pagina Movimenti.', variant: 'destructive' })
+        return
+      }
+      // Give MovimentiPage time to register dashboard actions
+      await new Promise(resolve => setTimeout(resolve, 300))
     }
 
     // Build tour context — use getter for dashboardActions so it always reads from the ref
@@ -225,7 +240,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
     // Start from step 0
     goToStep(0)
-  }, [selectedWorkspaceIds, filterStore, uiStore, primaryWorkspaceId, updateRecord, transferRecord, goToStep])
+  }, [selectedWorkspaceIds, filterStore, uiStore, primaryWorkspaceId, updateRecord, transferRecord, goToStep, navigate, location.pathname])
 
   const registerDashboardActions = useCallback((actions: DashboardActions) => {
     Object.assign(dashboardActionsRef.current, actions)
