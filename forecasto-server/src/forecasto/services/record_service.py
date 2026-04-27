@@ -7,7 +7,7 @@ import logging
 import re
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from sqlalchemy import case, func, or_, select, text
+from sqlalchemy import and_, case, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -36,6 +36,21 @@ def _build_fts_query(raw: str) -> str | None:
             # preventing keywords (AND, OR, NOT) from being interpreted as operators
             clean_tokens.append(f'"{clean}"*')
     return ' AND '.join(clean_tokens) if clean_tokens else None
+
+
+def _build_tokenized_ilike(text_filter: str, columns: list):
+    """AND-of-OR tokenizzato: ogni parola deve comparire come substring
+    in almeno una delle colonne. Permette match di parole compound:
+    "out shop" trova "OUTSHOP" perché entrambi i token sono substring.
+    """
+    tokens = text_filter.split()
+    if not tokens:
+        return None
+    per_token = []
+    for token in tokens:
+        like = f"%{token}%"
+        per_token.append(or_(*[col.ilike(like) for col in columns]))
+    return and_(*per_token) if len(per_token) > 1 else per_token[0]
 
 
 async def _fts_search_ids(
@@ -357,32 +372,38 @@ class RecordService:
             query = query.where(Record.amount < 0)
 
         if filters.text_filter:
-            search = f"%{filters.text_filter}%"
             field = filters.text_filter_field
             if field and hasattr(Record, field):
-                # Ricerca campo specifico: comportamento ILIKE invariato
-                query = query.where(getattr(Record, field).ilike(search))
+                # Ricerca campo specifico: tokenizzata (AND di ILIKE substring),
+                # così "out shop" matcha "OUTSHOP".
+                clause = _build_tokenized_ilike(filters.text_filter, [getattr(Record, field)])
+                if clause is not None:
+                    query = query.where(clause)
             else:
-                # Ricerca su tutti i campi: tenta FTS5, fallback a ILIKE
+                # Ricerca su tutti i campi: FTS5 prima (veloce), fallback a ILIKE tokenizzato
+                # per match compound (es. "out shop" → "OUTSHOP") e per errori FTS5.
+                fts_columns = [
+                    Record.account,
+                    Record.reference,
+                    Record.note,
+                    Record.owner,
+                    Record.nextaction,
+                    Record.transaction_id,
+                    Record.project_code,
+                ]
                 fts_q = _build_fts_query(filters.text_filter)
                 matched_ids = None
                 if fts_q:
                     matched_ids = await _fts_search_ids(self.db, workspace_id, fts_q)
 
-                if matched_ids is not None:
-                    if matched_ids:
-                        query = query.where(Record.id.in_(matched_ids))
+                if matched_ids:
+                    query = query.where(Record.id.in_(matched_ids))
+                else:
+                    ilike_clause = _build_tokenized_ilike(filters.text_filter, fts_columns)
+                    if ilike_clause is not None:
+                        query = query.where(ilike_clause)
                     else:
                         query = query.where(False)
-                else:
-                    query = query.where(
-                        or_(
-                            Record.account.ilike(search),
-                            Record.reference.ilike(search),
-                            Record.note.ilike(search),
-                            Record.transaction_id.ilike(search),
-                        )
-                    )
 
         if filters.project_code:
             query = query.where(Record.project_code.ilike(f"%{filters.project_code}%"))
