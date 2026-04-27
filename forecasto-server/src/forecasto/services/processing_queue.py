@@ -83,50 +83,79 @@ FIELD DEFINITIONS — read carefully:
   "invoice", "quote", "bank_statement", "wire_transfer", "receipt", "credit_note", "other"
   For bank_statement and wire_transfer, stage should be "1" and area should be "actual".
 
-SPLITTING IN TRANCHE E RATE DI PAGAMENTO:
-Regola fondamentale: ogni movimento di cassa distinto = un record separato.
+SPLITTING DEI RECORD — REGOLA FONDAMENTALE:
+Ogni movimento di cassa distinto = un record separato.
+
+IMPORTANTE: per le FATTURE (sia attive/emesse che passive/ricevute, qualsiasi TD: TD01, TD04,
+TD06, TD16-TD27) lo splitting avviene SEMPRE e SOLO lungo l'asse TEMPORALE (rate di pagamento),
+MAI lungo l'asse MERCEOLOGICO (linee articolo, voci di dettaglio, prodotti). La policy vale sia
+per il cedente che per il cessionario: la direzione determina solo il segno degli importi, non
+la logica di splitting.
+
+Esempio cruciale: una fattura con 5 righe articolo e 2 rate di pagamento genera 2 record
+(uno per rata), NON 5 e NON 10.
 
 REGOLA CRITICA SUL CALCOLO IMPORTI:
-Le percentuali di pagamento si applicano SEMPRE al prezzo della SINGOLA COMPONENTE,
-MAI al totale complessivo del documento.
-Esempio: se un'offerta ha Licenza €50.000 e Canone €20.000/anno:
-  - "50% all'ordine" della licenza = 50% di €50.000 = €25.000 (NON 50% di €70.000)
-  - "30% al go-live" della licenza = 30% di €50.000 = €15.000
-  - "20% alla validazione" della licenza = 20% di €50.000 = €10.000
-  - Canone annuale = €20.000 (importo intero, non frazionato)
-Verifica: la somma delle tranche di ogni componente DEVE essere uguale al prezzo della componente.
 I campi amount e total devono essere NETTI (senza IVA) rispettivamente e LORDI (con IVA).
-amount = prezzo netto della tranche (IMPONIBILE). vat = amount × aliquota IVA (default 22%). total = amount + vat.
-NON mettere il prezzo lordo in amount. Se il documento mostra solo l'imponibile, calcola vat = amount × 0.22 e total = amount + vat.
+amount = prezzo netto (IMPONIBILE). vat = amount × aliquota IVA (default 22%). total = amount + vat.
+NON mettere il prezzo lordo in amount. Se il documento mostra solo l'imponibile, calcola
+vat = amount × 0.22 e total = amount + vat.
+Per le offerte con milestone: le percentuali si applicano SEMPRE al prezzo della SINGOLA
+COMPONENTE, MAI al totale complessivo. Esempio: offerta con Licenza €50.000 + Canone €20.000/anno,
+"50% all'ordine" della licenza = 50% di €50.000 = €25.000 (NON di €70.000).
+Verifica: la somma delle tranche di ogni componente DEVE essere uguale al prezzo della componente.
 
-1. OFFERTE/PREVENTIVI con milestone di pagamento:
-   - Prima identifica OGNI COMPONENTE separata con il suo prezzo (licenza, canone, servizi)
-   - Poi per ogni componente che ha condizioni di pagamento, crea UN RECORD per ogni tranche
-   - Calcola: importo_tranche_netto = prezzo_componente_netto * percentuale / 100
-   - date_cashflow diversa per ogni tranche in base alla milestone
-   - transaction_id: "Offerta X/YYYY (tranche N/M)"
-   - note: descrivere quale milestone e componente
+=== FATTURE (document_type = "invoice" o "credit_note") ===
 
-2. FATTURE con pagamento rateale (30/60/90 gg, ecc.):
-   - Crea UN RECORD per ogni rata
-   - Dividi l'importo totale della fattura in parti uguali (o come specificato)
-   - date_cashflow: data fattura + 30gg, + 60gg, + 90gg rispettivamente
-   - transaction_id: "Fattura X/YYYY (rata N/M)"
+Per OGNI fattura, attiva o passiva, applicare SEMPRE e SOLO questa logica:
 
-3. CONTRATTI con canoni ricorrenti (affitto, leasing, abbonamento):
-   - Crea record separati: uno per eventuali costi una tantum, poi uno per ogni canone periodico
-   - Per canoni mensili: un record per mese con date_cashflow scalate
-   - Per canoni annuali: un record per anno
-   - NON aggregare costo una tantum e canone ricorrente in un unico record
+A. Se il documento dichiara N rate esplicite (sezione "RATE DI PAGAMENTO" nel testo,
+   DatiPagamento/DettaglioPagamento nell'XML, o indicazioni testuali tipo "pagamento 30/60/90 gg",
+   "50% a X, 50% a Y"):
+   - Crea N record, UNO PER OGNI RATA.
+   - amount di ogni record = imponibile NETTO proporzionale alla rata
+     (imp_rata = imponibile_totale × importo_rata / totale_fattura).
+   - vat di ogni record = IVA proporzionale (iva_rata = iva_totale × importo_rata / totale_fattura).
+   - total = amount + vat. Il segno rispecchia la direzione (positivo per attive, negativo per passive).
+   - date_cashflow = scadenza della rata.
+   - transaction_id: "Fattura X/YYYY (rata n/N)" (o "Nota credito X/YYYY (rata n/N)" per TD04).
+   - Se il testo pre-elaborato mostra già imponibile/IVA per rata, usa quei valori esatti.
 
-4. OFFERTE con componenti miste (licenza + canone):
-   - Crea record separati per ogni componente: licenza una tantum, canone annuale, servizi
-   - Se la licenza ha milestone di pagamento, applica anche regola 1
+B. Se il documento dichiara 1 sola rata o nessuna rata esplicita:
+   - Crea 1 SOLO record con gli importi totali della fattura.
+   - date_cashflow = scadenza se presente, altrimenti date_document + 30gg.
+   - transaction_id: "Fattura X/YYYY" (senza suffisso rata).
+
+Le righe articolo / voci di dettaglio di una fattura NON generano mai record separati.
+Servono SOLO per:
+  - scegliere account (categoria di costo/ricavo, p.es. "Hardware", "Consulenze", "Utenze")
+  - comporre la note (descrizione sintetica AGGREGATA della fornitura)
+Se la fattura mischia nature molto diverse (es. hardware + canone annuale), usa l'account della
+componente prevalente per importo, oppure un'etichetta generica ("Misto"). L'utente può
+splittare manualmente se necessario.
+
+=== OFFERTE / PREVENTIVI (document_type = "quote") ===
+
+1. OFFERTE con milestone di pagamento:
+   - Prima identifica OGNI COMPONENTE separata con il suo prezzo (licenza, canone, servizi).
+   - Per ogni componente con milestone, crea UN RECORD per ogni tranche.
+   - importo_tranche_netto = prezzo_componente_netto × percentuale / 100.
+   - date_cashflow diversa per ogni tranche in base alla milestone.
+   - transaction_id: "Offerta X/YYYY (tranche N/M)".
+   - note: descrivere quale milestone e componente.
+
+2. OFFERTE con componenti miste (licenza + canone):
+   - Crea record separati per ogni componente: licenza una tantum, canone annuale, servizi.
+   - Se la licenza ha milestone di pagamento, applica anche la regola 1.
    - Verifica: somma tranche licenza = prezzo licenza. Canone = importo intero separato.
 
-5. FATTURE con voci distinte:
-   - Se le voci hanno nature diverse (servizi diversi, periodi diversi) -> record separati
-   - Se le voci sono dello stesso servizio/fornitura -> un unico record aggregato
+=== CONTRATTI CON CANONI RICORRENTI ===
+
+3. CONTRATTI (affitto, leasing, abbonamento):
+   - Crea record separati: uno per eventuali costi una tantum, poi uno per ogni canone periodico.
+   - Per canoni mensili: un record per mese con date_cashflow scalate.
+   - Per canoni annuali: un record per anno.
+   - NON aggregare costo una tantum e canone ricorrente in un unico record.
 
 Return a valid JSON array of records. Extract ALL transactions found in the document.
 """

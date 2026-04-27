@@ -495,36 +495,86 @@ def format_invoice_for_llm(
         f"  Controparte: {classification.counterpart_name} (P.IVA {classification.counterpart_vat})",
     ]
 
-    # Line items
-    if invoice.linee_dettaglio:
-        lines += ["", "RIGHE DETTAGLIO:"]
-        for linea in invoice.linee_dettaglio:
-            parts = [f"  {linea.numero}. {linea.descrizione}"]
-            if linea.quantita:
-                um = f" {linea.unita_misura}" if linea.unita_misura else ""
-                parts.append(f"Qta: {linea.quantita}{um}")
-            parts.append(f"Prezzo unit: {linea.prezzo_unitario}")
-            parts.append(f"Totale riga: {linea.prezzo_totale}")
-            parts.append(f"IVA: {linea.aliquota_iva}%")
-            lines.append(" - ".join(parts))
-
-    # Summary amounts
+    # Summary amounts — shown BEFORE content so the LLM anchors on totals first
     lines += [
         "",
-        "RIEPILOGO IMPORTI:",
+        "RIEPILOGO IMPORTI (documento complessivo):",
         f"  Imponibile: {invoice.imponibile}",
         f"  IVA ({invoice.aliquota_iva}%): {invoice.iva}",
         f"  Totale documento: {invoice.totale}",
     ]
 
-    # Payment installments
-    n_rate = len(invoice.rate)
-    if invoice.rate:
-        lines += ["", "RATE DI PAGAMENTO:"]
-        for rata in invoice.rate:
-            lines.append(
-                f"  Rata {rata.numero}/{n_rate}: {rata.importo} EUR - Scadenza: {rata.scadenza}"
+    # Aggregated content summary — line items are informational only, NEVER split criteria
+    if invoice.linee_dettaglio:
+        lines += [
+            "",
+            "CONTENUTO (informativo per scegliere account/note — NON scomporre per riga):",
+            f"  Numero righe: {len(invoice.linee_dettaglio)}",
+        ]
+        if len(invoice.linee_dettaglio) <= 3:
+            for linea in invoice.linee_dettaglio:
+                lines.append(
+                    f"  - riga {linea.numero}: {linea.descrizione} (totale {linea.prezzo_totale})"
+                )
+        else:
+            sorted_lines = sorted(
+                invoice.linee_dettaglio,
+                key=lambda l: _parse_decimal(l.prezzo_totale),
+                reverse=True,
             )
+            for linea in sorted_lines[:3]:
+                lines.append(
+                    f"  - {linea.descrizione} (totale {linea.prezzo_totale})"
+                )
+            rest = len(invoice.linee_dettaglio) - 3
+            rest_label = "altra 1 riga minore" if rest == 1 else f"altre {rest} righe minori"
+            lines.append(f"  - ... e {rest_label}")
+
+    # Payment installments — prominent header + pre-calculated proportional amounts
+    n_rate = len(invoice.rate)
+    totale = invoice.totale
+
+    if n_rate >= 2 and totale > 0:
+        lines += [
+            "",
+            f"RATE DI PAGAMENTO (CREA {n_rate} RECORD, UNO PER OGNI RATA):",
+        ]
+        for rata in invoice.rate:
+            imp_rata = (invoice.imponibile * rata.importo / totale).quantize(Decimal("0.01"))
+            iva_rata = (invoice.iva * rata.importo / totale).quantize(Decimal("0.01"))
+            scadenza = rata.scadenza or (
+                _add_days(invoice.data_emissione, 30)
+                if invoice.data_emissione
+                else "da definire"
+            )
+            lines.append(
+                f"  Rata {rata.numero}/{n_rate}: "
+                f"imponibile {imp_rata} + IVA {iva_rata} = totale {rata.importo} EUR "
+                f"- Scadenza: {scadenza}"
+            )
+    elif n_rate == 1:
+        rata = invoice.rate[0]
+        scadenza = rata.scadenza or (
+            _add_days(invoice.data_emissione, 30)
+            if invoice.data_emissione
+            else "da definire"
+        )
+        lines += [
+            "",
+            "RATA UNICA (CREA 1 RECORD):",
+            f"  Imponibile {invoice.imponibile} + IVA {invoice.iva} = totale {rata.importo} EUR - Scadenza: {scadenza}",
+        ]
+    else:
+        scadenza = (
+            _add_days(invoice.data_emissione, 30)
+            if invoice.data_emissione
+            else "da definire"
+        )
+        lines += [
+            "",
+            "PAGAMENTO NON SPECIFICATO (CREA 1 RECORD):",
+            f"  Imponibile {invoice.imponibile} + IVA {invoice.iva} = totale {invoice.totale} EUR - Scadenza stimata: {scadenza}",
+        ]
 
     return "\n".join(lines)
 
