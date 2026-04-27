@@ -132,6 +132,10 @@ export function ImportDialog({
   const convertToRecordCreate = (item: ImportRecord): RecordCreate => {
     const area: Area = LEGACY_TYPE_TO_AREA[item.type] || 'actual'
 
+    // Preserve legacy numeric id as seq_num
+    const legacyId = item.id ? parseInt(item.id, 10) : undefined
+    const seq_num = legacyId && !isNaN(legacyId) ? legacyId : undefined
+
     return {
       area,
       type: parseFloat(item.amount) >= 0 ? 'income' : 'expense',
@@ -155,6 +159,7 @@ export function ImportDialog({
         d.setDate(d.getDate() + 7)
         return d.toISOString().split('T')[0]
       })(),
+      seq_num,
     }
   }
 
