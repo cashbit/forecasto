@@ -59,7 +59,7 @@ export function buildReminderMailto(params: {
     .slice()
     .sort((a, b) => a.date_cashflow.localeCompare(b.date_cashflow))
     .map((r) => {
-      const descr = [r.type, r.reference].filter(Boolean).join(' · ')
+      const descr = r.transaction_id?.trim() || [r.type, r.reference].filter(Boolean).join(' · ')
       return `- ${formatIt(r.date_cashflow)}  ${descr}  ${formatAmount(r.total || r.amount)}`
     })
     .join('\n')
