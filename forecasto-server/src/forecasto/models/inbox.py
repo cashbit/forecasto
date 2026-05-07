@@ -49,6 +49,9 @@ class InboxItem(Base, UUIDMixin, TimestampMixin):
     # Pre-search reconciliation candidates from agent
     reconciliation_matches: Mapped[list] = mapped_column(JSON, default=list)
 
+    # LLM's free-text explanation of how the document was processed (shown in GUI)
+    processing_reasoning: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     # Soft delete
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 

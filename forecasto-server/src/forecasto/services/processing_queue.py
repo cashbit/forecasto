@@ -13,6 +13,7 @@ from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from forecasto.config import settings
 from forecasto.database import async_session_maker
@@ -32,6 +33,20 @@ logger = logging.getLogger(__name__)
 DEFAULT_SYSTEM_PROMPT = """\
 You are a financial document processor for Forecasto, an Italian cash-flow management tool.
 Extract all financial transactions from the provided document and return structured records.
+
+CONTESTO WORKSPACE — IMPORTANTE:
+All'inizio del system prompt puoi trovare un blocco "## CONTESTO WORKSPACE" che descrive
+il soggetto che usa Forecasto (denominazione, partita IVA, conti bancari collegati).
+Quando presente, USALO sempre per:
+  1. Determinare se il documento è ATTIVO (il workspace è cedente/fornitore → ricavi, importi POSITIVI)
+     o PASSIVO (il workspace è cessionario/cliente → costi, importi NEGATIVI). Confronta la P.IVA
+     o la denominazione del workspace con cedente/cessionario presenti sul documento.
+  2. Decidere il segno degli importi: ATTIVA → positivi, PASSIVA → negativi.
+  3. Riconoscere quando un estratto conto / contabile bancaria è di un NOSTRO conto:
+     se l'intestatario o l'IBAN combaciano con uno dei conti del workspace, allora il punto
+     di vista è il nostro (entrate=positive, uscite=negative).
+Se il blocco CONTESTO WORKSPACE NON è presente o non è risolutivo, deduci dal contenuto e
+applica il default: importi negativi per spese, positivi per ricavi.
 
 FIELD DEFINITIONS — read carefully:
 
@@ -82,6 +97,7 @@ FIELD DEFINITIONS — read carefully:
 - document_type: classify the document as one of:
   "invoice", "quote", "bank_statement", "wire_transfer", "receipt", "credit_note", "other"
   For bank_statement and wire_transfer, stage should be "1" and area should be "actual".
+  Vedi anche la sezione dedicata "ESTRATTI CONTO E CONTABILI BANCARIE" più sotto.
 
 SPLITTING DEI RECORD — REGOLA FONDAMENTALE:
 Ogni movimento di cassa distinto = un record separato.
@@ -157,8 +173,179 @@ splittare manualmente se necessario.
    - Per canoni annuali: un record per anno.
    - NON aggregare costo una tantum e canone ricorrente in un unico record.
 
-Return a valid JSON array of records. Extract ALL transactions found in the document.
+=== ESTRATTI CONTO E CONTABILI BANCARIE ===
+(document_type = "bank_statement" o "wire_transfer")
+
+PUNTO DI VISTA: il documento descrive un conto bancario INTESTATO AL WORKSPACE
+(verifica con il blocco CONTESTO WORKSPACE quando presente, confrontando intestatario o
+IBAN con i conti del workspace). Da quel punto di vista:
+  - ENTRATE / accrediti / bonifici in entrata → amount POSITIVO
+  - USCITE / addebiti / bonifici in uscita / prelievi / commissioni → amount NEGATIVO
+
+UNA RIGA DI MOVIMENTO = UN RECORD. Mai aggregare più righe di estratto conto in un solo
+record, anche se hanno la stessa controparte o lo stesso giorno. Il livello di splitting è
+la singola operazione bancaria.
+
+REGOLE STAGE / AREA / IVA:
+  - stage = "1" (movimento già avvenuto, cassa già impattata)
+  - area = "actual"
+  - vat = 0 (gli EC non riportano IVA: l'IVA è sulla fattura associata)
+  - total = amount (perché vat = 0)
+
+DATE:
+  - date_cashflow = data valuta della riga, oppure data contabile se la valuta non è indicata
+  - date_document = stessa data (è il movimento bancario stesso)
+  - date_offer = stessa data
+
+CAMPI CHIAVE PER LA RICONCILIAZIONE — compilali con cura:
+  - reference: nome PULITO della controparte estratto dalla causale. Esempi:
+    "VODAF AUTOM SDD 0723" → "Vodafone Italia S.p.A."
+    "BON. ACME SRL FATT 12" → "Acme S.r.l."
+    "POS PAGAMENTO TIM" → "TIM S.p.A."
+    Se la causale è opaca (commissioni, spese tenuta conto, interessi), usa la denominazione
+    della banca o un'etichetta generica come "Banca [Nome]" o "Spese bancarie".
+  - transaction_id: estrai TUTTI i riferimenti documento presenti nella causale. Se trovi
+    "FATT N. 12/2026" → transaction_id = "Fattura 12/2026". Se trovi solo identificativi
+    bancari (CRO, TRN, num. operazione), usali: "CRO 1234567890", "TRN ABCD...". Non lasciare
+    mai vuoto.
+  - note: trascrivi la causale completa così come appare sull'estratto conto, prefissa con
+    una breve interpretazione. Esempio: "Bonifico in entrata da Acme S.r.l. per saldo Fattura
+    12/2026. Causale completa: 'BON SEPA ACME SRL FATT 12/2026 ORDINANTE...'."
+
+MAPPATURA CAUSALI → TYPE:
+  - Bonifico/SDD da clienti → type = "Clienti"
+  - Bonifico/SDD a fornitori → type = "Fornitori"
+  - Stipendi/cedolini → type = "Dipendenti"
+  - F24, IVA, ritenute → type = "Tasse"
+  - Bollette (luce/gas/telefono/internet) → type = "Utenze"
+  - Affitto/canoni immobiliari → type = "Affitti"
+  - Spese bancarie / commissioni / bolli / interessi → type = "Banche"
+  - Altri movimenti non classificabili → type = "Altro"
+
+GIROCONTI INTERNI (movimenti tra conti dello stesso workspace):
+Se la controparte di un movimento è chiaramente UN ALTRO conto del workspace (banca/IBAN
+indicato nel CONTESTO WORKSPACE, oppure causale "GIROCONTO" o "TRASFERIMENTO TRA C/C"),
+crea comunque il record ma con type = "Banche" e segnalalo nella note ("Giroconto interno").
+NON tentare di creare la "controparte" inversa: l'altro conto avrà il suo estratto conto.
+
+CARTE DI CREDITO (estratto carta o lista movimenti carta):
+  - Trattali come bank_statement: una riga = un record, segno dal punto di vista di chi paga
+    (workspace → uscite negative).
+  - Spese di bollo/quota carta → type = "Banche".
+  - Acquisti POS → type plausibile dal merchant (es. ristoranti = "Altro" o categoria
+    pertinente, fornitori riconosciuti = "Fornitori", carburante = "Altro").
+
+=== USO DEL BLOCCO "RECORD APERTI DEL WORKSPACE" ===
+
+Se nel messaggio user trovi un blocco "## RECORD APERTI DEL WORKSPACE" (lista compatta di
+record già presenti nel sistema con stage=0), USALO con questa priorità:
+  1. RICONCILIAZIONE EC: per ogni movimento di estratto conto/contabile, prova ad abbinarlo
+     a un record della lista (matching su reference + total ± 0,02; oppure transaction_id
+     se presente in causale). Se trovi un match → copia ESATTAMENTE il `transaction_id`
+     dalla lista nel record che generi (es. "Fattura 12/2026", non "FT 12").
+  2. ALLINEAMENTO NAMING: se la stessa controparte è già presente nella lista, riusa la
+     stessa esatta forma di `reference` e `account` (no varianti tipo "Vodafone SpA" se
+     in lista c'è "Vodafone Italia S.p.A.").
+  3. DUPLICATI: se stai estraendo una fattura il cui (`reference` + `transaction_id`)
+     coincide con una riga della lista, segnala "POSSIBILE DUPLICATO" nel `reasoning`.
+     Estrai comunque il record (la decisione finale è dell'utente).
+  4. STAGE COERENTE: per i record di tipo bank_statement/wire_transfer che combaciano con
+     un aperto della lista, lascia stage="1" (il match server-side promuoverà l'aperto).
+
+Se il blocco RECORD APERTI non è presente o è vuoto, ignora questa sezione.
+
+=== REASONING (campo OBBLIGATORIO `reasoning`) ===
+
+Compila SEMPRE il campo top-level `reasoning` (non per record — uno per documento) con una
+spiegazione SINTETICA in italiano (3-8 frasi) delle scelte fatte:
+  - come hai classificato il documento (attivo/passivo, tipo, e perché),
+  - se e come hai usato il CONTESTO WORKSPACE per decidere il punto di vista,
+  - come hai gestito le rate / componenti / canoni (e perché N record),
+  - eventuali abbinamenti coi RECORD APERTI o sospetti di duplicato,
+  - assunzioni o ambiguità (date stimate, IVA al 22% di default, ecc.).
+Sii diretto, niente saluti né formule di cortesia. Verrà mostrato all'utente nella GUI.
+
+Return a valid JSON object with `records` (array) and `reasoning` (string).
 """
+
+
+def _build_open_records_block(open_records: list[dict]) -> str:
+    """Build the '## RECORD APERTI DEL WORKSPACE' text block for the LLM.
+
+    Returns an empty string when there are no open records.
+    """
+    if not open_records:
+        return ""
+    lines = [
+        "## RECORD APERTI DEL WORKSPACE",
+        (
+            f"Ecco i {len(open_records)} record già presenti nel workspace con stage=0 (non "
+            f"ancora pagati/saldati), in finestra ±90gg/+180gg sulla data cashflow. Usa questa "
+            f"lista per:"
+        ),
+        "  1. RICONCILIAZIONE: se il documento è un estratto conto o una contabile, abbina "
+        "ogni movimento a un record di questa lista quando reference/transaction_id/importo "
+        "combaciano. Compila il campo `transaction_id` del nuovo record copiando ESATTAMENTE "
+        "il valore della lista (es. \"Fattura 12/2026\") in modo che il matching server-side "
+        "sia preciso.",
+        "  2. DUPLICATI: se stai estraendo una fattura che è già presente in questa lista "
+        "(stesso reference + stesso transaction_id), segnalalo nel campo `reasoning` ed "
+        "estraila comunque (lasceremo decidere all'utente).",
+        "  3. NORMALIZZAZIONE: usa la forma esatta di `reference` e `account` già usata in "
+        "questa lista quando trovi la stessa controparte (es. se trovi 'Vodafone Italia "
+        "S.p.A.' qui, scrivila uguale e non 'VODAFONE' o 'Vodafone SpA').",
+        "",
+        "Formato: id | reference | transaction_id | total | date_cashflow | type | account",
+    ]
+    for r in open_records:
+        lines.append(
+            f"  {r['id'][:8]} | {r['reference']} | {r['transaction_id']} | "
+            f"{r['total']:.2f} | {r['date_cashflow']} | {r['type']} | {r['account']}"
+        )
+    return "\n".join(lines)
+
+
+def _build_workspace_context_block(
+    workspace_name: str,
+    workspace_legal_name: str,
+    workspace_vat: str,
+    bank_account_labels: list[str],
+) -> str:
+    """Build the '## CONTESTO WORKSPACE' block prepended to the system prompt.
+
+    Returns an empty string if no useful info is available (so prepending is a no-op).
+    """
+    has_legal = bool(workspace_legal_name and workspace_legal_name != workspace_name)
+    has_vat = bool(workspace_vat)
+    has_banks = bool(bank_account_labels)
+
+    if not (workspace_name or has_legal or has_vat or has_banks):
+        return ""
+
+    lines = ["## CONTESTO WORKSPACE"]
+    lines.append(
+        "Il workspace che usa Forecasto è il SOGGETTO PROPRIETARIO dei dati. Quando un "
+        "documento mostra cedente/cessionario, intestatario o IBAN che combaciano con i dati "
+        "qui sotto, allora il punto di vista è il NOSTRO."
+    )
+    if workspace_name:
+        lines.append(f"- Nome workspace: {workspace_name}")
+    if has_legal:
+        lines.append(f"- Ragione sociale / anagrafica: {workspace_legal_name}")
+    if has_vat:
+        lines.append(f"- Partita IVA: {workspace_vat}")
+    if has_banks:
+        bank_str = ", ".join(bank_account_labels)
+        lines.append(f"- Conti bancari del workspace: {bank_str}")
+    lines.append("")
+    lines.append(
+        "Regola operativa: se il documento è una fattura e la P.IVA o la denominazione qui "
+        "sopra coincide con il CEDENTE, allora è una FATTURA ATTIVA (importi POSITIVI). Se "
+        "coincide con il CESSIONARIO, è una FATTURA PASSIVA (importi NEGATIVI). Se è un "
+        "estratto conto/contabile bancaria di uno dei conti qui sopra, le entrate sono "
+        "POSITIVE e le uscite NEGATIVE."
+    )
+    return "\n".join(lines)
 
 
 class ProcessingQueue:
@@ -308,12 +495,59 @@ class ProcessingQueue:
 
                 # Load workspace (needed for prompts and XML classification)
                 ws_result = await db.execute(
-                    select(Workspace).where(Workspace.id == job.workspace_id)
+                    select(Workspace)
+                    .options(
+                        selectinload(Workspace.bank_account),
+                        selectinload(Workspace.bank_accounts),
+                    )
+                    .where(Workspace.id == job.workspace_id)
                 )
                 workspace = ws_result.scalar_one_or_none()
                 doc_settings = (workspace.settings or {}).get("document_processing", {}) if workspace else {}
                 system_prompt = doc_settings.get("system_prompt") or DEFAULT_SYSTEM_PROMPT
                 user_prompt = doc_settings.get("user_prompt", "")
+
+                # Load VAT registry (used by both PDF prompt and XML classifier)
+                workspace_vat = ""
+                workspace_legal_name = ""
+                if workspace and workspace.vat_registry_id:
+                    from forecasto.models.vat_registry import VatRegistry
+                    vat_reg_result = await db.execute(
+                        select(VatRegistry).where(VatRegistry.id == workspace.vat_registry_id)
+                    )
+                    vat_reg = vat_reg_result.scalar_one_or_none()
+                    if vat_reg:
+                        workspace_vat = vat_reg.vat_number or ""
+                        workspace_legal_name = vat_reg.name or ""
+
+                # Collect bank account labels (name + bank_name) for the context block
+                bank_account_labels: list[str] = []
+                if workspace:
+                    seen_bank_ids: set[str] = set()
+                    bank_candidates = list(workspace.bank_accounts or [])
+                    if workspace.bank_account and workspace.bank_account.id not in {
+                        b.id for b in bank_candidates
+                    }:
+                        bank_candidates.insert(0, workspace.bank_account)
+                    for ba in bank_candidates:
+                        if ba.id in seen_bank_ids:
+                            continue
+                        seen_bank_ids.add(ba.id)
+                        label = ba.name
+                        if ba.bank_name and ba.bank_name not in (ba.name or ""):
+                            label = f"{ba.name} ({ba.bank_name})"
+                        bank_account_labels.append(label)
+
+                # Prepend workspace context block to the system prompt
+                workspace_name = workspace.name if workspace else ""
+                context_block = _build_workspace_context_block(
+                    workspace_name=workspace_name,
+                    workspace_legal_name=workspace_legal_name,
+                    workspace_vat=workspace_vat,
+                    bank_account_labels=bank_account_labels,
+                )
+                if context_block:
+                    system_prompt = context_block + "\n\n" + system_prompt
 
                 # Compose agent prompts (user-level + workspace-level)
                 from forecasto.models.user import User as UserModel
@@ -350,17 +584,7 @@ class ProcessingQueue:
 
                     invoice = parse_sdi_xml(xml_content, job.source_filename)
 
-                    # Load workspace VAT number for classification
-                    workspace_vat = ""
-                    if workspace and workspace.vat_registry_id:
-                        from forecasto.models.vat_registry import VatRegistry
-                        vat_reg_result = await db.execute(
-                            select(VatRegistry).where(VatRegistry.id == workspace.vat_registry_id)
-                        )
-                        vat_reg = vat_reg_result.scalar_one_or_none()
-                        if vat_reg:
-                            workspace_vat = vat_reg.vat_number or ""
-
+                    # workspace_vat already loaded above (used for both branches)
                     classification = classify_invoice(invoice, workspace_vat)
                     text_content_for_llm = format_invoice_for_llm(invoice, classification)
                     page_count = 1
@@ -403,16 +627,29 @@ class ProcessingQueue:
                         )
                         return
 
+                # Load open records for prompt context (reconciliation + duplicate detection)
+                from forecasto.services.inbox_service import InboxService
+                inbox_service = InboxService(db)
+                try:
+                    open_records = await inbox_service.get_open_records_for_context(
+                        workspace_id=job.workspace_id
+                    )
+                except Exception:
+                    logger.exception("Job %s: failed to load open records for context", job_id)
+                    open_records = []
+                open_records_block = _build_open_records_block(open_records)
+
                 # Call Anthropic API
                 from forecasto.services.llm.anthropic_provider import extract_records_with_usage
 
-                records, usage = await extract_records_with_usage(
+                records, usage, reasoning = await extract_records_with_usage(
                     image_blocks=image_blocks,
                     system_prompt=system_prompt,
                     user_prompt=user_prompt,
                     model=job.llm_model,
                     api_key=settings.anthropic_api_key or None,
                     text_content=text_content_for_llm,
+                    extra_context_block=open_records_block,
                 )
 
                 # Free memory
@@ -422,10 +659,7 @@ class ProcessingQueue:
                 # Get document_type from first record
                 doc_type = records[0].get("document_type") if records else None
 
-                # Create InboxItem
-                from forecasto.services.inbox_service import InboxService
-                inbox_service = InboxService(db)
-
+                # inbox_service already instantiated above for open_records loading
                 # Find similar records PER ROW and auto-assign best match
                 claimed_ids: set[str] = set()  # prevent same record matched to multiple rows
                 for rec in records:
@@ -461,6 +695,7 @@ class ProcessingQueue:
                     agent_version="server-1.0",
                     extracted_data=[RecordSuggestion(**r) for r in records],
                     document_type=doc_type,
+                    processing_reasoning=reasoning or None,
                 )
                 inbox_item = await inbox_service.create_item(
                     workspace_id=job.workspace_id, data=inbox_data

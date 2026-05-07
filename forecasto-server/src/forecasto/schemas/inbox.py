@@ -48,6 +48,7 @@ class InboxItemCreate(BaseModel):
     extracted_data: list[RecordSuggestion]
     document_type: str | None = None
     reconciliation_matches: list = Field(default_factory=list)
+    processing_reasoning: str | None = None
 
 
 class InboxItemUpdate(BaseModel):
@@ -74,6 +75,7 @@ class InboxItemResponse(BaseModel):
     confirmed_record_ids: list[str]
     document_type: str | None
     reconciliation_matches: list
+    processing_reasoning: str | None = None
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None

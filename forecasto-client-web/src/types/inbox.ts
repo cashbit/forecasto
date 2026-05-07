@@ -60,6 +60,7 @@ export interface InboxItem {
   extracted_data: RecordSuggestion[]
   document_type?: string
   reconciliation_matches?: ReconciliationMatch[]
+  processing_reasoning?: string | null
   confirmed_record_ids: string[]
   created_at: string
   updated_at: string
