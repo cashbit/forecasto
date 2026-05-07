@@ -51,6 +51,7 @@ class InboxService:
             confirmed_record_ids=[],
             document_type=data.document_type,
             reconciliation_matches=data.reconciliation_matches or [],
+            processing_reasoning=data.processing_reasoning,
         )
         self.db.add(item)
         await self.db.flush()
@@ -741,3 +742,47 @@ class InboxService:
 
         scored.sort(key=lambda x: x["match_score"], reverse=True)
         return scored[:limit]
+
+    async def get_open_records_for_context(
+        self,
+        workspace_id: str,
+        days_past: int = 90,
+        days_future: int = 180,
+        limit: int = 50,
+    ) -> list[dict]:
+        """Return open (unpaid/unsettled) records around today, for prompt context.
+
+        Used to give the LLM a compact list of records it can reconcile against
+        when extracting from bank statements, and to detect duplicate invoice imports.
+        """
+        from datetime import date, timedelta
+        from forecasto.models.record import Record
+
+        today = date.today()
+        cutoff_past = today - timedelta(days=days_past)
+        cutoff_future = today + timedelta(days=days_future)
+
+        result = await self.db.execute(
+            select(Record).where(
+                Record.workspace_id == workspace_id,
+                Record.deleted_at.is_(None),
+                Record.stage != "1",
+                Record.area.in_(["actual", "orders", "prospect"]),
+                Record.date_cashflow >= cutoff_past,
+                Record.date_cashflow <= cutoff_future,
+            ).order_by(Record.date_cashflow.asc()).limit(limit)
+        )
+        records = list(result.scalars().all())
+        return [
+            {
+                "id": r.id,
+                "reference": r.reference or "",
+                "transaction_id": r.transaction_id or "",
+                "total": float(r.total) if r.total is not None else 0.0,
+                "date_cashflow": r.date_cashflow.isoformat() if r.date_cashflow else "",
+                "type": r.type or "",
+                "account": r.account or "",
+                "area": r.area or "",
+            }
+            for r in records
+        ]

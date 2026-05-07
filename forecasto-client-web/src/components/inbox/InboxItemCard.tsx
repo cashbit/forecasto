@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, X, Trash2, FileText, AlertTriangle, ChevronDown, ChevronUp, Pencil, StickyNote, RotateCcw } from 'lucide-react'
+import { Check, X, Trash2, FileText, AlertTriangle, ChevronDown, ChevronUp, Pencil, StickyNote, RotateCcw, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -45,6 +45,7 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate, o
   const [isLoading, setIsLoading] = useState(false)
   const [selectedMatchIds, setSelectedMatchIds] = useState<Set<string>>(new Set())
   const [allNotesExpanded, setAllNotesExpanded] = useState(false)
+  const [reasoningExpanded, setReasoningExpanded] = useState(false)
 
   const isPending = item.status === 'pending'
   const isConfirmed = item.status === 'confirmed'
@@ -188,6 +189,30 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate, o
       {/* Expanded body */}
       {isExpanded && (
         <div className="border-t px-4 pb-4 pt-3">
+          {/* AI reasoning — explains the model's extraction choices */}
+          {item.processing_reasoning && (
+            <div className="mb-3 rounded-md border border-violet-200 bg-violet-50/50">
+              <button
+                type="button"
+                onClick={() => setReasoningExpanded((v) => !v)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-violet-600 flex-shrink-0" />
+                <span className="text-xs font-semibold text-violet-800 flex-1">
+                  Ragionamento dell'AI
+                </span>
+                {reasoningExpanded
+                  ? <ChevronUp className="h-3.5 w-3.5 text-violet-600" />
+                  : <ChevronDown className="h-3.5 w-3.5 text-violet-600" />}
+              </button>
+              {reasoningExpanded && (
+                <p className="text-xs text-violet-900 whitespace-pre-line leading-relaxed px-3 pb-3 pt-0">
+                  {item.processing_reasoning}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Reconciliation / Similarity panel — shown for ALL document types when matches exist */}
           {item.reconciliation_matches && item.reconciliation_matches.length > 0 && (
             <div className="mb-3 rounded-md border border-amber-200 bg-amber-50/50 p-3">

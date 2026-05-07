@@ -19,6 +19,20 @@ EXTRACT_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
+            "reasoning": {
+                "type": "string",
+                "description": (
+                    "Spiegazione SINTETICA in italiano (3-8 frasi) di come hai elaborato il "
+                    "documento. Tocca, dove pertinente: (1) come hai classificato il documento "
+                    "(attivo/passivo, tipo); (2) come hai usato il CONTESTO WORKSPACE (P.IVA, "
+                    "denominazione, conti) per decidere il punto di vista e il segno; "
+                    "(3) come hai gestito le rate / milestone / canoni e perché hai prodotto "
+                    "N record; (4) eventuali abbinamenti con i RECORD APERTI DEL WORKSPACE "
+                    "e/o sospetti di duplicato; (5) assunzioni o ambiguità (es. data calcolata, "
+                    "IVA dedotta al 22% di default). Non descrivere lo schema dei campi: spiega "
+                    "le scelte fatte su QUESTO documento. Sarà mostrato nella GUI all'utente."
+                ),
+            },
             "records": {
                 "type": "array",
                 "items": {
@@ -110,24 +124,33 @@ async def extract_records_with_usage(
     model: str = "claude-sonnet-4-6",
     api_key: str | None = None,
     text_content: str | None = None,
-) -> tuple[list[dict], dict]:
-    """Call Anthropic API and return (records, usage_dict).
+    extra_context_block: str | None = None,
+) -> tuple[list[dict], dict, str]:
+    """Call Anthropic API and return (records, usage_dict, reasoning).
 
     If text_content is provided, it's used as the message content instead of
     image_blocks (e.g. for pre-parsed XML invoices sent as structured text).
 
+    extra_context_block, if provided, is prepended to the message content as a
+    text block (used for the workspace's open-records list).
+
     usage_dict contains: input_tokens, output_tokens,
     cache_creation_input_tokens, cache_read_input_tokens
+    reasoning is the LLM's free-text explanation of its extraction choices.
     """
     client = anthropic.AsyncAnthropic(
         api_key=api_key or None
     )
 
+    content: list[dict] = []
+    if extra_context_block:
+        content.append({"type": "text", "text": extra_context_block})
+
     if text_content:
         # Text-only mode (e.g. parsed XML invoice data)
-        content: list[dict] = [{"type": "text", "text": text_content}]
+        content.append({"type": "text", "text": text_content})
     else:
-        content: list[dict] = list(image_blocks)
+        content.extend(image_blocks)
     user_text = user_prompt.strip() or "Extract all financial records from this document."
     content.append({"type": "text", "text": user_text})
 
@@ -140,11 +163,13 @@ async def extract_records_with_usage(
         messages=[{"role": "user", "content": content}],
     )
 
-    # Extract records from tool_use block
-    records = []
+    # Extract records and reasoning from tool_use block
+    records: list[dict] = []
+    reasoning: str = ""
     for block in response.content:
         if block.type == "tool_use" and block.name == "extract_financial_records":
             records = block.input.get("records", [])
+            reasoning = block.input.get("reasoning", "") or ""
             break
 
     # Capture usage
@@ -155,4 +180,4 @@ async def extract_records_with_usage(
         "cache_read_input_tokens": getattr(response.usage, "cache_read_input_tokens", 0) or 0,
     }
 
-    return records, usage
+    return records, usage, reasoning
