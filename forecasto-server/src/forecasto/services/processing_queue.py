@@ -251,6 +251,13 @@ record già presenti nel sistema con stage=0), USALO con questa priorità:
      Estrai comunque il record (la decisione finale è dell'utente).
   4. STAGE COERENTE: per i record di tipo bank_statement/wire_transfer che combaciano con
      un aperto della lista, lascia stage="1" (il match server-side promuoverà l'aperto).
+  5. PERMISSIVITÀ SU IMPORTO (solo bank_statement/wire_transfer): se la lista contiene UN
+     SOLO record aperto con la stessa controparte del movimento, copia comunque il
+     `transaction_id` ESATTO dalla lista anche se il totale del bonifico differisce fino al
+     50%. Causa tipica: sconto in saldo, commissioni scorporate, arrotondamenti. Nel
+     `reasoning` annota: "importo divergente: probabile saldo/sconto, riconciliato con
+     [transaction_id]". Il sistema poi proporrà all'utente di promuovere l'ordine ad actual
+     ricalcolando l'imponibile dal totale del bonifico.
 
 Se il blocco RECORD APERTI non è presente o è vuoto, ignora questa sezione.
 
@@ -294,12 +301,18 @@ def _build_open_records_block(open_records: list[dict]) -> str:
         "  3. NORMALIZZAZIONE: usa la forma esatta di `reference` e `account` già usata in "
         "questa lista quando trovi la stessa controparte (es. se trovi 'Vodafone Italia "
         "S.p.A.' qui, scrivila uguale e non 'VODAFONE' o 'Vodafone SpA').",
+        "  4. PERMISSIVITÀ: per estratti conto/contabili bancarie, se UN SOLO record della "
+        "lista corrisponde alla controparte del movimento (anche se l'importo differisce "
+        "fino al 50%), copia comunque il `transaction_id` esatto da quel record. Caso "
+        "tipico: sconto applicato in saldo, commissione bancaria scorporata, arrotondamento. "
+        "Nel `reasoning` annota: 'importo divergente: probabile saldo/sconto, riconciliato "
+        "con [transaction_id]'.",
         "",
-        "Formato: id | reference | transaction_id | total | date_cashflow | type | account",
+        "Formato: id | area | reference | transaction_id | total | date_cashflow | type | account",
     ]
     for r in open_records:
         lines.append(
-            f"  {r['id'][:8]} | {r['reference']} | {r['transaction_id']} | "
+            f"  {r['id'][:8]} | {r.get('area', '')} | {r['reference']} | {r['transaction_id']} | "
             f"{r['total']:.2f} | {r['date_cashflow']} | {r['type']} | {r['account']}"
         )
     return "\n".join(lines)
@@ -676,7 +689,14 @@ class ProcessingQueue:
                         # Filter out already-claimed records
                         available = [m for m in matches if m["record_id"] not in claimed_ids]
                         rec["similar_records"] = available
-                        if available and available[0]["match_score"] >= 0.4:
+                        # Lower auto-assign threshold for payment documents: a wire
+                        # transfer / bank statement is far more sensitive to "no
+                        # match proposed" than a fattura, so we propose at >= 0.30
+                        # and let the user dismiss low-confidence picks.
+                        auto_threshold = (
+                            0.30 if doc_type in ("wire_transfer", "bank_statement") else 0.40
+                        )
+                        if available and available[0]["match_score"] >= auto_threshold:
                             rec["matched_record"] = available[0]
                             claimed_ids.add(available[0]["record_id"])
                         else:

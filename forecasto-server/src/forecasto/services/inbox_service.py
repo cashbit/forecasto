@@ -207,9 +207,13 @@ class InboxService:
 
             # Check if this suggestion has a per-row matched_record to update
             matched = suggestion.matched_record
-            if matched and matched.get("match_type") in ("update", "payment"):
+            if matched and matched.get("match_type") in ("update", "payment", "update_partial"):
                 from forecasto.models.record import Record as RecordModel
                 from datetime import datetime as dt_cls
+                from forecasto.services.vat_calc import (
+                    infer_vat_rate,
+                    recompute_vat_from_total,
+                )
 
                 rec_result = await self.db.execute(
                     select(RecordModel).where(
@@ -219,10 +223,39 @@ class InboxService:
                 )
                 existing = rec_result.scalar_one_or_none()
                 if existing:
-                    if matched.get("match_type") == "payment":
+                    match_type = matched.get("match_type")
+                    if match_type in ("payment", "update_partial"):
+                        # Bonifico/EC closing an open record. Optionally recompute
+                        # imponibile + vat from the bank's gross total (default ON);
+                        # always promote stage to "1" and transfer to actual.
+                        recompute_vat = matched.get("recompute_vat", True)
+                        new_total = suggestion.total
+                        rate = infer_vat_rate(existing.amount, existing.vat)
+
+                        if recompute_vat and new_total is not None:
+                            new_amount, new_vat = recompute_vat_from_total(
+                                Decimal(str(new_total)), rate
+                            )
+                            existing.amount = new_amount
+                            existing.vat = new_vat
+                            existing.total = Decimal(str(new_total))
+                        elif new_total is not None:
+                            # User opted out of recompute (e.g. reverse-charge).
+                            # Update only the gross total.
+                            existing.total = Decimal(str(new_total))
+
                         existing.stage = "1"
+                        existing.date_cashflow = date_cashflow
+                        # transaction_id of the original order is preserved.
+                        # The bank line's own info goes into note as a payment trail.
+                        if suggestion.note:
+                            tag = "[Pagato"
+                            if suggestion.transaction_id:
+                                tag += f" — {suggestion.transaction_id}"
+                            tag += f"]: {suggestion.note}"
+                            existing.note = (existing.note or "").rstrip() + ("\n" if existing.note else "") + tag
                     else:
-                        # Update fields from suggestion
+                        # Update fields from suggestion (legacy behavior for non-payment matches)
                         existing.amount = suggestion.amount
                         existing.total = suggestion.total
                         existing.vat = suggestion.vat
@@ -235,20 +268,20 @@ class InboxService:
                         if date_document:
                             existing.date_document = date_document
 
-                        # Transfer area if suggested
-                        transfer_to = matched.get("suggested_transfer_area")
-                        if transfer_to and transfer_to != existing.area:
-                            old_area = existing.area
-                            existing.area = transfer_to
-                            history = list(existing.transfer_history) if existing.transfer_history else []
-                            history.append({
-                                "from_area": old_area,
-                                "to_area": transfer_to,
-                                "transferred_at": dt_cls.utcnow().isoformat(),
-                                "transferred_by": user.id,
-                                "note": f"Auto-transfer from inbox: {item.document_type}",
-                            })
-                            existing.transfer_history = history
+                    # Transfer area if suggested (applies to all match types).
+                    transfer_to = matched.get("suggested_transfer_area")
+                    if transfer_to and transfer_to != existing.area:
+                        old_area = existing.area
+                        existing.area = transfer_to
+                        history = list(existing.transfer_history) if existing.transfer_history else []
+                        history.append({
+                            "from_area": old_area,
+                            "to_area": transfer_to,
+                            "transferred_at": dt_cls.utcnow().isoformat(),
+                            "transferred_by": user.id,
+                            "note": f"Auto-transfer from inbox: {item.document_type}",
+                        })
+                        existing.transfer_history = history
 
                     existing.updated_by = user.id
                     existing.updated_at = dt_cls.utcnow()
@@ -737,6 +770,38 @@ class InboxService:
                     "match_score": round(score, 2),
                     "match_reasons": reasons,
                     "match_type": match_type,
+                    "low_confidence": False,
+                    "recompute_vat": match_type in ("payment", "update_partial"),
+                    "suggested_transfer_area": transfer_to,
+                })
+
+        # Fallback "unico candidato fornitore": for payment docs, when scoring
+        # produced nothing but there is exactly ONE open record whose reference
+        # overlaps with the bank line's counterpart, propose it anyway with
+        # low confidence. The user keeps the option to dismiss it.
+        if is_payment and not scored and len(candidate_records) == 1:
+            from forecasto.services.similarity import _normalize_reference
+            rec = candidate_records[0]
+            ref_overlap = _normalize_reference(rec.reference or "") & _normalize_reference(reference)
+            if ref_overlap:
+                transfer_to = get_suggested_transfer_area(document_type, rec.area)
+                scored.append({
+                    "record_id": rec.id,
+                    "reference": rec.reference,
+                    "account": rec.account,
+                    "amount": float(rec.amount),
+                    "total": float(rec.total),
+                    "transaction_id": rec.transaction_id,
+                    "date_cashflow": rec.date_cashflow.isoformat() if rec.date_cashflow else None,
+                    "date_offer": rec.date_offer.isoformat() if rec.date_offer else None,
+                    "stage": rec.stage,
+                    "area": rec.area,
+                    "note": rec.note,
+                    "match_score": 0.35,
+                    "match_reasons": ["unico candidato sul fornitore", "importo divergente"],
+                    "match_type": "update_partial",
+                    "low_confidence": True,
+                    "recompute_vat": True,
                     "suggested_transfer_area": transfer_to,
                 })
 
