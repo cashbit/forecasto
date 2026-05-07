@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bot, RefreshCw, Pencil, BarChart3, ChevronDown, ChevronUp } from 'lucide-react'
+import { Bot, RefreshCw, Pencil, BarChart3, ChevronDown, ChevronUp, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
@@ -61,8 +61,10 @@ function WorkspacePromptCard({ workspace, queryClient }: { workspace: Workspace;
   const { data: patterns } = useQuery({
     queryKey: ['record-patterns', workspace.id],
     queryFn: () => promptBuilderApi.getRecordPatterns(workspace.id),
-    enabled: showPatterns,
   })
+
+  const totalRecords = patterns?.total_records
+  const insufficientRecords = totalRecords !== undefined && totalRecords < 10
 
   const generateMutation = useMutation({
     mutationFn: (force: boolean) => promptBuilderApi.generateWorkspacePrompt(workspace.id, force),
@@ -158,44 +160,70 @@ function WorkspacePromptCard({ workspace, queryClient }: { workspace: Workspace;
         )}
 
         {!editing && (
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              size="sm"
-              onClick={() => setConfirmOpen(true)}
-              disabled={generateMutation.isPending}
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
-              {promptData?.prompt ? 'Aggiorna' : 'Genera'}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setEditText(promptData?.prompt || '')
-                setEditing(true)
-              }}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Modifica
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowPatterns(!showPatterns)}
-            >
-              <BarChart3 className="mr-2 h-4 w-4" />
-              Pattern
-              {showPatterns ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowHistory(!showHistory)}
-            >
-              Storico
-              {showHistory ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />}
-            </Button>
-          </div>
+          <>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                size="sm"
+                onClick={() => setConfirmOpen(true)}
+                disabled={generateMutation.isPending || insufficientRecords}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
+                {promptData?.prompt ? 'Aggiorna' : 'Genera'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditText(promptData?.prompt || '')
+                  setEditing(true)
+                }}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Modifica
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowPatterns(!showPatterns)}
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Pattern
+                {showPatterns ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowHistory(!showHistory)}
+              >
+                Storico
+                {showHistory ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />}
+              </Button>
+            </div>
+
+            <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
+              <Info className="h-4 w-4 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p>
+                  La generazione automatica del prompt analizza i record presenti nel workspace per
+                  estrarre regole di classificazione (mappature account, IVA, ritenuta, termini di
+                  pagamento, ecc.).
+                </p>
+                <p>
+                  Sono richiesti <strong>almeno 10 record</strong> nel workspace.
+                  {totalRecords !== undefined && (
+                    <>
+                      {' '}Attualmente: <strong>{totalRecords}</strong>.
+                    </>
+                  )}
+                </p>
+                {insufficientRecords && (
+                  <p className="font-medium">
+                    Aggiungi altri record (manualmente o tramite la inbox) prima di rigenerare il prompt.
+                  </p>
+                )}
+              </div>
+            </div>
+          </>
         )}
 
         {/* Auto-update toggle */}
@@ -404,6 +432,10 @@ function UserPromptCard({ queryClient }: { queryClient: ReturnType<typeof useQue
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const { workspaces } = useWorkspaceStore()
+
+  const ownedWorkspaces = workspaces.filter(w => w.role === 'owner' || w.role === 'admin')
+  const noOwnedWorkspaces = ownedWorkspaces.length === 0
 
   const { data: promptData, isLoading } = useQuery({
     queryKey: ['user-prompt'],
@@ -482,27 +514,47 @@ function UserPromptCard({ queryClient }: { queryClient: ReturnType<typeof useQue
         )}
 
         {!editing && (
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => setConfirmOpen(true)}
-              disabled={generateMutation.isPending}
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
-              {promptData?.prompt ? 'Aggiorna' : 'Genera'}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setEditText(promptData?.prompt || '')
-                setEditing(true)
-              }}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Modifica
-            </Button>
-          </div>
+          <>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={() => setConfirmOpen(true)}
+                disabled={generateMutation.isPending || noOwnedWorkspaces}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${generateMutation.isPending ? 'animate-spin' : ''}`} />
+                {promptData?.prompt ? 'Aggiorna' : 'Genera'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditText(promptData?.prompt || '')
+                  setEditing(true)
+                }}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Modifica
+              </Button>
+            </div>
+
+            <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
+              <Info className="h-4 w-4 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p>
+                  Il prompt utente aggrega i pattern di tutti i workspace dove sei{' '}
+                  <strong>owner</strong> o <strong>admin</strong>.
+                </p>
+                <p>
+                  Sono richiesti <strong>almeno 10 record</strong> sommando tutti i workspace ammissibili.
+                </p>
+                {noOwnedWorkspaces && (
+                  <p className="font-medium">
+                    Non hai workspace dove sei owner o admin: la generazione non è disponibile.
+                  </p>
+                )}
+              </div>
+            </div>
+          </>
         )}
 
         {/* Auto-update toggle */}
