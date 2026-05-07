@@ -235,14 +235,16 @@ export function InboxItemCard({ item, onConfirm, onReject, onDelete, onUpdate, o
                 <tbody>
                   {item.reconciliation_matches.map((m) => {
                     const matchType = m.match_type || 'payment'
-                    const badgeColors = {
+                    const badgeColors: Record<string, string> = {
                       payment: 'bg-emerald-100 text-emerald-800',
                       update: 'bg-amber-100 text-amber-800',
+                      update_partial: 'bg-amber-100 text-amber-800',
                       duplicate: 'bg-red-100 text-red-800',
                     }
-                    const badgeLabels = {
+                    const badgeLabels: Record<string, string> = {
                       payment: 'Pagamento',
                       update: 'Aggiornamento',
+                      update_partial: 'Pagamento parziale',
                       duplicate: 'Duplicato',
                     }
                     return (

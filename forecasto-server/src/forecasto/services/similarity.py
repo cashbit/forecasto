@@ -57,10 +57,15 @@ def _extract_doc_number(tid: str) -> tuple[str | None, str | None]:
     return None, None
 
 
-def _amount_similarity(a: float, b: float) -> float:
+def _amount_similarity(a: float, b: float, is_payment_doc: bool = False) -> float:
     """Compute amount similarity. Returns 0-1.
 
-    1.0 if within 1%, 0.5 at 10% diff, 0.0 at 25%+ diff.
+    Default curve: 1.0 if within 1%, 0.5 at 10% diff, 0.0 at 25%+ diff.
+
+    For payment documents (bank_statement, wire_transfer) the curve is more
+    permissive: bonifici frequently differ from the open order due to
+    discounts on settlement, scorporated bank fees, rounding. We never want
+    a 15% gap on a single-supplier candidate to silently kill the match.
     """
     if a == 0 and b == 0:
         return 1.0
@@ -68,6 +73,16 @@ def _amount_similarity(a: float, b: float) -> float:
     if max_val == 0:
         return 0.0
     diff_pct = abs(abs(a) - abs(b)) / max_val
+    if is_payment_doc:
+        if diff_pct <= 0.01:
+            return 1.0
+        if diff_pct <= 0.10:
+            return 0.7
+        if diff_pct <= 0.20:
+            return 0.4
+        if diff_pct <= 0.50:
+            return 0.2
+        return 0.0
     if diff_pct <= 0.01:
         return 1.0
     if diff_pct <= 0.05:
@@ -102,9 +117,12 @@ SEARCH_AREAS: dict[str, list[str]] = {
     "quote": ["budget", "prospect"],
     "invoice": ["budget", "prospect", "orders", "actual"],
     "receipt": ["budget", "prospect", "orders", "actual"],
-    "credit_note": ["actual", "orders"],
-    "wire_transfer": ["actual"],
-    "bank_statement": ["actual"],
+    "credit_note": ["actual", "orders", "prospect"],
+    # Payment-style documents now also search orders/prospect: a wire transfer
+    # often closes an open order that was prospected/ordered earlier. The
+    # confirmation step then promotes the matched record to actual + stage=1.
+    "wire_transfer": ["actual", "orders", "prospect"],
+    "bank_statement": ["actual", "orders", "prospect"],
     "other": ["budget", "prospect", "orders", "actual"],
 }
 
@@ -129,7 +147,7 @@ def compute_similarity_score(
     candidate: dict,
     query: dict,
     document_type: str | None = None,
-) -> tuple[float, list[str], Literal["payment", "update", "duplicate"]]:
+) -> tuple[float, list[str], Literal["payment", "update", "update_partial", "duplicate"]]:
     """Compute similarity between a candidate record and a query.
 
     Args:
@@ -141,7 +159,7 @@ def compute_similarity_score(
         (score, reasons, match_type) where:
         - score: 0.0 to 1.0
         - reasons: list of Italian explanation strings
-        - match_type: "payment", "update", or "duplicate"
+        - match_type: one of "payment", "update", "update_partial", "duplicate"
     """
     scores: dict[str, float] = {}
     reasons: list[str] = []
@@ -165,12 +183,13 @@ def compute_similarity_score(
         scores["account"] = 0.0
 
     # 3. Amount similarity (compare imponibile/net amount, fallback to total)
+    is_payment_doc = document_type in ("wire_transfer", "bank_statement")
     try:
         amt_a = float(candidate.get("amount") or candidate.get("total") or 0)
         amt_b = float(query.get("amount") or query.get("total") or 0)
     except (ValueError, TypeError):
         amt_a, amt_b = 0.0, 0.0
-    amt_sim = _amount_similarity(amt_a, amt_b)
+    amt_sim = _amount_similarity(amt_a, amt_b, is_payment_doc=is_payment_doc)
     scores["amount"] = amt_sim
     if amt_sim >= 0.9:
         reasons.append("importo corrispondente")
@@ -209,10 +228,19 @@ def compute_similarity_score(
     # Weighted total
     total_score = sum(scores[k] * WEIGHTS[k] for k in WEIGHTS)
 
-    # Determine match_type
-    is_payment_doc = document_type in ("wire_transfer", "bank_statement")
+    # Determine match_type. is_payment_doc was set above when we computed amt_sim.
     if is_payment_doc and amt_sim >= 0.9 and candidate.get("stage") == "0":
-        match_type: Literal["payment", "update", "duplicate"] = "payment"
+        match_type: Literal["payment", "update", "update_partial", "duplicate"] = "payment"
+    elif (
+        is_payment_doc
+        and ref_sim >= 0.5
+        and amt_sim < 0.9
+        and candidate.get("stage") == "0"
+    ):
+        # bonifico that closes an open order/prospect with mismatched total —
+        # caller resolves it in confirm_item by recomputing imponibile from total.
+        match_type = "update_partial"
+        reasons.append("probabile pagamento parziale o saldo")
     elif ref_sim >= 0.5 and (scores.get("transaction_id", 0) >= 0.3 or amt_sim >= 0.5):
         match_type = "update"
     else:

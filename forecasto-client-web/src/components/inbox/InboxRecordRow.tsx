@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, StickyNote, Link2, X } from 'lucide-react'
+import { StickyNote, Link2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -26,7 +26,39 @@ const COL_COUNT = 9
 const MATCH_BADGE: Record<string, { bg: string; label: string }> = {
   payment: { bg: 'bg-emerald-100 text-emerald-800', label: 'Pagamento' },
   update: { bg: 'bg-amber-100 text-amber-800', label: 'Aggiorna' },
+  update_partial: { bg: 'bg-amber-100 text-amber-800', label: 'Pagamento parziale' },
   duplicate: { bg: 'bg-red-100 text-red-800', label: 'Possibile duplicato di:' },
+}
+
+const fmtAmount = (n: number) =>
+  n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+/**
+ * Preview client-side del ricalcolo IVA quando un bonifico/EC chiude un
+ * ordine aperto. Riceve l'importo originale del record (amount/vat) e il
+ * totale del bonifico, deriva l'aliquota e mostra il nuovo imponibile.
+ */
+function recomputeVatPreview(
+  matched: ReconciliationMatch,
+  newTotal: number,
+): { newAmount: number; newVat: number; ratePct: number } | null {
+  const oldAmount = Number(matched.amount ?? 0)
+  const oldTotal = Number(matched.total ?? 0)
+  if (!Number.isFinite(oldAmount) || !Number.isFinite(oldTotal) || oldAmount === 0) {
+    return null
+  }
+  const oldVat = oldTotal - oldAmount
+  const rate = oldVat / oldAmount  // es. 0.22
+  if (!Number.isFinite(rate) || rate === 0) {
+    return { newAmount: newTotal, newVat: 0, ratePct: 0 }
+  }
+  const newAmount = newTotal / (1 + rate)
+  const newVat = newTotal - newAmount
+  return {
+    newAmount: Math.round(newAmount * 100) / 100,
+    newVat: Math.round(newVat * 100) / 100,
+    ratePct: Math.round(rate * 1000) / 10,
+  }
 }
 
 export function InboxRecordRow({ suggestion, index, editable, workspaceId, onChange, onMatchChange, forceNoteExpanded, isPending }: InboxRecordRowProps) {
@@ -233,49 +265,92 @@ export function InboxRecordRow({ suggestion, index, editable, workspaceId, onCha
       )}
 
       {/* Match row — auto-assigned match or alternatives */}
-      {matched && (
-        <tr className="bg-blue-50/50 border-b last:border-0">
-          <td colSpan={COL_COUNT} className="px-3 py-1.5">
-            <div className="flex items-center gap-2 text-xs">
-              <Link2 className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${MATCH_BADGE[matched.match_type || 'update']?.bg || 'bg-gray-100'}`}>
-                {MATCH_BADGE[matched.match_type || 'update']?.label || 'Match'}
-              </span>
-              <span className="text-muted-foreground">
-                {matched.reference} &middot; {matched.account} &middot;{' '}
-                {Number(matched.amount ?? matched.total).toLocaleString('it-IT', { minimumFractionDigits: 2 })} &middot;{' '}
-                {matched.area}
-                {matched.suggested_transfer_area && (
-                  <span className="text-blue-600 font-medium"> &rarr; {matched.suggested_transfer_area}</span>
+      {matched && (() => {
+        const isPaymentMatch = matched.match_type === 'payment' || matched.match_type === 'update_partial'
+        const recomputeVat = matched.recompute_vat ?? true
+        const newTotal = Number(suggestion.total ?? 0)
+        const preview = isPaymentMatch && recomputeVat ? recomputeVatPreview(matched, newTotal) : null
+        return (
+          <tr className={cn(
+            'bg-blue-50/50 border-b last:border-0',
+            matched.low_confidence && 'border-l-4 border-l-amber-400 border-dashed',
+          )}>
+            <td colSpan={COL_COUNT} className="px-3 py-1.5">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <Link2 className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${MATCH_BADGE[matched.match_type || 'update']?.bg || 'bg-gray-100'}`}>
+                  {MATCH_BADGE[matched.match_type || 'update']?.label || 'Match'}
+                </span>
+                {matched.low_confidence && (
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                    Da verificare
+                  </span>
                 )}
-              </span>
-              <span className="text-muted-foreground/60">{Math.round(matched.match_score * 100)}%</span>
-              <span className="text-muted-foreground/60 truncate max-w-[14rem]">
-                {matched.match_reasons?.join(', ')}
-              </span>
-              {isPending && alternatives.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => setMatchExpanded(v => !v)}
-                  className="text-blue-500 hover:underline ml-auto"
-                >
-                  {matchExpanded ? 'Chiudi' : `${alternatives.length - 1} altri`}
-                </button>
+                <span className="text-muted-foreground">
+                  {matched.reference} &middot; {matched.account} &middot;{' '}
+                  {fmtAmount(Number(matched.amount ?? matched.total))} &middot;{' '}
+                  {matched.area}
+                  {matched.suggested_transfer_area && (
+                    <span className="text-blue-600 font-medium"> &rarr; {matched.suggested_transfer_area}</span>
+                  )}
+                </span>
+                <span className="text-muted-foreground/60">{Math.round(matched.match_score * 100)}%</span>
+                <span className="text-muted-foreground/60 truncate max-w-[14rem]">
+                  {matched.match_reasons?.join(', ')}
+                </span>
+                {isPending && alternatives.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setMatchExpanded(v => !v)}
+                    className="text-blue-500 hover:underline ml-auto"
+                  >
+                    {matchExpanded ? 'Chiudi' : `${alternatives.length - 1} altri`}
+                  </button>
+                )}
+                {isPending && onMatchChange && (
+                  <button
+                    type="button"
+                    onClick={() => onMatchChange(index, null)}
+                    className="text-muted-foreground hover:text-red-500 ml-1"
+                    title="Rimuovi associazione (crea nuovo record)"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              {/* Payment match details: ricalcolo IVA toggle + preview */}
+              {isPaymentMatch && isPending && (
+                <div className="mt-1 pl-5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-blue-700">
+                  {onMatchChange && (
+                    <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={recomputeVat}
+                        onChange={(e) => onMatchChange(index, { ...matched, recompute_vat: e.target.checked })}
+                        className="h-3 w-3"
+                      />
+                      Ricalcola IVA dal totale del bonifico
+                    </label>
+                  )}
+                  <span className="text-muted-foreground">
+                    stage 0 &rarr; <span className="font-medium text-blue-700">1</span>
+                  </span>
+                  {preview && preview.ratePct > 0 && (
+                    <span className="text-muted-foreground">
+                      imponibile {fmtAmount(Number(matched.amount ?? 0))} &rarr;{' '}
+                      <span className="font-medium text-blue-700">{fmtAmount(preview.newAmount)}</span>
+                      {' '}(IVA {preview.ratePct}%)
+                    </span>
+                  )}
+                  {preview && preview.ratePct === 0 && (
+                    <span className="text-muted-foreground">IVA esente preservata</span>
+                  )}
+                </div>
               )}
-              {isPending && onMatchChange && (
-                <button
-                  type="button"
-                  onClick={() => onMatchChange(index, null)}
-                  className="text-muted-foreground hover:text-red-500 ml-1"
-                  title="Rimuovi associazione (crea nuovo record)"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          </td>
-        </tr>
-      )}
+            </td>
+          </tr>
+        )
+      })()}
 
       {/* Match removed indicator — show option to restore */}
       {hadMatchRemoved && isPending && onMatchChange && (

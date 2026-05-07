@@ -1,4 +1,4 @@
-export type MatchType = 'payment' | 'update' | 'duplicate'
+export type MatchType = 'payment' | 'update' | 'update_partial' | 'duplicate'
 
 export interface ReconciliationMatch {
   record_id: string
@@ -17,6 +17,11 @@ export interface ReconciliationMatch {
   match_type?: MatchType
   match_reason?: string  // legacy compatibility
   suggested_transfer_area?: string | null
+  // Bank-statement / wire-transfer reconciliation flags. Set server-side when
+  // the candidate is proposed; the user can flip recompute_vat from the UI
+  // before confirming.
+  low_confidence?: boolean
+  recompute_vat?: boolean
   confirmed?: boolean  // set by user when they check the match
 }
 
