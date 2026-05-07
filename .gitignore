@@ -62,3 +62,6 @@ forecasto-client-web/public/tutorial/*.mp4
 Tutorial Forecasto/
 forecasto-client-web/public/tutorial/*.mp4
 /forecasto-server/uploads
+
+# Claude Code worktrees (sandbox isolati, non vanno committati)
+.claude/worktrees/
