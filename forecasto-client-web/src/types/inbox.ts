@@ -40,6 +40,10 @@ export interface RecordSuggestion {
   total: string
   stage: string
   transaction_id?: string
+  // Identifier of the new document (e.g. "FATTURA INV-2026-0211") when this
+  // suggestion is reconciling an open record. Server preserves history at
+  // confirm by composing transaction_id as `${additional} | ${existing}`.
+  additional_transaction_id?: string | null
   bank_account_id?: string
   project_code?: string
   withholding_rate?: string | null

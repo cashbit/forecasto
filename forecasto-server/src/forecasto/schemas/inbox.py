@@ -27,6 +27,12 @@ class RecordSuggestion(BaseModel):
     total: Decimal = Decimal("0")
     stage: str = "0"
     transaction_id: str | None = None
+    # Identifier of the new document (e.g. "FATTURA INV-2026-0211") when this
+    # suggestion is a reconciliation against an open record. The AI keeps
+    # `transaction_id` as the matching key copied from the open record, and
+    # uses this field to carry the new document's own identifier so the
+    # server can preserve both at confirm time.
+    additional_transaction_id: str | None = None
     bank_account_id: str | None = None
     project_code: str | None = None
     withholding_rate: Decimal | None = None

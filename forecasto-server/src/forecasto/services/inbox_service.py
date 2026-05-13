@@ -255,14 +255,28 @@ class InboxService:
                             tag += f"]: {suggestion.note}"
                             existing.note = (existing.note or "").rstrip() + ("\n" if existing.note else "") + tag
                     else:
-                        # Update fields from suggestion (legacy behavior for non-payment matches)
+                        # Update fields from suggestion (non-payment matches).
                         existing.amount = suggestion.amount
                         existing.total = suggestion.total
                         existing.vat = suggestion.vat
                         if suggestion.note:
                             existing.note = suggestion.note
-                        if suggestion.transaction_id:
+
+                        # Merge transaction_id: prepend the new document's reference
+                        # (e.g. "FATTURA INV-2026-0211") to the existing one
+                        # (e.g. "PREV_TAG_2026-04"), preserving the original as
+                        # historical trail. The AI populates `additional_transaction_id`
+                        # with the new doc id while keeping `transaction_id` as the
+                        # matching key copied from the open record.
+                        new_ref = (suggestion.additional_transaction_id or "").strip()
+                        existing_ref = (existing.transaction_id or "").strip()
+                        if new_ref and new_ref not in existing_ref:
+                            existing.transaction_id = (
+                                f"{new_ref} | {existing_ref}" if existing_ref else new_ref
+                            )
+                        elif not existing_ref and suggestion.transaction_id:
                             existing.transaction_id = suggestion.transaction_id
+
                         existing.date_offer = date_offer
                         existing.date_cashflow = date_cashflow
                         if date_document:
@@ -329,6 +343,13 @@ class InboxService:
 
             for match in item.reconciliation_matches:
                 if not match.get("confirmed"):
+                    continue
+
+                # Skip records already processed by the per-suggestion
+                # matched_record flow above — that path applies the proper
+                # transaction_id merge (new_doc | existing). Re-applying the
+                # legacy flow here would clobber it with the raw matching key.
+                if match["record_id"] in record_ids:
                     continue
 
                 match_type = match.get("match_type", "payment")

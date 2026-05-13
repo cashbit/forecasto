@@ -69,6 +69,19 @@ FIELD DEFINITIONS — read carefully:
   "Nota credito 5/2026", "Parcella 3/2026", "Ricevuta 42/2026".
   Use the full Italian document type name (not abbreviations like FT or FPR).
   Include the year as 4 digits. Do NOT leave this empty.
+  ECCEZIONE — RICONCILIAZIONE: se questo record è il match di un record aperto presente
+  nel blocco "## RECORD APERTI DEL WORKSPACE", copia ESATTAMENTE il `transaction_id` di
+  quel record (per il matching server-side) e usa `additional_transaction_id` per portare
+  l'identificatore del nuovo documento (vedi sotto).
+
+- additional_transaction_id: SOLO quando questo record sta riconciliando un record aperto
+  della lista "## RECORD APERTI DEL WORKSPACE". Riporta l'identificatore del NUOVO
+  documento appena estratto, nel formato "<TIPO> <numero>" in maiuscolo, es.
+  "FATTURA INV-2026-0211", "DDT 33/2026", "ORDINE 2026-088", "CONTABILE 4711".
+  Al confirm il server preserverà lo storico componendo il `transaction_id` finale come
+  "<additional_transaction_id> | <transaction_id originale>".
+  Lascialo null negli altri casi: il `transaction_id` contiene già l'identificatore del
+  documento e non serve duplicarlo qui.
 
 - date_offer: offer/order date as YYYY-MM-DD. When the deal/order originated.
 
@@ -239,10 +252,17 @@ CARTE DI CREDITO (estratto carta o lista movimenti carta):
 
 Se nel messaggio user trovi un blocco "## RECORD APERTI DEL WORKSPACE" (lista compatta di
 record già presenti nel sistema con stage=0), USALO con questa priorità:
-  1. RICONCILIAZIONE EC: per ogni movimento di estratto conto/contabile, prova ad abbinarlo
-     a un record della lista (matching su reference + total ± 0,02; oppure transaction_id
-     se presente in causale). Se trovi un match → copia ESATTAMENTE il `transaction_id`
-     dalla lista nel record che generi (es. "Fattura 12/2026", non "FT 12").
+  1. RICONCILIAZIONE: per ogni movimento di estratto conto/contabile O per ogni FATTURA
+     che corrisponde a un record aperto (es. preventivo / ordine), prova ad abbinarlo a un
+     record della lista (matching su reference + total ± 0,02; oppure transaction_id se
+     presente in causale; oppure controparte + importo per le fatture). Se trovi un match
+     → compila DUE campi:
+       (a) `transaction_id`: copia ESATTAMENTE il valore della lista
+           (es. "PREV_TAG_2026-04" o "Fattura 12/2026"), MAI un'abbreviazione tipo "FT 12".
+       (b) `additional_transaction_id`: l'identificatore del NUOVO documento estratto in
+           formato "<TIPO> <numero>" maiuscolo, es. "FATTURA INV-2026-0211", "CONTABILE
+           4711", "DDT 33/2026". Serve a preservare lo storico — il server al confirm
+           costruirà transaction_id finale come "<additional> | <transaction_id originale>".
   2. ALLINEAMENTO NAMING: se la stessa controparte è già presente nella lista, riusa la
      stessa esatta forma di `reference` e `account` (no varianti tipo "Vodafone SpA" se
      in lista c'è "Vodafone Italia S.p.A.").
@@ -253,11 +273,13 @@ record già presenti nel sistema con stage=0), USALO con questa priorità:
      un aperto della lista, lascia stage="1" (il match server-side promuoverà l'aperto).
   5. PERMISSIVITÀ SU IMPORTO (solo bank_statement/wire_transfer): se la lista contiene UN
      SOLO record aperto con la stessa controparte del movimento, copia comunque il
-     `transaction_id` ESATTO dalla lista anche se il totale del bonifico differisce fino al
-     50%. Causa tipica: sconto in saldo, commissioni scorporate, arrotondamenti. Nel
-     `reasoning` annota: "importo divergente: probabile saldo/sconto, riconciliato con
-     [transaction_id]". Il sistema poi proporrà all'utente di promuovere l'ordine ad actual
-     ricalcolando l'imponibile dal totale del bonifico.
+     `transaction_id` ESATTO dalla lista (e popola `additional_transaction_id` con il
+     riferimento bancario nel formato "CONTABILE <num>" o "BONIFICO <CRO/TRN>") anche se
+     il totale del bonifico differisce fino al 50%. Causa tipica: sconto in saldo,
+     commissioni scorporate, arrotondamenti. Nel `reasoning` annota: "importo divergente:
+     probabile saldo/sconto, riconciliato con [transaction_id]". Il sistema poi proporrà
+     all'utente di promuovere l'ordine ad actual ricalcolando l'imponibile dal totale del
+     bonifico.
 
 Se il blocco RECORD APERTI non è presente o è vuoto, ignora questa sezione.
 
@@ -290,11 +312,18 @@ def _build_open_records_block(open_records: list[dict]) -> str:
             f"ancora pagati/saldati), in finestra ±90gg/+180gg sulla data cashflow. Usa questa "
             f"lista per:"
         ),
-        "  1. RICONCILIAZIONE: se il documento è un estratto conto o una contabile, abbina "
-        "ogni movimento a un record di questa lista quando reference/transaction_id/importo "
-        "combaciano. Compila il campo `transaction_id` del nuovo record copiando ESATTAMENTE "
-        "il valore della lista (es. \"Fattura 12/2026\") in modo che il matching server-side "
-        "sia preciso.",
+        "  1. RICONCILIAZIONE: se il documento è un estratto conto, una contabile o una "
+        "FATTURA che risulta già preventivata in questa lista, abbina ogni movimento a un "
+        "record della lista quando reference/transaction_id/importo combaciano. In quel caso "
+        "compila DUE campi:",
+        "     - `transaction_id`: copia ESATTAMENTE il valore presente nella lista "
+        "(es. \"PREV_TAG_2026-04\"), così il matching server-side è preciso.",
+        "     - `additional_transaction_id`: l'identificatore del NUOVO documento appena "
+        "estratto, nel formato \"<TIPO> <numero>\" — es. \"FATTURA INV-2026-0211\", "
+        "\"DDT 33/2026\", \"ORDINE 2026-088\", \"CONTABILE 4711\". Serve a preservare lo "
+        "storico: al confirm il server costruirà transaction_id finale come "
+        "\"<additional> | <transaction_id originale>\". Se il documento non ha un numero "
+        "univoco, lascia `additional_transaction_id` null.",
         "  2. DUPLICATI: se stai estraendo una fattura che è già presente in questa lista "
         "(stesso reference + stesso transaction_id), segnalalo nel campo `reasoning` ed "
         "estraila comunque (lasceremo decidere all'utente).",
