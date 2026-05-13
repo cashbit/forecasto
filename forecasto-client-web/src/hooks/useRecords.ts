@@ -14,6 +14,7 @@ export function useRecords() {
     textFilter, textFilterField, projectCodeFilter, bankAccountFilter, includeDeleted
   } = useFilterStore()
   const reviewMode = useUiStore(state => state.reviewMode)
+  const recentFilter = useUiStore(state => state.recentFilter)
   const queryClient = useQueryClient()
 
   const baseFilters = {
@@ -111,6 +112,20 @@ export function useRecords() {
         filteredRecords = filteredRecords.filter(r =>
           r.review_date && r.review_date <= today
         )
+      }
+
+      // Apply recent filter on updated_at (covers both insert and update — updated_at is set on creation too)
+      if (recentFilter !== 'all') {
+        const threshold = new Date()
+        if (recentFilter === 'today') {
+          threshold.setHours(0, 0, 0, 0)
+        } else if (recentFilter === 'week') {
+          threshold.setDate(threshold.getDate() - 7)
+        } else if (recentFilter === 'month') {
+          threshold.setMonth(threshold.getMonth() - 1)
+        }
+        const thresholdIso = threshold.toISOString()
+        filteredRecords = filteredRecords.filter(r => r.updated_at >= thresholdIso)
       }
 
       // Sort by date (most recent first)

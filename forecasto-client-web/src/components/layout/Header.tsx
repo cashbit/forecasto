@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { LogOut, Settings, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy, ArrowUpDown, FileJson, Calculator, BarChart3 } from 'lucide-react'
+import { LogOut, Settings, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy, ArrowUpDown, FileJson, Calculator, BarChart3, ChevronDown } from 'lucide-react'
 import logoIcon from '@/assets/logo-icon.png'
 import logoText from '@/assets/logo-text.png'
 import { Link, useLocation } from 'react-router-dom'
@@ -39,7 +39,7 @@ export function Header() {
   const { startTour } = useTourContext()
   const location = useLocation()
   const { user, logout } = useAuthStore()
-  const { sidebarOpen, toggleSidebar, reviewMode, toggleReviewMode } = useUiStore()
+  const { sidebarOpen, toggleSidebar, reviewMode, toggleReviewMode, recentFilter, setRecentFilter } = useUiStore()
   const { fetchWorkspaces, getPrimaryWorkspace, selectedWorkspaceIds, workspaces } = useWorkspaceStore()
   const queryClient = useQueryClient()
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([])
@@ -237,6 +237,41 @@ export function Header() {
         >
           Revisione Zero
         </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={recentFilter !== 'all' ? 'default' : 'outline'}
+              size="sm"
+              className={cn(recentFilter !== 'all' ? 'bg-amber-500 hover:bg-amber-600 text-white' : '')}
+            >
+              {recentFilter === 'all' && 'Aggiornati: Tutti'}
+              {recentFilter === 'today' && 'Aggiornati: Oggi'}
+              {recentFilter === 'week' && 'Aggiornati: Ultima settimana'}
+              {recentFilter === 'month' && 'Aggiornati: Ultimo mese'}
+              <ChevronDown className="ml-1 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem onClick={() => setRecentFilter('today')}>
+              Oggi
+              {recentFilter === 'today' && <Check className="ml-auto h-4 w-4" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setRecentFilter('week')}>
+              Ultima settimana
+              {recentFilter === 'week' && <Check className="ml-auto h-4 w-4" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setRecentFilter('month')}>
+              Ultimo mese
+              {recentFilter === 'month' && <Check className="ml-auto h-4 w-4" />}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setRecentFilter('all')}>
+              Tutti
+              {recentFilter === 'all' && <Check className="ml-auto h-4 w-4" />}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {selectedWorkspaceIds.length > 0 && (
           <span className="text-sm text-muted-foreground truncate max-w-xs" title={workspaces.filter(w => selectedWorkspaceIds.includes(w.id)).map(w => w.name).join(', ')}>

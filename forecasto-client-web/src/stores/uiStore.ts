@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+export type RecentFilter = 'all' | 'today' | 'week' | 'month'
+
 interface UiState {
   sidebarOpen: boolean
   rightPanelOpen: boolean
@@ -8,6 +10,7 @@ interface UiState {
   createWorkspaceDialogOpen: boolean
   createRecordDialogOpen: boolean
   reviewMode: boolean
+  recentFilter: RecentFilter
 
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
@@ -20,6 +23,7 @@ interface UiState {
   closeAllDialogs: () => void
   toggleReviewMode: () => void
   setReviewMode: (enabled: boolean) => void
+  setRecentFilter: (value: RecentFilter) => void
 }
 
 export const useUiStore = create<UiState>()((set) => ({
@@ -30,6 +34,7 @@ export const useUiStore = create<UiState>()((set) => ({
   createWorkspaceDialogOpen: false,
   createRecordDialogOpen: false,
   reviewMode: false,
+  recentFilter: 'all',
 
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -57,4 +62,6 @@ export const useUiStore = create<UiState>()((set) => ({
 
   toggleReviewMode: () => set((state) => ({ reviewMode: !state.reviewMode })),
   setReviewMode: (enabled) => set({ reviewMode: enabled }),
+
+  setRecentFilter: (value) => set({ recentFilter: value }),
 }))
