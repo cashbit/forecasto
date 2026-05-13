@@ -52,6 +52,7 @@ class SdiRata:
     numero: int
     importo: Decimal
     scadenza: str  # YYYY-MM-DD
+    iban: str | None = None
 
 
 @dataclass
@@ -68,6 +69,7 @@ class SdiInvoice:
     totale: Decimal
     linee_dettaglio: list[SdiLineaDettaglio] = field(default_factory=list)
     rate: list[SdiRata] = field(default_factory=list)
+    iban_pagamento: str | None = None  # IBAN consolidato del fornitore (prima rata con IBAN)
 
 
 @dataclass
@@ -279,6 +281,20 @@ def _extract_linee_dettaglio(body: ET.Element) -> list[SdiLineaDettaglio]:
     return linee
 
 
+def _normalize_iban(raw: str) -> str | None:
+    """Normalize an IBAN string: strip spaces, uppercase. Returns None if invalid/empty.
+
+    Accepts IBANs of any country (Italian or foreign). Doesn't validate the
+    check digits — it's the LLM/user's responsibility to recognize garbage.
+    """
+    if not raw:
+        return None
+    cleaned = raw.replace(" ", "").replace("\t", "").replace("\n", "").upper()
+    if len(cleaned) < 15 or len(cleaned) > 34:
+        return None
+    return cleaned
+
+
 def _extract_rate(
     body: ET.Element, data_emissione: str, totale: Decimal
 ) -> list[SdiRata]:
@@ -295,6 +311,7 @@ def _extract_rate(
                 numero=idx + 1,
                 importo=_parse_decimal(_find_text(det, "ImportoPagamento", "0")),
                 scadenza=_find_text(det, "DataScadenzaPagamento", ""),
+                iban=_normalize_iban(_find_text(det, "IBAN")),
             )
             for idx, det in enumerate(all_dettagli)
         ]
@@ -310,6 +327,7 @@ def _extract_rate(
                 scadenza=scadenza or (
                     _add_days(data_emissione, 30) if data_emissione else ""
                 ),
+                iban=_normalize_iban(_find_text(det, "IBAN")),
             )
         ]
 
@@ -373,9 +391,19 @@ def parse_sdi_xml(xml_content: str, filename: str) -> SdiInvoice:
         iva = -iva
         totale = -totale
         rate = [
-            SdiRata(numero=r.numero, importo=-r.importo, scadenza=r.scadenza)
+            SdiRata(
+                numero=r.numero,
+                importo=-r.importo,
+                scadenza=r.scadenza,
+                iban=r.iban,
+            )
             for r in rate
         ]
+
+    # Consolidated IBAN: first non-empty across installments. When multiple
+    # installments declare different IBANs (rare), the per-rata IBAN is used
+    # in format_invoice_for_llm.
+    iban_pagamento = next((r.iban for r in rate if r.iban), None)
 
     return SdiInvoice(
         filename=filename,
@@ -390,6 +418,7 @@ def parse_sdi_xml(xml_content: str, filename: str) -> SdiInvoice:
         totale=totale,
         linee_dettaglio=linee_dettaglio,
         rate=rate,
+        iban_pagamento=iban_pagamento,
     )
 
 
@@ -534,6 +563,12 @@ def format_invoice_for_llm(
     n_rate = len(invoice.rate)
     totale = invoice.totale
 
+    # Detect heterogeneous IBANs across installments (rare). When detected,
+    # show the IBAN inline per installment instead of a single consolidated
+    # IBAN block at the end.
+    distinct_ibans = {r.iban for r in invoice.rate if r.iban}
+    iban_per_rata = len(distinct_ibans) > 1
+
     if n_rate >= 2 and totale > 0:
         lines += [
             "",
@@ -547,10 +582,11 @@ def format_invoice_for_llm(
                 if invoice.data_emissione
                 else "da definire"
             )
+            iban_suffix = f" - IBAN: {rata.iban}" if (iban_per_rata and rata.iban) else ""
             lines.append(
                 f"  Rata {rata.numero}/{n_rate}: "
                 f"imponibile {imp_rata} + IVA {iva_rata} = totale {rata.importo} EUR "
-                f"- Scadenza: {scadenza}"
+                f"- Scadenza: {scadenza}{iban_suffix}"
             )
     elif n_rate == 1:
         rata = invoice.rate[0]
@@ -575,6 +611,26 @@ def format_invoice_for_llm(
             "PAGAMENTO NON SPECIFICATO (CREA 1 RECORD):",
             f"  Imponibile {invoice.imponibile} + IVA {invoice.iva} = totale {invoice.totale} EUR - Scadenza stimata: {scadenza}",
         ]
+
+    # IBAN del fornitore — emesso SOLO per fatture passive (workspace = cessionario).
+    # Per le attive l'IBAN sarebbe il nostro: ridondante e fonte di rumore.
+    if classification.direction == "out" and invoice.iban_pagamento:
+        if iban_per_rata:
+            lines += [
+                "",
+                "IBAN PAGAMENTO FORNITORE (DA INCLUDERE NELLA NOTE DI OGNI RECORD):",
+                "  Le rate dichiarano IBAN diversi (vedi sopra rata per rata).",
+                "  Per OGNI record generato appendi alla note una riga finale nel formato",
+                "  \"IBAN: <IBAN della rata corrispondente>\".",
+            ]
+        else:
+            lines += [
+                "",
+                "IBAN PAGAMENTO FORNITORE (DA INCLUDERE NELLA NOTE DI OGNI RECORD):",
+                f"  {invoice.iban_pagamento}",
+                f"  Per OGNI record generato da questa fattura appendi alla note una",
+                f"  riga finale nel formato \"IBAN: {invoice.iban_pagamento}\".",
+            ]
 
     return "\n".join(lines)
 

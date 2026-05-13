@@ -186,6 +186,36 @@ splittare manualmente se necessario.
    - Per canoni annuali: un record per anno.
    - NON aggregare costo una tantum e canone ricorrente in un unico record.
 
+=== IBAN DEL FORNITORE (SOLO DOCUMENTI PASSIVI) ===
+
+Se il documento è PASSIVO (workspace = cessionario/cliente) — cioè fatture passive,
+preventivi/offerte ricevuti, ordini a fornitore, conferme d'ordine emesse da terzi —
+cerca un IBAN del fornitore nelle sezioni di pagamento del documento (es. "Modalità
+di pagamento", "Coordinate bancarie", "Bonifico bancario", "Estremi bancari", "IBAN",
+"Banca d'appoggio"). Un IBAN italiano inizia con IT seguito da 2 cifre di controllo
++ CIN + ABI(5) + CAB(5) + C/C(12), totale 27 caratteri (IBAN esteri possono avere
+lunghezza diversa, da 15 a 34 caratteri).
+
+Quando trovi un IBAN del fornitore: APPENDI alla `note` del record (di OGNI record se
+il documento genera più rate/tranche) una riga finale nel formato:
+
+  IBAN: ITxx...
+
+Esempio note finale: "Consulenza sviluppo software Q2 2026. Pagamento 50% all'ordine.
+IBAN: IT60X0542811101000000123456".
+
+REGOLE:
+  - SOLO per documenti PASSIVI. Per fatture/offerte ATTIVE (workspace = cedente)
+    NON aggiungere alcun IBAN: sarebbe il nostro, è già nei dati workspace.
+  - SOLO IBAN del FORNITORE / cedente. NON l'IBAN del cessionario (noi) anche se
+    appare per altri motivi (es. mandato SEPA SDD, anagrafica cliente).
+  - Per fatture XML pre-elaborate: se vedi un blocco "IBAN PAGAMENTO FORNITORE"
+    nel testo strutturato, usa ESATTAMENTE quell'IBAN — è già stato estratto
+    deterministicamente dal parser, non rileggerlo dall'XML grezzo.
+  - Se non trovi alcun IBAN nel documento: non inventarlo, lascia la note senza.
+  - Se la rata indica un IBAN specifico diverso dal default, usa l'IBAN della rata
+    nella note del record corrispondente.
+
 === ESTRATTI CONTO E CONTABILI BANCARIE ===
 (document_type = "bank_statement" o "wire_transfer")
 

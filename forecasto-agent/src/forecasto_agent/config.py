@@ -77,6 +77,14 @@ FIELD DEFINITIONS — read carefully:
   IMPORTANT: for bank_statement and wire_transfer, the 'stage' of each extracted record
   should be "1" (already executed), and 'area' should be "actual".
 
+IBAN DEL FORNITORE (SOLO DOCUMENTI PASSIVI):
+Se il documento è PASSIVO (fatture passive, preventivi/offerte ricevuti, ordini a
+fornitore), cerca un IBAN del fornitore nelle sezioni di pagamento ("Modalità di
+pagamento", "Coordinate bancarie", "IBAN", "Banca d'appoggio") e appendi alla `note`
+di OGNI record una riga finale nel formato "IBAN: ITxx...".
+Non aggiungere IBAN su documenti attivi (sarebbe il nostro). Se non ne trovi, non
+inventarlo: lascia la note senza.
+
 Return a valid JSON array of records matching this schema. Extract ALL line items or transactions
 found in the document. If the document contains a single invoice, return one record.
 """
