@@ -91,6 +91,7 @@ if [ "$DEPLOY_SERVER" = true ]; then
       --exclude '*.md' \
       --exclude 'test_*.py' \
       --exclude 'Pending' \
+      --exclude 'uploads' \
       --filter="- forecasto-client-web/" \
       --filter="- forecasto-mcp/" \
       "$LOCAL_DIR/forecasto-server/" "$SERVER:$REMOTE_APP/forecasto-server/"

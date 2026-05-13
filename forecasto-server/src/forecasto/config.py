@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     processing_max_concurrent: int = 2
     processing_max_queue_size: int = 50
 
+    # Inbox file retention
+    # - Confirmed items: file deleted immediately at confirm time.
+    # - Rejected items: file deleted after `inbox_rejected_retention_days` days.
+    # - Cleanup scheduler runs every `inbox_cleanup_interval_minutes` minutes.
+    inbox_rejected_retention_days: int = 7
+    inbox_cleanup_interval_minutes: int = 60
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 settings = Settings()

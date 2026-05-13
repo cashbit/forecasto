@@ -55,5 +55,12 @@ class InboxItem(Base, UUIDMixin, TimestampMixin):
     # Soft delete
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
+    # Data-retention: when the source file should be deleted from disk.
+    # Set to `updated_at + retention_days` on reject; null otherwise.
+    # Confirmed items have their file deleted synchronously at confirm time.
+    file_deletion_scheduled_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True, index=True
+    )
+
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="inbox_items")

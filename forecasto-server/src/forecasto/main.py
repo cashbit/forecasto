@@ -72,6 +72,10 @@ async def lifespan(app: FastAPI):
     from forecasto.services.processing_queue import processing_queue
     await processing_queue.start()
 
+    # Start inbox file-retention cleanup scheduler
+    from forecasto.services.inbox_cleanup_scheduler import inbox_cleanup_scheduler
+    await inbox_cleanup_scheduler.start()
+
     # Create upload directory
     from pathlib import Path
     Path(settings.document_upload_dir).mkdir(parents=True, exist_ok=True)
@@ -79,6 +83,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
+    await inbox_cleanup_scheduler.stop()
     await processing_queue.stop()
 
 app = FastAPI(

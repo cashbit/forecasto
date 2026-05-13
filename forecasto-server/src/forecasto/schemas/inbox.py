@@ -82,6 +82,7 @@ class InboxItemResponse(BaseModel):
     document_type: str | None
     reconciliation_matches: list
     processing_reasoning: str | None = None
+    file_deletion_scheduled_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None

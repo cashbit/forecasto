@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from forecasto.config import settings
 from forecasto.exceptions import ForbiddenException, NotFoundException
 from forecasto.models.inbox import InboxItem
 from forecasto.models.user import User
@@ -418,6 +420,9 @@ class InboxService:
             await self.db.flush()
 
         await self.db.flush()
+        # Confirmed: source file no longer needed — delete from disk.
+        self._delete_source_file(item)
+        await self.db.flush()
         await self.db.refresh(item)
         return item
 
@@ -430,6 +435,10 @@ class InboxService:
         if item.status != "pending":
             raise ForbiddenException("Solo gli item in stato 'pending' possono essere rifiutati")
         item.status = "rejected"
+        # Schedule source-file deletion after the retention window.
+        item.file_deletion_scheduled_at = datetime.utcnow() + timedelta(
+            days=settings.inbox_rejected_retention_days
+        )
         await self.db.flush()
         await self.db.refresh(item)
         return item
@@ -443,7 +452,13 @@ class InboxService:
         item = await self.get_item(workspace_id, item_id)
         if item.status != "rejected":
             raise ForbiddenException("Solo gli item rifiutati possono essere ripristinati")
+        if item.source_deleted:
+            raise ForbiddenException(
+                "Impossibile ripristinare: il file sorgente è già stato eliminato"
+            )
         item.status = "pending"
+        # Cancel scheduled deletion — back to indefinite retention while pending.
+        item.file_deletion_scheduled_at = None
         await self.db.flush()
         await self.db.refresh(item)
         return item
@@ -454,8 +469,109 @@ class InboxService:
         item_id: str,
     ) -> None:
         item = await self.get_item(workspace_id, item_id)
+        # Hard-delete the source file on user-initiated removal, regardless
+        # of current status. The DB row itself is kept as a soft-delete tombstone.
+        self._delete_source_file(item)
         item.deleted_at = datetime.utcnow()
         await self.db.flush()
+
+    # -------------------------------------------------------------------------
+    # File-retention helpers
+    # -------------------------------------------------------------------------
+
+    def _delete_source_file(self, item: InboxItem) -> bool:
+        """Delete the source document file from disk if still present.
+
+        Idempotent: marks the item as source_deleted on success or when the
+        file is already gone. Errors are logged and swallowed so a transient
+        FS issue doesn't break the calling flow — the scheduler will retry.
+        Returns True if the file was removed (or was already absent).
+        """
+        if item.source_deleted:
+            return True
+        path_str = (item.source_path or "").strip()
+        if not path_str:
+            item.source_deleted = True
+            return True
+        try:
+            path = Path(path_str)
+            existed = path.exists()
+            path.unlink(missing_ok=True)
+            item.source_deleted = True
+            if existed:
+                logger.info(
+                    "inbox: deleted source file %s for item %s (status=%s)",
+                    path_str, item.id, item.status,
+                )
+            return True
+        except OSError as exc:
+            logger.warning(
+                "inbox: failed to delete source file %s for item %s: %s",
+                path_str, item.id, exc,
+            )
+            return False
+
+    async def cleanup_expired_files(self, chunk_size: int = 20) -> dict[str, int]:
+        """Sweep inbox items whose source file should no longer be on disk.
+
+        Processes three cohorts (idempotent — re-running is safe):
+          - confirmed items with the file still present (source_deleted=False)
+          - rejected items past `file_deletion_scheduled_at`
+          - soft-deleted items (deleted_at set) with the file still present
+
+        Commits in chunks of `chunk_size` to avoid long write transactions
+        that would lock SQLite against concurrent HTTP requests. Yields the
+        event loop between chunks so the API stays responsive even when a
+        large backlog is being processed (e.g. backfill at first boot).
+        """
+        import asyncio
+
+        now = datetime.utcnow()
+        confirmed_done = 0
+        rejected_done = 0
+        deleted_done = 0
+        failed = 0
+
+        stmt = select(InboxItem).where(
+            InboxItem.source_deleted.is_(False),
+            or_(
+                InboxItem.status == "confirmed",
+                InboxItem.deleted_at.is_not(None),
+                (
+                    (InboxItem.status == "rejected")
+                    & InboxItem.file_deletion_scheduled_at.is_not(None)
+                    & (InboxItem.file_deletion_scheduled_at <= now)
+                ),
+            ),
+        )
+        result = await self.db.execute(stmt)
+        items = list(result.scalars().all())
+
+        for i in range(0, len(items), chunk_size):
+            chunk = items[i : i + chunk_size]
+            for item in chunk:
+                ok = self._delete_source_file(item)
+                if not ok:
+                    failed += 1
+                    continue
+                if item.deleted_at is not None:
+                    deleted_done += 1
+                elif item.status == "confirmed":
+                    confirmed_done += 1
+                elif item.status == "rejected":
+                    rejected_done += 1
+            await self.db.flush()
+            await self.db.commit()
+            # Yield so concurrent requests can grab the SQLite write lock.
+            await asyncio.sleep(0.05)
+
+        return {
+            "scanned": len(items),
+            "confirmed_deleted": confirmed_done,
+            "rejected_deleted": rejected_done,
+            "soft_deleted_deleted": deleted_done,
+            "failed": failed,
+        }
 
     # -------------------------------------------------------------------------
     # API key auth helper

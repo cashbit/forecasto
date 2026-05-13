@@ -70,6 +70,9 @@ export interface InboxItem {
   document_type?: string
   reconciliation_matches?: ReconciliationMatch[]
   processing_reasoning?: string | null
+  // When set, the source file is scheduled for deletion at this UTC timestamp
+  // (rejected items only — confirmed items have the file deleted immediately).
+  file_deletion_scheduled_at?: string | null
   confirmed_record_ids: string[]
   created_at: string
   updated_at: string
