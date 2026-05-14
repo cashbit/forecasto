@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { LoginRequest, LoginResponse, RegisterRequest, RefreshTokenRequest, RefreshTokenResponse, ResetPasswordByCodeRequest, User, DeleteAccountPrecheck } from '@/types/auth'
+import type { LoginRequest, LoginResponse, RegisterRequest, RefreshTokenRequest, RefreshTokenResponse, ResetPasswordByCodeRequest, User, DeleteAccountPrecheck, UiPreferences } from '@/types/auth'
 
 export const authApi = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
@@ -26,7 +26,7 @@ export const authApi = {
     return response.data
   },
 
-  updateProfile: async (data: { name?: string; ui_preferences?: Record<string, unknown> }): Promise<User> => {
+  updateProfile: async (data: { name?: string; ui_preferences?: UiPreferences }): Promise<User> => {
     const response = await apiClient.patch<User>('/users/me', data)
     return response.data
   },

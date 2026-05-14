@@ -34,6 +34,7 @@ import type { Area } from '@/types/record'
 import { canImport, canImportSdi, canExport } from '@/lib/permissions'
 import { useTourContext } from '@/components/tour/TourProvider'
 import { vatRegistryApi } from '@/api/vatRegistry'
+import { ThemeToggle } from '@/components/theme/ThemeToggle'
 
 export function Header() {
   const { startTour } = useTourContext()
@@ -414,6 +415,9 @@ export function Header() {
           </TooltipTrigger>
           <TooltipContent>Supporto</TooltipContent>
         </Tooltip>
+
+        {/* Theme Toggle */}
+        <ThemeToggle />
 
         {/* Pending Invitations */}
         <DropdownMenu>

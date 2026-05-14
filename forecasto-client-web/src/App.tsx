@@ -4,6 +4,7 @@ import { router } from '@/routes'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Toaster } from '@/components/ui/toaster'
+import { ThemeProvider } from '@/components/theme/ThemeProvider'
 import { useServerEvents } from '@/hooks/useServerEvents'
 
 const queryClient = new QueryClient({
@@ -25,10 +26,12 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ServerEventsConnector />
-        <TooltipProvider>
-          <RouterProvider router={router} />
-          <Toaster />
-        </TooltipProvider>
+        <ThemeProvider>
+          <TooltipProvider>
+            <RouterProvider router={router} />
+            <Toaster />
+          </TooltipProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   )

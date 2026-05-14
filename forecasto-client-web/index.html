@@ -11,6 +11,25 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
     <title>Forecasto</title>
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem('forecasto-theme');
+          var palette = 'slate';
+          var mode = 'light';
+          if (raw) {
+            var parsed = JSON.parse(raw);
+            var state = parsed && parsed.state ? parsed.state : parsed;
+            if (state && state.palette) palette = state.palette;
+            if (state && state.mode) mode = state.mode;
+          }
+          var root = document.documentElement;
+          root.setAttribute('data-theme', palette);
+          if (mode === 'dark') root.classList.add('dark');
+          else root.classList.remove('dark');
+        } catch (_) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

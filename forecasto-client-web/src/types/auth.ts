@@ -1,3 +1,11 @@
+export interface UiPreferences {
+  theme?: {
+    palette?: 'slate' | 'indigo' | 'emerald' | 'rose'
+    mode?: 'light' | 'dark'
+  }
+  [key: string]: unknown
+}
+
 export interface User {
   id: string
   email: string
@@ -8,7 +16,7 @@ export interface User {
   is_active: boolean
   created_at: string
   updated_at: string
-  ui_preferences?: Record<string, unknown>
+  ui_preferences?: UiPreferences
 }
 
 export interface LoginRequest {
