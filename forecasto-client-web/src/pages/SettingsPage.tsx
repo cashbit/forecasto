@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { User, Building, Bell, Shield, Users, Landmark, Handshake, Receipt, Download, Trash2, Loader2, Bot } from 'lucide-react'
+import { User, Building, Bell, Shield, Users, Landmark, Handshake, Receipt, Download, Trash2, Loader2, Bot, Palette } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +17,7 @@ import { WorkspaceBankAccountsSection } from '@/components/settings/WorkspaceBan
 import { DeleteAccountDialog } from '@/components/settings/DeleteAccountDialog'
 import { AgentTokensTab } from '@/components/settings/AgentTokensTab'
 import { AgentPromptSection } from '@/components/settings/AgentPromptSection'
+import { AppearanceTab } from '@/components/settings/AppearanceTab'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/useToast'
@@ -177,6 +178,10 @@ export function SettingsPage() {
             <User className="mr-2 h-4 w-4" />
             Profilo
           </TabsTrigger>
+          <TabsTrigger value="appearance">
+            <Palette className="mr-2 h-4 w-4" />
+            Aspetto
+          </TabsTrigger>
           <TabsTrigger value="workspace">
             <Building className="mr-2 h-4 w-4" />
             Workspace
@@ -236,6 +241,10 @@ export function SettingsPage() {
               </form>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="appearance">
+          <AppearanceTab />
         </TabsContent>
 
         <TabsContent value="workspace">

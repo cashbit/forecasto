@@ -119,10 +119,62 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
       elementSelector: '[data-tour="tab-budget"]',
       popover: {
         title: 'Area Budget',
-        description: 'Iniziamo dal Budget: puoi usarlo come piano previsionale di entrate/uscite, oppure come prima stazione del funnel commerciale per raccogliere opportunità ancora in fase iniziale.',
+        description: 'Il Budget è la prima area: usalo come piano previsionale di entrate/uscite, oppure come prima stazione del funnel commerciale per raccogliere opportunità ancora in fase iniziale.',
         side: 'bottom',
       },
+      beforeStep: async () => {
+        ctx.setArea('budget')
+        await delay(300)
+      },
       flashSelector: '[data-tour="tab-budget"]',
+    },
+
+    // === SELECT PROSPECT TAB ===
+    {
+      id: 'select-prospect',
+      elementSelector: '[data-tour="tab-prospect"]',
+      popover: {
+        title: 'Area Prospect',
+        description: 'In Prospect raccogli le trattative in corso: opportunità qualificate per cui hai inviato un\'offerta e stai negoziando con il cliente.',
+        side: 'bottom',
+      },
+      beforeStep: async () => {
+        ctx.setArea('prospect')
+        await delay(300)
+      },
+      flashSelector: '[data-tour="tab-prospect"]',
+    },
+
+    // === SELECT ORDERS TAB ===
+    {
+      id: 'select-orders',
+      elementSelector: '[data-tour="tab-orders"]',
+      popover: {
+        title: 'Area Orders',
+        description: 'In Orders trovi gli ordini confermati: il cliente ha firmato, manca solo la fatturazione e l\'incasso. Qui puoi anche dividere un ordine in rate (acconto + saldo).',
+        side: 'bottom',
+      },
+      beforeStep: async () => {
+        ctx.setArea('orders')
+        await delay(300)
+      },
+      flashSelector: '[data-tour="tab-orders"]',
+    },
+
+    // === SELECT ACTUAL TAB ===
+    {
+      id: 'select-actual',
+      elementSelector: '[data-tour="tab-actual"]',
+      popover: {
+        title: 'Area Actual',
+        description: 'In Actual finiscono i movimenti fatturati e incassati: è la base reale del tuo cashflow consuntivo, riconciliabile con i conti bancari.',
+        side: 'bottom',
+      },
+      beforeStep: async () => {
+        ctx.setArea('actual')
+        await delay(300)
+      },
+      flashSelector: '[data-tour="tab-actual"]',
     },
 
     // === CLICK NEW RECORD ===
@@ -131,10 +183,12 @@ export function createTourSteps(ctx: TourContext): TourStepDef[] {
       elementSelector: '[data-tour="btn-new-record"]',
       popover: {
         title: 'Crea un Nuovo Record',
-        description: 'Premi questo pulsante per inserire una nuova voce — che sia una previsione di budget o un\'opportunità commerciale nascente.',
+        description: 'Torniamo in Budget. Premi questo pulsante per inserire una nuova voce — che sia una previsione di budget o un\'opportunità commerciale nascente.',
         side: 'bottom',
       },
       beforeStep: async () => {
+        ctx.setArea('budget')
+        await delay(300)
         ctx.setCreateRecordDialogOpen(true)
         await delay(300)
       },
