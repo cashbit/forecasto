@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, Bell } from 'lucide-react'
+import { Loader2, Bell, Target } from 'lucide-react'
 import { RemindersKanban } from '@/components/dashboard/RemindersKanban'
+import { FocusKanban } from '@/components/dashboard/FocusKanban'
 import { RecordDetail } from '@/components/records/RecordDetail'
 import { RecordForm } from '@/components/records/RecordForm'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { recordsApi } from '@/api/records'
 import { useRecords } from '@/hooks/useRecords'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
@@ -22,6 +24,7 @@ export function DashboardPage() {
   const { sendReminders, undoReminder, updateRecord, isSendingReminder, isUndoingReminder } = useRecords()
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
+  const [section, setSection] = useState<'focus' | 'solleciti'>('focus')
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['reminders', workspaceId],
@@ -34,7 +37,7 @@ export function DashboardPage() {
         include_deleted: false,
       })
     },
-    enabled: !!workspaceId,
+    enabled: !!workspaceId && section === 'solleciti',
     staleTime: 30000,
   })
 
@@ -46,7 +49,7 @@ export function DashboardPage() {
       await sendReminders({ recordIds, workspaceId })
       toast({ title: 'Promemoria inviato', description: `Aggiornati ${recordIds.length} record.` })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Errore durante l\u2019invio'
+      const message = err instanceof Error ? err.message : 'Errore durante l’invio'
       toast({ title: 'Errore', description: message, variant: 'destructive' })
     }
   }
@@ -59,7 +62,7 @@ export function DashboardPage() {
       setEditingRecord(null)
       toast({ title: 'Record aggiornato', variant: 'success' })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Errore durante l\u2019aggiornamento'
+      const message = err instanceof Error ? err.message : 'Errore durante l’aggiornamento'
       toast({ title: 'Errore', description: message, variant: 'destructive' })
     }
   }
@@ -70,7 +73,7 @@ export function DashboardPage() {
       await undoReminder({ recordIds, workspaceId })
       toast({ title: 'Annullato', description: 'Ultimo promemoria annullato.' })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Errore durante l\u2019annullamento'
+      const message = err instanceof Error ? err.message : 'Errore durante l’annullamento'
       toast({ title: 'Errore', description: message, variant: 'destructive' })
     }
   }
@@ -86,41 +89,62 @@ export function DashboardPage() {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <Bell className="h-5 w-5" />
-              Dashboard promemoria e solleciti
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Solo righe in area <strong>Actual</strong> con stato <strong>Da pagare</strong>.
-              Promemoria mostrati entro {leadDays} giorni dalla scadenza.
-            </p>
-          </div>
-        </div>
+        <Tabs
+          value={section}
+          onValueChange={(v) => setSection(v as 'focus' | 'solleciti')}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <TabsList className="self-start">
+            <TabsTrigger value="focus" className="gap-2">
+              <Target className="h-4 w-4" />
+              Focus
+            </TabsTrigger>
+            <TabsTrigger value="solleciti" className="gap-2">
+              <Bell className="h-4 w-4" />
+              Solleciti
+            </TabsTrigger>
+          </TabsList>
 
-        {isLoading ? (
-          <div className="flex flex-1 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : isError ? (
-          <div className="flex flex-1 items-center justify-center text-destructive">
-            Errore durante il caricamento dei record.
-          </div>
-        ) : (
-          <div className="min-h-0 flex-1 overflow-hidden">
-            <RemindersKanban
-              records={records}
-              leadDays={leadDays}
-              signature={signature}
-              provider={provider}
-              onSend={handleSend}
-              onUndo={handleUndo}
-              onRecordClick={setSelectedRecord}
-              busy={isSendingReminder || isUndoingReminder}
-            />
-          </div>
-        )}
+          <TabsContent value="focus" className="mt-3 min-h-0 flex-1 overflow-hidden data-[state=inactive]:hidden">
+            <div className="mb-3">
+              <p className="text-xs text-muted-foreground">
+                Entrate aperte (stage 0) per area. Per ogni colonna le voci che compongono l'80% del totale.
+              </p>
+            </div>
+            <FocusKanban workspaceId={workspaceId} onSelectRecord={setSelectedRecord} />
+          </TabsContent>
+
+          <TabsContent value="solleciti" className="mt-3 min-h-0 flex-1 overflow-hidden data-[state=inactive]:hidden">
+            <div className="mb-3">
+              <p className="text-xs text-muted-foreground">
+                Solo righe in area <strong>Actual</strong> con stato <strong>Da pagare</strong>.
+                Promemoria mostrati entro {leadDays} giorni dalla scadenza.
+              </p>
+            </div>
+            {isLoading ? (
+              <div className="flex flex-1 items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : isError ? (
+              <div className="flex flex-1 items-center justify-center text-destructive">
+                Errore durante il caricamento dei record.
+              </div>
+            ) : (
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <RemindersKanban
+                  records={records}
+                  leadDays={leadDays}
+                  signature={signature}
+                  provider={provider}
+                  onSend={handleSend}
+                  onUndo={handleUndo}
+                  onRecordClick={setSelectedRecord}
+                  busy={isSendingReminder || isUndoingReminder}
+                />
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {(selectedRecord || editingRecord) && (
