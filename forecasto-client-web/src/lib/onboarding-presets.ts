@@ -52,7 +52,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 24,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: true,
   },
   {
@@ -68,7 +68,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 24,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: true,
   },
   {
@@ -84,7 +84,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 24,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: true,
   },
   {
@@ -100,7 +100,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 24,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: true,
   },
   {
@@ -116,7 +116,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 20,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 24,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: true,
   },
   {
@@ -132,7 +132,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 20,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 12,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
   {
@@ -148,7 +148,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 12,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: true,
   },
   {
@@ -164,7 +164,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 40,
     defaultHorizonMonths: 36,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
   {
@@ -180,7 +180,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 36,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
   {
@@ -196,7 +196,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 0,
     defaultHorizonMonths: 60,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
   {
@@ -212,7 +212,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 0,
     defaultHorizonMonths: 24,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
   {
@@ -228,7 +228,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 0,
     defaultHorizonMonths: 24,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
   {
@@ -244,7 +244,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 0,
     defaultHorizonMonths: 24,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
   {
@@ -260,7 +260,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 12,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
   {
@@ -276,7 +276,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 40,
     defaultHorizonMonths: 12,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
   {
@@ -292,7 +292,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 12,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
   {
@@ -308,7 +308,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 12,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: true,
   },
   {
@@ -324,7 +324,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 12,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
   {
@@ -340,7 +340,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 12,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
   {
@@ -356,7 +356,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 0,
     defaultHorizonMonths: 12,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: true,
   },
   {
@@ -372,7 +372,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 0,
     defaultHorizonMonths: 24,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
   {
@@ -388,7 +388,7 @@ export const COST_PRESETS: OnboardingPreset[] = [
     defaultWithholdingRate: 0,
     defaultVatDeduction: 100,
     defaultHorizonMonths: 12,
-    defaultStage: '1',
+    defaultStage: '0',
     defaultEnabled: false,
   },
 ]
