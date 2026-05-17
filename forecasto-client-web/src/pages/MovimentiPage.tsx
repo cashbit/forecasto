@@ -38,7 +38,7 @@ import type { Record, Area, RecordCreate, RecordUpdate } from '@/types/record'
 export function MovimentiPage() {
   const { selectedAreas, selectSingleArea, toggleAreaSelection } = useFilterStore()
   const primaryArea = selectedAreas[0]
-  const { createRecordDialogOpen, setCreateRecordDialogOpen, reviewMode } = useUiStore()
+  const { reviewMode } = useUiStore()
   const { records, isLoading, createRecord, updateRecord, deleteRecord, bulkDeleteRecords, transferRecord, restoreRecord, primaryWorkspaceId } = useRecords()
   const queryClient = useQueryClient()
   const { registerDashboardActions } = useTourContext()
@@ -120,30 +120,6 @@ export function MovimentiPage() {
       toast({ title: `Revisione posticipata di ${days} giorni`, variant: 'success' })
     } catch {
       toast({ title: 'Errore durante la revisione', variant: 'destructive' })
-    }
-  }
-
-  const handleCreateRecord = async (data: RecordCreate) => {
-    try {
-      await createRecord(data)
-      setCreateRecordDialogOpen(false)
-      toast({ title: 'Record creato', variant: 'success' })
-    } catch (error) {
-      const axiosError = error as AxiosError<{ error?: string; message?: string; detail?: Array<{ msg: string; loc: string[] }> | string }>
-      let message = 'Errore durante la creazione del record.'
-      if (axiosError.response?.data?.error) {
-        message = axiosError.response.data.error
-      } else if (axiosError.response?.data?.message) {
-        message = axiosError.response.data.message
-      } else if (axiosError.response?.data?.detail) {
-        const detail = axiosError.response.data.detail
-        if (Array.isArray(detail)) {
-          message = detail.map(d => `${d.loc?.join('.')}: ${d.msg}`).join(', ')
-        } else {
-          message = detail
-        }
-      }
-      toast({ title: 'Errore', description: message, variant: 'destructive' })
     }
   }
 
@@ -593,8 +569,8 @@ export function MovimentiPage() {
         </div>
       </div>
 
-      {/* Right Panel — 3 states: editing, creating, detail */}
-      {(selectedRecord || editingRecord || createRecordDialogOpen) && (
+      {/* Right Panel — edit and detail (creation now uses NewRecordSheet drawer mounted in MainLayout) */}
+      {(selectedRecord || editingRecord) && (
         <div className="w-120 border-l relative">
           {editingRecord ? (
             <RecordForm
@@ -606,13 +582,6 @@ export function MovimentiPage() {
               reviewMode={reviewMode}
               onReview={handleReviewRecord}
               onPromote={handlePromoteRecord}
-            />
-          ) : createRecordDialogOpen ? (
-            <RecordForm
-              area={primaryArea}
-              onSubmit={(data) => handleCreateRecord(data as RecordCreate)}
-              onCancel={() => setCreateRecordDialogOpen(false)}
-              onClose={() => setCreateRecordDialogOpen(false)}
             />
           ) : selectedRecord ? (
             <RecordDetail

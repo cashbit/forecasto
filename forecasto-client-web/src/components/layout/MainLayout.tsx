@@ -4,6 +4,7 @@ import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 
 import { CreateWorkspaceDialog } from '@/components/workspaces/CreateWorkspaceDialog'
+import { NewRecordSheet } from '@/components/records/NewRecordSheet'
 import { TourProvider } from '@/components/tour/TourProvider'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useTourStore } from '@/stores/tourStore'
@@ -56,6 +57,7 @@ export function MainLayout() {
         </div>
         {/* Dialogs */}
         <CreateWorkspaceDialog />
+        <NewRecordSheet />
       </div>
     </TourProvider>
   )

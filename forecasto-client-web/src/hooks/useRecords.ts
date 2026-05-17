@@ -173,6 +173,13 @@ export function useRecords() {
     },
   })
 
+  const bulkCreateMutation = useMutation({
+    mutationFn: (records: RecordCreate[]) => recordsApi.bulkImport(primaryWorkspaceId!, records),
+    onSuccess: () => {
+      invalidateAllWorkspaces()
+    },
+  })
+
   const bulkDeleteMutation = useMutation({
     mutationFn: ({ ids, workspaceId }: { ids: string[]; workspaceId?: string }) =>
       recordsApi.bulkDelete(workspaceId || primaryWorkspaceId!, ids),
@@ -228,6 +235,8 @@ export function useRecords() {
     isError,
     error,
     createRecord: createMutation.mutateAsync,
+    bulkCreateRecords: bulkCreateMutation.mutateAsync,
+    isBulkCreating: bulkCreateMutation.isPending,
     updateRecord: (params: { recordId: string; data: RecordUpdate; workspaceId?: string }) => updateMutation.mutateAsync(params),
     deleteRecord: (recordId: string, workspaceId?: string) => deleteMutation.mutateAsync({ recordId, workspaceId }),
     bulkDeleteRecords: (params: { ids: string[]; workspaceId?: string }) => bulkDeleteMutation.mutateAsync(params),

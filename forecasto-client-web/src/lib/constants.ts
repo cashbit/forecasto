@@ -8,7 +8,7 @@ export const AREA_LABELS: Record<string, string> = {
 }
 
 export const AREA_DESCRIPTIONS: Record<string, string> = {
-  budget: 'Previsioni di budget annuali',
+  budget: 'Opportunità di business o previsioni di vendita annuali',
   prospect: 'Opportunita commerciali in trattativa',
   orders: 'Ordini confermati non ancora fatturati',
   actual: 'Movimenti effettivi/fatturati',
