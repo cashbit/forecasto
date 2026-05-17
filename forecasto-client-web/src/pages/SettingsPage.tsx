@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { User, Building, Bell, Shield, Users, Landmark, Handshake, Receipt, Download, Trash2, Loader2, Bot, Palette } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { User, Building, Bell, Shield, Users, Landmark, Handshake, Receipt, Download, Trash2, Loader2, Bot, Palette, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -408,6 +409,26 @@ export function SettingsPage() {
               )}
             </CardContent>
           </Card>
+
+          {primaryWorkspace && (
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  Compilazione guidata
+                </CardTitle>
+                <CardDescription>
+                  Inserisci rapidamente le voci ricorrenti tipiche dell’azienda (affitti, utenze, leasing, consulenze, stipendi…)
+                  con default sensati e ricorrenze pre-impostate.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild>
+                  <Link to="/onboarding">Avvia compilazione guidata</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="members">

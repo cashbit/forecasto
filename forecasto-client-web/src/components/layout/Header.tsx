@@ -1,11 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
-import { LogOut, Settings, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy, ArrowUpDown, FileJson, Calculator, BarChart3, ChevronDown } from 'lucide-react'
+import { LogOut, Settings, PanelLeftClose, PanelLeft, Bell, Check, Copy, Shield, Download, Upload, FileSpreadsheet, Mail, MessageSquare, HelpCircle, LifeBuoy, ArrowUpDown, FileJson, Calculator, BarChart3, ChevronDown, Sparkles } from 'lucide-react'
 import logoIcon from '@/assets/logo-icon.png'
 import logoText from '@/assets/logo-text.png'
 import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
@@ -216,13 +215,6 @@ export function Header() {
     }
   }
 
-  const initials = user?.name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2) || 'U'
-
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center px-4 gap-4">
@@ -384,10 +376,15 @@ export function Header() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1 px-2"
+              aria-label="Menu utente"
+              title="Menu utente"
+            >
+              <Settings className="h-4 w-4" />
+              <ChevronDown className="h-4 w-4 opacity-70" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -488,6 +485,12 @@ export function Header() {
             <DropdownMenuItem onClick={startTour} data-tour="help-button">
               <HelpCircle className="mr-2 h-4 w-4" />
               Guida interattiva
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/onboarding">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Compilazione guidata
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
