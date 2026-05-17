@@ -122,8 +122,8 @@ export function DashboardPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="focus" className="mt-3 min-h-0 flex-1 overflow-hidden data-[state=inactive]:hidden">
-            <div className="mb-3">
+          <TabsContent value="focus" className="mt-3 min-h-0 flex-1 flex flex-col overflow-hidden data-[state=inactive]:hidden">
+            <div className="mb-3 flex-shrink-0">
               <p className="text-xs text-muted-foreground">
                 Entrate aperte (stage 0) per area. Per ogni colonna le voci che compongono l'80% del totale.
               </p>
@@ -131,8 +131,8 @@ export function DashboardPage() {
             <FocusKanban workspaceId={workspaceId} onSelectRecord={setSelectedRecord} />
           </TabsContent>
 
-          <TabsContent value="solleciti" className="mt-3 min-h-0 flex-1 overflow-hidden data-[state=inactive]:hidden">
-            <div className="mb-3">
+          <TabsContent value="solleciti" className="mt-3 min-h-0 flex-1 flex flex-col overflow-hidden data-[state=inactive]:hidden">
+            <div className="mb-3 flex-shrink-0">
               <p className="text-xs text-muted-foreground">
                 Solo righe in area <strong>Actual</strong> con stato <strong>Da pagare</strong>.
                 Promemoria mostrati entro {leadDays} giorni dalla scadenza.

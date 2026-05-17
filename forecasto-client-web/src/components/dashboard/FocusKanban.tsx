@@ -124,7 +124,7 @@ export function FocusKanban({ workspaceId, onSelectRecord }: FocusKanbanProps) {
   }
 
   return (
-    <div className="flex h-full min-h-[500px] gap-3 overflow-x-auto p-1">
+    <div className="flex flex-1 min-h-0 gap-3 overflow-x-auto p-1">
       {buckets.map(({ area, totale, paretoItems, extraItems }) => (
         <AreaFocusColumn
           key={area}
