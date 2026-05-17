@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { recordsApi } from '@/api/records'
 import { useRecords } from '@/hooks/useRecords'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { useFilterStore } from '@/stores/filterStore'
 import { toast } from '@/hooks/useToast'
 import type { Record, RecordUpdate } from '@/types/record'
 
@@ -26,8 +27,13 @@ export function DashboardPage() {
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
   const [section, setSection] = useState<'focus' | 'solleciti'>('focus')
 
+  const textFilter = useFilterStore(s => s.textFilter)
+  const textFilterField = useFilterStore(s => s.textFilterField)
+  const projectCodeFilter = useFilterStore(s => s.projectCodeFilter)
+  const ownerFilter = useFilterStore(s => s.ownerFilter)
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['reminders', workspaceId],
+    queryKey: ['reminders', workspaceId, textFilter, textFilterField, projectCodeFilter],
     queryFn: async () => {
       if (!workspaceId) return { items: [] as Record[] }
       return recordsApi.list(workspaceId, {
@@ -35,13 +41,24 @@ export function DashboardPage() {
         stage: '0',
         sign: 'in',
         include_deleted: false,
+        text_filter: textFilter || undefined,
+        text_filter_field: textFilter && textFilterField ? textFilterField : undefined,
+        project_code: projectCodeFilter || undefined,
       })
     },
     enabled: !!workspaceId && section === 'solleciti',
     staleTime: 30000,
   })
 
-  const records = useMemo(() => data?.items ?? [], [data])
+  const records = useMemo(() => {
+    const all = data?.items ?? []
+    if (ownerFilter.length === 0) return all
+    return all.filter(r => {
+      const owner = r.owner || ''
+      if (ownerFilter.includes('_noowner_') && !owner) return true
+      return ownerFilter.includes(owner)
+    })
+  }, [data, ownerFilter])
 
   const handleSend = async (recordIds: string[]) => {
     if (!workspaceId) return

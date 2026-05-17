@@ -1,5 +1,4 @@
-import { Search, X, ChevronLeft, ChevronRight, Trash2, RefreshCw } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { X, ChevronLeft, ChevronRight, Trash2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useFilterStore } from '@/stores/filterStore'
 import { STAGE_LABELS_BY_AREA } from '@/lib/constants'
@@ -181,22 +180,13 @@ interface RecordFiltersProps {
   onRefresh?: () => void
 }
 
-const TEXT_FILTER_FIELDS = [
-  { value: '', label: 'Tutto' },
-  { value: 'account', label: 'Conto' },
-  { value: 'reference', label: 'Riferimento' },
-  { value: 'note', label: 'Note' },
-  { value: 'owner', label: 'Responsabile' },
-  { value: 'transaction_id', label: 'ID Trans.' },
-] as const
-
 export function RecordFilters({ availableOwners = [], onRefresh }: RecordFiltersProps) {
   const {
-    selectedAreas, sign, stageFilter, textFilter, textFilterField,
+    selectedAreas, sign, stageFilter, textFilter,
     yearFilter, ownerFilter, nextactionFilter, expiredFilter, projectCodeFilter,
     includeDeleted,
-    setSign, setStageFilter, setTextFilter, setTextFilterField, resetFilters,
-    toggleOwnerFilter, clearOwnerFilter, setNextactionFilter, setExpiredFilter, setProjectCodeFilter,
+    setSign, setStageFilter, resetFilters,
+    toggleOwnerFilter, clearOwnerFilter, setNextactionFilter, setExpiredFilter,
     setIncludeDeleted
   } = useFilterStore()
 
@@ -207,7 +197,7 @@ export function RecordFilters({ availableOwners = [], onRefresh }: RecordFilters
   const hasNextactionFilter = nextactionFilter !== 'all'
   const hasExpiredFilter = expiredFilter !== 'all'
   const hasProjectCodeFilter = !!projectCodeFilter
-  const hasAnyFilter = textFilter || sign !== 'all' || stageFilter !== 'all' || hasDateFilter || hasOwnerFilter || hasNextactionFilter || hasExpiredFilter || hasProjectCodeFilter || includeDeleted
+  const hasAnyFilter = !!textFilter || sign !== 'all' || stageFilter !== 'all' || hasDateFilter || hasOwnerFilter || hasNextactionFilter || hasExpiredFilter || hasProjectCodeFilter || includeDeleted
 
   // Get unique owners from available owners
   const uniqueOwners = [...new Set(availableOwners.filter(Boolean))].sort()
@@ -217,47 +207,6 @@ export function RecordFilters({ availableOwners = [], onRefresh }: RecordFilters
       {/* Single responsive row — wraps automatically when the window narrows */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
         <DateFilter />
-
-        {/* Text search: select + input */}
-        <div className="flex">
-          <select
-            value={textFilterField || ''}
-            onChange={(e) => setTextFilterField(e.target.value as any || null)}
-            className="h-8 rounded-l-md border border-r-0 bg-muted text-xs px-2 cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
-          >
-            {TEXT_FILTER_FIELDS.map((f) => (
-              <option key={f.value} value={f.value}>{f.label}</option>
-            ))}
-          </select>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={textFilterField ? `Cerca in ${TEXT_FILTER_FIELDS.find(f => f.value === textFilterField)?.label}...` : 'Cerca...'}
-              title="Inserisci una o più parole: la ricerca trova righe che contengono tutte le parole indicate"
-              value={textFilter}
-              onChange={(e) => setTextFilter(e.target.value)}
-              className="h-8 w-44 pl-9 rounded-l-none"
-            />
-          </div>
-        </div>
-
-        {/* Project code */}
-        <div className="relative">
-          <Input
-            placeholder="Progetto"
-            value={projectCodeFilter || ''}
-            onChange={(e) => setProjectCodeFilter(e.target.value || null)}
-            className="h-8 w-36 pl-3"
-          />
-          {hasProjectCodeFilter && (
-            <button
-              onClick={() => setProjectCodeFilter(null)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
-        </div>
 
         {/* Toggle groups */}
         <ToggleButtonGroup

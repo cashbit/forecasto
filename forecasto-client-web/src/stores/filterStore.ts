@@ -40,6 +40,7 @@ interface FilterState {
   setBankAccountFilter: (accountId: string | null) => void
   setIncludeDeleted: (v: boolean) => void
   resetFilters: () => void
+  clearGlobalFilters: () => void
 }
 
 const initialState = {
@@ -128,4 +129,11 @@ export const useFilterStore = create<FilterState>()((set) => ({
   setIncludeDeleted: (v) => set({ includeDeleted: v }),
 
   resetFilters: () => set((state) => ({ ...initialState, selectedAreas: state.selectedAreas })),
+
+  clearGlobalFilters: () => set({
+    textFilter: '',
+    textFilterField: null,
+    projectCodeFilter: null,
+    ownerFilter: [],
+  }),
 }))

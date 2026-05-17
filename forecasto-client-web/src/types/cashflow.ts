@@ -8,6 +8,9 @@ export interface CashflowParams {
   bank_account_id?: string
   project_code?: string
   area_stage?: string[]  // format: "area:stage", e.g. "actual:0", "orders:1"
+  text_filter?: string
+  text_filter_field?: string
+  owners?: string[]
 }
 
 export interface AccountCashflowEntry {
