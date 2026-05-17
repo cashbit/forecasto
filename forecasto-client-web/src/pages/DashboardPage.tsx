@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, Bell, Target, Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Loader2, Bell, Target, Plus, Sparkles, X } from 'lucide-react'
 import { RemindersKanban } from '@/components/dashboard/RemindersKanban'
 import { FocusKanban } from '@/components/dashboard/FocusKanban'
 import { RecordDetail } from '@/components/records/RecordDetail'
@@ -15,11 +16,26 @@ import { useUiStore } from '@/stores/uiStore'
 import { toast } from '@/hooks/useToast'
 import type { Record, RecordUpdate } from '@/types/record'
 
+function onboardingBannerStorageKey(workspaceId: string | undefined): string {
+  return `forecasto-onboarding-banner-dismissed:${workspaceId ?? 'none'}`
+}
+
 export function DashboardPage() {
   const workspaces = useWorkspaceStore((state) => state.workspaces)
   const selectedWorkspaceIds = useWorkspaceStore((state) => state.selectedWorkspaceIds)
   const currentWorkspace = workspaces.find((w) => w.id === selectedWorkspaceIds[0])
   const workspaceId = currentWorkspace?.id
+
+  const bannerKey = onboardingBannerStorageKey(workspaceId)
+  const [bannerDismissed, setBannerDismissed] = useState<boolean>(
+    () => typeof window !== 'undefined' && window.localStorage.getItem(bannerKey) === '1',
+  )
+  const dismissBanner = () => {
+    setBannerDismissed(true)
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(bannerKey, '1')
+    }
+  }
   const leadDays = currentWorkspace?.settings?.reminder_lead_days ?? 7
   const signature = currentWorkspace?.settings?.reminder_email_signature
   const provider = currentWorkspace?.settings?.reminder_email_provider ?? 'native'
@@ -109,6 +125,34 @@ export function DashboardPage() {
   return (
     <div className="flex h-full overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-4">
+        {!bannerDismissed && (
+          <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+            <div className="flex items-start gap-3">
+              <Sparkles className="mt-0.5 h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm font-medium">Compilazione guidata voci ricorrenti</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Inserisci in pochi minuti affitti, utenze, leasing, consulenze e altre voci ricorrenti
+                  con default sensati. Riempi il cashflow senza dover creare i record uno a uno.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button asChild size="sm">
+                <Link to="/onboarding">Inizia</Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={dismissBanner}
+                className="h-8 w-8 p-0"
+                aria-label="Nascondi"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
         <Tabs
           value={section}
           onValueChange={(v) => setSection(v as 'focus' | 'solleciti')}

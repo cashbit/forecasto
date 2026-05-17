@@ -11,6 +11,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 import { SupportPage } from '@/pages/SupportPage'
 import { SkillsPage } from '@/pages/SkillsPage'
 import { InboxPage } from '@/pages/InboxPage'
+import { OnboardingPage } from '@/pages/OnboardingPage'
 import { UsagePage } from '@/pages/UsagePage'
 import { AdminLayout, AdminDashboard, RegistrationCodesPage, UsersPage, ActivatedCodesReportPage, BillingSummaryPage, BillingProfilesPage, BillingProfileDetailPage, UserDetailPage } from '@/pages/admin'
 import { MobileLayout } from '@/pages/mobile/MobileLayout'
@@ -83,6 +84,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'cashflow', element: <CashflowPage /> },
       { path: 'inbox', element: <InboxPage /> },
+      { path: 'onboarding', element: <OnboardingPage /> },
       { path: 'usage', element: <UsagePage /> },
       { path: 'settings', element: <SettingsPage /> },
     ],
