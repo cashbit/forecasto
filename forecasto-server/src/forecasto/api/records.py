@@ -202,11 +202,21 @@ async def bulk_import_records(
     for data in records:
         check_area_permission(member, data.area, "write")
 
+    # Demo workspaces bypass the record-count check on bulk-import:
+    # the seed payload is the source of truth for the demo content.
+    is_demo_workspace = bool((workspace.settings or {}).get("is_demo"))
+
     # Import all records
     service = RecordService(db)
     created_ids = []
     for data in records:
-        record = await service.create_record(workspace_id, data, current_user, member=member)
+        record = await service.create_record(
+            workspace_id,
+            data,
+            current_user,
+            member=member,
+            skip_limit_check=is_demo_workspace,
+        )
         created_ids.append(record.id)
 
     # Re-fetch with eager-loaded relationships to avoid lazy-load MissingGreenlet

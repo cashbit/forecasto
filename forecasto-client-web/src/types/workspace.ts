@@ -42,6 +42,7 @@ export interface WorkspaceSettings {
   reminder_shift_days?: number
   reminder_email_signature?: string
   reminder_email_provider?: 'native' | 'gmail'
+  is_demo?: boolean
 }
 
 export interface WorkspaceCreate {

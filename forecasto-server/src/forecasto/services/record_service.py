@@ -191,12 +191,42 @@ class RecordService:
         result = await self.db.execute(stmt)
         return [row[0] for row in result.fetchall()]
 
-    async def _check_free_user_record_limit(self, user: User) -> dict | None:
-        """Check if a free user (no billing profile) has reached record limit.
+    DEMO_WORKSPACE_RECORD_LIMIT = 100
 
-        Returns None if OK, or a dict with usage info if at/near limit.
+    async def _check_free_user_record_limit(
+        self, user: User, workspace_id: str
+    ) -> dict | None:
+        """Check if creating a record exceeds the applicable limit.
+
+        Demo workspaces (settings.is_demo) have their own hard cap and don't
+        count against the user's free-tier total. Free-tier users still hit
+        max_records_free across all their non-demo workspaces combined.
+
+        Returns None if OK, or a dict with usage info if near limit.
         Raises ForbiddenException if limit reached.
         """
+        target_ws_result = await self.db.execute(
+            select(Workspace.settings).where(Workspace.id == workspace_id)
+        )
+        target_settings = target_ws_result.scalar_one_or_none() or {}
+        is_target_demo = bool(target_settings.get("is_demo"))
+
+        if is_target_demo:
+            count_result = await self.db.execute(
+                select(func.count()).select_from(Record).where(
+                    Record.workspace_id == workspace_id,
+                    Record.deleted_at.is_(None),
+                )
+            )
+            current_count = count_result.scalar() or 0
+            if current_count >= self.DEMO_WORKSPACE_RECORD_LIMIT:
+                raise ForbiddenException(
+                    f"Hai raggiunto il limite di {self.DEMO_WORKSPACE_RECORD_LIMIT} "
+                    "record per il workspace demo. Crea un nuovo workspace per "
+                    "continuare ad aggiungere movimenti."
+                )
+            return None
+
         if user.billing_profile_id is not None:
             return None  # User has billing profile, no record limit
 
@@ -204,19 +234,24 @@ class RecordService:
         if max_records == 0:
             return None  # 0 = unlimited
 
-        # Count total records across all workspaces for this user
+        # Count records across the user's non-demo workspaces
         from forecasto.models.workspace import WorkspaceMember as WM
 
         ws_result = await self.db.execute(
-            select(WM.workspace_id).where(WM.user_id == user.id)
+            select(WM.workspace_id, Workspace.settings)
+            .join(Workspace, Workspace.id == WM.workspace_id)
+            .where(WM.user_id == user.id)
         )
-        ws_ids = [r[0] for r in ws_result.all()]
-        if not ws_ids:
+        non_demo_ws_ids = [
+            row[0] for row in ws_result.all()
+            if not (row[1] or {}).get("is_demo")
+        ]
+        if not non_demo_ws_ids:
             return None
 
         count_result = await self.db.execute(
             select(func.count()).select_from(Record).where(
-                Record.workspace_id.in_(ws_ids),
+                Record.workspace_id.in_(non_demo_ws_ids),
                 Record.deleted_at.is_(None),
             )
         )
@@ -246,10 +281,11 @@ class RecordService:
         data: RecordCreate,
         user: User,
         member: WorkspaceMember | None = None,
+        skip_limit_check: bool = False,
     ) -> Record:
         """Create a new record."""
-        # Check free user record limit
-        await self._check_free_user_record_limit(user)
+        if not skip_limit_check:
+            await self._check_free_user_record_limit(user, workspace_id)
 
         # Check granular permission if member provided
         if member:
