@@ -14,6 +14,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
@@ -35,6 +38,8 @@ import { canImport, canImportSdi, canExport } from '@/lib/permissions'
 import { useTourContext } from '@/components/tour/TourProvider'
 import { vatRegistryApi } from '@/api/vatRegistry'
 import { ThemeToggle } from '@/components/theme/ThemeToggle'
+import { GlobalSearchBar } from '@/components/search/GlobalSearchBar'
+import { GlobalFilterChips } from '@/components/search/GlobalFilterChips'
 
 export function Header() {
   const { startTour } = useTourContext()
@@ -274,16 +279,11 @@ export function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {selectedWorkspaceIds.length > 0 && (
-          <span className="text-sm text-muted-foreground truncate max-w-xs" title={workspaces.filter(w => selectedWorkspaceIds.includes(w.id)).map(w => w.name).join(', ')}>
-            {selectedWorkspaceIds.length === 1
-              ? workspaces.find(w => w.id === selectedWorkspaceIds[0])?.name
-              : `${selectedWorkspaceIds.length} workspace`
-            }
-          </span>
+        {location.pathname !== '/inbox' ? (
+          <GlobalSearchBar />
+        ) : (
+          <div className="flex-1" />
         )}
-
-        <div className="flex-1" />
 
         <nav className="flex items-center gap-1">
           <Button
@@ -335,86 +335,6 @@ export function Header() {
             <Link to="/cashflow">Cashflow</Link>
           </Button>
         </nav>
-
-        {/* Import/Export Menu */}
-        <Tooltip>
-          <DropdownMenu>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={!canImportExport}
-                >
-                  <ArrowUpDown className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Importa</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => setShowExcelImportDialog(true)}
-                disabled={!canImport(currentMember)}
-              >
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Excel / CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setShowSdiImportDialog(true)}
-                disabled={!canImportSdi(currentMember)}
-              >
-                <FileSpreadsheet className="h-4 w-4 mr-2" />
-                Fatture SDI (XML)
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setShowImportDialog(true)}
-                disabled={!canImport(currentMember)}
-              >
-                <FileJson className="h-4 w-4 mr-2" />
-                JSON
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Esporta</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleExport}
-                disabled={isExporting || !canExport(currentMember)}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                {isExporting ? 'Esportazione...' : `Esporta JSON`}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <TooltipContent>Importa / Esporta</TooltipContent>
-        </Tooltip>
-
-        {/* Help / Tour Button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={startTour}
-              data-tour="help-button"
-            >
-              <HelpCircle className="h-5 w-5" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Guida Interattiva</TooltipContent>
-        </Tooltip>
-
-        {/* Support Button */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" asChild>
-              <Link to="/support">
-                <LifeBuoy className="h-5 w-5" />
-              </Link>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Supporto</TooltipContent>
-        </Tooltip>
 
         {/* Theme Toggle */}
         <ThemeToggle />
@@ -524,6 +444,52 @@ export function Header() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger disabled={!canImportExport}>
+                <ArrowUpDown className="mr-2 h-4 w-4" />
+                Importa / Esporta
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-56">
+                <DropdownMenuLabel>Importa</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setShowExcelImportDialog(true)}
+                  disabled={!canImport(currentMember)}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel / CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setShowSdiImportDialog(true)}
+                  disabled={!canImportSdi(currentMember)}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Fatture SDI (XML)
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setShowImportDialog(true)}
+                  disabled={!canImport(currentMember)}
+                >
+                  <FileJson className="h-4 w-4 mr-2" />
+                  JSON
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Esporta</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleExport}
+                  disabled={isExporting || !canExport(currentMember)}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {isExporting ? 'Esportazione...' : 'Esporta JSON'}
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuItem onClick={startTour} data-tour="help-button">
+              <HelpCircle className="mr-2 h-4 w-4" />
+              Guida interattiva
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link to="/settings">
                 <Settings className="mr-2 h-4 w-4" />
@@ -562,6 +528,8 @@ export function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {location.pathname !== '/inbox' && <GlobalFilterChips />}
 
       {/* Import Dialog */}
       {primaryWorkspace && (

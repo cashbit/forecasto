@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react'
 import { AreaFocusColumn } from './AreaFocusColumn'
 import { recordsApi } from '@/api/records'
 import { useUiStore } from '@/stores/uiStore'
+import { useFilterStore } from '@/stores/filterStore'
 import { AREAS, AREA_LABELS, AREA_DESCRIPTIONS } from '@/lib/constants'
 import type { Area, Record } from '@/types/record'
 
@@ -54,16 +55,23 @@ function computeArea(records: Record[]): AreaBuckets {
 export function FocusKanban({ workspaceId, onSelectRecord }: FocusKanbanProps) {
   const reviewMode = useUiStore((state) => state.reviewMode)
   const recentFilter = useUiStore((state) => state.recentFilter)
+  const textFilter = useFilterStore((state) => state.textFilter)
+  const textFilterField = useFilterStore((state) => state.textFilterField)
+  const projectCodeFilter = useFilterStore((state) => state.projectCodeFilter)
+  const ownerFilter = useFilterStore((state) => state.ownerFilter)
 
   const queries = useQueries({
     queries: AREAS.map((area) => ({
-      queryKey: ['focus', workspaceId, area],
+      queryKey: ['focus', workspaceId, area, textFilter, textFilterField, projectCodeFilter],
       queryFn: () =>
         recordsApi.list(workspaceId, {
           area: area as Area,
           stage: '0',
           sign: 'in',
           include_deleted: false,
+          text_filter: textFilter || undefined,
+          text_filter_field: textFilter && textFilterField ? textFilterField : undefined,
+          project_code: projectCodeFilter || undefined,
         }),
       enabled: !!workspaceId,
       staleTime: 30000,
@@ -91,6 +99,13 @@ export function FocusKanban({ workspaceId, onSelectRecord }: FocusKanbanProps) {
       if (recentThreshold) {
         out = out.filter((r) => r.updated_at >= recentThreshold)
       }
+      if (ownerFilter.length > 0) {
+        out = out.filter((r) => {
+          const owner = r.owner || ''
+          if (ownerFilter.includes('_noowner_') && !owner) return true
+          return ownerFilter.includes(owner)
+        })
+      }
       return out
     }
 
@@ -98,7 +113,7 @@ export function FocusKanban({ workspaceId, onSelectRecord }: FocusKanbanProps) {
       const items = queries[idx].data?.items ?? []
       return { area, ...computeArea(applyFilters(items)) }
     })
-  }, [queries, reviewMode, recentFilter])
+  }, [queries, reviewMode, recentFilter, ownerFilter])
 
   if (isLoading) {
     return (

@@ -25,6 +25,70 @@ from forecasto.schemas.cashflow import (
     CashflowSummary,
     InitialBalance,
 )
+from forecasto.services.record_service import (
+    _build_fts_query,
+    _build_tokenized_ilike,
+    _fts_search_ids,
+)
+
+
+_TEXT_FIELDS = (
+    Record.account,
+    Record.reference,
+    Record.note,
+    Record.owner,
+    Record.nextaction,
+    Record.transaction_id,
+    Record.project_code,
+)
+
+
+async def _apply_record_text_filters(
+    db: AsyncSession,
+    workspace_id: str,
+    query,
+    params: CashflowRequest,
+):
+    """Apply text_filter / project_code / owners filters to a Record query.
+
+    Mirrors the logic in record_service.list_records to keep cashflow and the
+    records list consistent: FTS5 first, ILIKE tokenized fallback.
+    """
+    if params.text_filter:
+        field = params.text_filter_field
+        if field and hasattr(Record, field):
+            clause = _build_tokenized_ilike(params.text_filter, [getattr(Record, field)])
+            if clause is not None:
+                query = query.where(clause)
+        else:
+            fts_q = _build_fts_query(params.text_filter)
+            matched_ids = None
+            if fts_q:
+                matched_ids = await _fts_search_ids(db, workspace_id, fts_q)
+            if matched_ids:
+                query = query.where(Record.id.in_(matched_ids))
+            else:
+                ilike_clause = _build_tokenized_ilike(params.text_filter, list(_TEXT_FIELDS))
+                if ilike_clause is not None:
+                    query = query.where(ilike_clause)
+                else:
+                    query = query.where(False)
+
+    if params.project_code:
+        query = query.where(Record.project_code.ilike(f"%{params.project_code}%"))
+
+    if params.owners:
+        explicit = [o for o in params.owners if o != "_noowner_"]
+        include_empty = "_noowner_" in params.owners
+        conditions = []
+        if explicit:
+            conditions.append(Record.owner.in_(explicit))
+        if include_empty:
+            conditions.append(or_(Record.owner.is_(None), Record.owner == ""))
+        if conditions:
+            query = query.where(or_(*conditions))
+
+    return query
 
 class CashflowService:
     """Service for cashflow calculations."""
@@ -336,6 +400,8 @@ class CashflowService:
         elif params.sign_filter == "out":
             query = query.where(Record.amount < 0)
 
+        query = await _apply_record_text_filters(self.db, workspace_id, query, params)
+
         query = query.order_by(Record.date_cashflow)
         result = await self.db.execute(query)
         return list(result.scalars().all())
@@ -387,6 +453,8 @@ class CashflowService:
             (Record.bank_account_id == bank_account_id)
             | (Record.bank_account_id.is_(None))
         )
+
+        query = await _apply_record_text_filters(self.db, workspace_id, query, params)
 
         result = await self.db.execute(query)
         return Decimal(str(result.scalar() or 0))

@@ -14,6 +14,7 @@ import { useCashflow } from '@/hooks/useCashflow'
 import { useQuery } from '@tanstack/react-query'
 import { cashflowApi } from '@/api/cashflow'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
+import { useFilterStore } from '@/stores/filterStore'
 import { CashflowVatDetail } from '@/components/cashflow/CashflowVatDetail'
 import type { CashflowParams, CashflowEntry, CashflowVatResponse } from '@/types/cashflow'
 
@@ -81,6 +82,19 @@ export function CashflowPage() {
   })
   const selectedWorkspaceIds = useWorkspaceStore(state => state.selectedWorkspaceIds)
 
+  const textFilter = useFilterStore(s => s.textFilter)
+  const textFilterField = useFilterStore(s => s.textFilterField)
+  const globalProjectCode = useFilterStore(s => s.projectCodeFilter)
+  const ownerFilter = useFilterStore(s => s.ownerFilter)
+
+  const effectiveParams = useMemo<CashflowParams>(() => ({
+    ...params,
+    project_code: globalProjectCode || params.project_code,
+    text_filter: textFilter || undefined,
+    text_filter_field: textFilter && textFilterField ? textFilterField : undefined,
+    owners: ownerFilter.length > 0 ? ownerFilter : undefined,
+  }), [params, globalProjectCode, textFilter, textFilterField, ownerFilter])
+
   const updateHeight = useCallback(() => {
     setChartHeight(Math.max(300, window.innerHeight - 440))
   }, [])
@@ -90,7 +104,7 @@ export function CashflowPage() {
     return () => window.removeEventListener('resize', updateHeight)
   }, [updateHeight])
 
-  const { cashflow, summary, initialBalance, isLoading } = useCashflow(params)
+  const { cashflow, summary, initialBalance, isLoading } = useCashflow(effectiveParams)
 
   const { data: vatSimulation } = useQuery({
     queryKey: ['cashflow-vat', selectedWorkspaceIds, params.from_date, params.to_date, vatFilter],

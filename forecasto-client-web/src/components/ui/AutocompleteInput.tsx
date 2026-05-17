@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { Command, CommandList, CommandItem } from '@/components/ui/command'
 import { recordsApi } from '@/api/records'
+import { useDebounce } from '@/hooks/useDebounce'
 
 type AutocompleteField = 'account' | 'reference' | 'project_code' | 'owner' | 'nextaction'
 
@@ -16,15 +17,6 @@ interface AutocompleteInputProps {
   id?: string
   disabled?: boolean
   className?: string
-}
-
-function useDebounce<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), delay)
-    return () => clearTimeout(t)
-  }, [value, delay])
-  return debounced
 }
 
 export function AutocompleteInput({

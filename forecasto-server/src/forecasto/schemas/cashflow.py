@@ -28,6 +28,10 @@ class CashflowRequest(BaseModel):
     bank_account_id: str | None = None
     group_by: str = "day"  # day, week, month
     sign_filter: str | None = None  # in, out, all
+    text_filter: str | None = None
+    text_filter_field: str | None = None  # account|reference|note|owner|transaction_id|project_code
+    project_code: str | None = None
+    owners: list[str] | None = None  # '_noowner_' = NULL/'' owner
 
 class CashflowRecordSummary(BaseModel):
     """Summary of a record in cashflow."""

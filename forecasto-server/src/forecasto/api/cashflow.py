@@ -47,6 +47,10 @@ async def get_cashflow(
     bank_account_id: str | None = Query(None),
     group_by: str = Query("day"),
     sign_filter: str | None = Query(None),
+    text_filter: str | None = Query(None),
+    text_filter_field: str | None = Query(None),
+    project_code: str | None = Query(None),
+    owners: list[str] | None = Query(None),
 ):
     """Calculate cashflow projection for a workspace."""
 
@@ -59,6 +63,10 @@ async def get_cashflow(
         bank_account_id=bank_account_id,
         group_by=group_by,
         sign_filter=sign_filter,
+        text_filter=text_filter,
+        text_filter_field=text_filter_field,
+        project_code=project_code,
+        owners=owners,
     )
 
     service = CashflowService(db)

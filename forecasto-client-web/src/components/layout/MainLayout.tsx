@@ -10,7 +10,7 @@ import { useTourStore } from '@/stores/tourStore'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 
 export function MainLayout() {
-  const { fetchWorkspaces, selectedWorkspaceIds } = useWorkspaceStore()
+  const { fetchWorkspaces, selectedWorkspaceIds, workspaces } = useWorkspaceStore()
   const { hasSeenTour, startTour } = useTourStore()
 
   useKeyboardShortcuts()
@@ -18,6 +18,16 @@ export function MainLayout() {
   useEffect(() => {
     fetchWorkspaces()
   }, [fetchWorkspaces])
+
+  useEffect(() => {
+    let suffix = ''
+    if (selectedWorkspaceIds.length === 1) {
+      suffix = workspaces.find(w => w.id === selectedWorkspaceIds[0])?.name ?? ''
+    } else if (selectedWorkspaceIds.length > 1) {
+      suffix = `${selectedWorkspaceIds.length} workspace`
+    }
+    document.title = suffix ? `Forecasto - ${suffix}` : 'Forecasto'
+  }, [selectedWorkspaceIds, workspaces])
 
   // Auto-start tour on first login when workspace is selected
   useEffect(() => {

@@ -6,7 +6,7 @@ from __future__ import annotations
 import secrets
 from datetime import datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -33,8 +33,26 @@ class WorkspaceService:
         )
         return list(result.all())
 
+    FREE_TIER_MAX_WORKSPACES = 2
+
     async def create_workspace(self, data: WorkspaceCreate, owner: User) -> Workspace:
         """Create a new workspace."""
+        # Free-tier users (no billing profile) can own at most FREE_TIER_MAX_WORKSPACES
+        # workspaces concurrently. Deleting a workspace frees a slot.
+        if owner.billing_profile_id is None:
+            count_result = await self.db.execute(
+                select(func.count()).select_from(Workspace).where(
+                    Workspace.owner_id == owner.id,
+                )
+            )
+            owned_count = count_result.scalar() or 0
+            if owned_count >= self.FREE_TIER_MAX_WORKSPACES:
+                raise ForbiddenException(
+                    f"Hai raggiunto il limite di {self.FREE_TIER_MAX_WORKSPACES} "
+                    "workspace. Elimina un workspace esistente o contatta "
+                    "l'amministratore per un piano a pagamento."
+                )
+
         # Check unique name per owner
         result = await self.db.execute(
             select(Workspace).where(

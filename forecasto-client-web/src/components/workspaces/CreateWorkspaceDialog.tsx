@@ -127,7 +127,10 @@ export function CreateWorkspaceDialog() {
           demoRegistry = await vatRegistryApi.create({ name: data.name, vat_number: setup.VATID })
           queryClient.invalidateQueries({ queryKey: ['vat-registries'] })
         }
-        await updateWorkspace(workspace.id, { vat_registry_id: demoRegistry.id })
+        await updateWorkspace(workspace.id, {
+          vat_registry_id: demoRegistry.id,
+          settings: { ...workspace.settings, is_demo: true },
+        })
 
         // 8. Build RecordCreate array
         const records: RecordCreate[] = shifted.map(r => ({
