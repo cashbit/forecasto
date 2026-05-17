@@ -104,7 +104,7 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
+    <div className="flex h-full overflow-hidden">
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-4">
         <Tabs
           value={section}
