@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Loader2, Bell, Target } from 'lucide-react'
+import { Loader2, Bell, Target, Plus } from 'lucide-react'
 import { RemindersKanban } from '@/components/dashboard/RemindersKanban'
 import { FocusKanban } from '@/components/dashboard/FocusKanban'
 import { RecordDetail } from '@/components/records/RecordDetail'
 import { RecordForm } from '@/components/records/RecordForm'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
 import { recordsApi } from '@/api/records'
 import { useRecords } from '@/hooks/useRecords'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useFilterStore } from '@/stores/filterStore'
+import { useUiStore } from '@/stores/uiStore'
 import { toast } from '@/hooks/useToast'
 import type { Record, RecordUpdate } from '@/types/record'
 
@@ -23,6 +25,7 @@ export function DashboardPage() {
   const provider = currentWorkspace?.settings?.reminder_email_provider ?? 'native'
 
   const { sendReminders, undoReminder, updateRecord, isSendingReminder, isUndoingReminder } = useRecords()
+  const setCreateRecordDialogOpen = useUiStore(s => s.setCreateRecordDialogOpen)
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
   const [section, setSection] = useState<'focus' | 'solleciti'>('focus')
@@ -111,16 +114,26 @@ export function DashboardPage() {
           onValueChange={(v) => setSection(v as 'focus' | 'solleciti')}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <TabsList className="self-start">
-            <TabsTrigger value="focus" className="gap-2">
-              <Target className="h-4 w-4" />
-              Focus
-            </TabsTrigger>
-            <TabsTrigger value="solleciti" className="gap-2">
-              <Bell className="h-4 w-4" />
-              Solleciti
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between gap-2">
+            <TabsList className="self-start">
+              <TabsTrigger value="focus" className="gap-2">
+                <Target className="h-4 w-4" />
+                Focus
+              </TabsTrigger>
+              <TabsTrigger value="solleciti" className="gap-2">
+                <Bell className="h-4 w-4" />
+                Solleciti
+              </TabsTrigger>
+            </TabsList>
+            <Button
+              size="sm"
+              onClick={() => setCreateRecordDialogOpen(true)}
+              disabled={!workspaceId}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Nuovo
+            </Button>
+          </div>
 
           <TabsContent value="focus" className="mt-3 min-h-0 flex-1 flex flex-col overflow-hidden data-[state=inactive]:hidden">
             <div className="mb-3 flex-shrink-0">

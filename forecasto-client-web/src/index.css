@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @theme {
   --font-narrow: "Roboto Condensed", ui-sans-serif, system-ui, sans-serif;
