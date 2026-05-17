@@ -38,6 +38,7 @@ const TYPE_AREA_MAP: Record<string, Area> = {
   '0': 'actual',
   '1': 'orders',
   '2': 'prospect',
+  '3': 'budget',
 }
 
 function shiftDate(dateStr: string, yearOffset: number): string {
@@ -145,6 +146,7 @@ export function CreateWorkspaceDialog() {
           transaction_id: r.transaction_id || '',
           project_code: r.project_code || undefined,
           owner: r.owner || undefined,
+          nextaction: r.nextaction || undefined,
           review_date: r.review_date || undefined,
           bank_account_id: bankAccount.id,
         }))
