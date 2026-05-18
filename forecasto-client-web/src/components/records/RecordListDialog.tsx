@@ -3,10 +3,21 @@ import { X, ChevronLeft } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { AmountDisplay } from '@/components/common/AmountDisplay'
 import { RecordDetail } from '@/components/records/RecordDetail'
 import { RecordForm } from '@/components/records/RecordForm'
 import { recordsApi } from '@/api/records'
+import { toast } from '@/hooks/useToast'
 import type { Record, RecordUpdate } from '@/types/record'
 
 interface RecordListDialogProps {
@@ -21,6 +32,7 @@ export function RecordListDialog({ open, title, records, valueField = 'total', o
   const queryClient = useQueryClient()
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
+  const [recordToDelete, setRecordToDelete] = useState<Record | null>(null)
 
   const updateMutation = useMutation({
     mutationFn: ({ workspaceId, recordId, data }: { workspaceId: string; recordId: string; data: RecordUpdate }) =>
@@ -31,6 +43,28 @@ export function RecordListDialog({ open, title, records, valueField = 'total', o
       setSelectedRecord(updated)
     },
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ workspaceId, recordId }: { workspaceId: string; recordId: string }) =>
+      recordsApi.delete(workspaceId, recordId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['records'] })
+      setSelectedRecord(null)
+    },
+  })
+
+  const confirmDeleteRecord = async () => {
+    if (!recordToDelete) return
+    try {
+      await deleteMutation.mutateAsync({ workspaceId: recordToDelete.workspace_id, recordId: recordToDelete.id })
+      toast({ title: 'Record eliminato', variant: 'success' })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Errore durante l’eliminazione'
+      toast({ title: 'Errore', description: message, variant: 'destructive' })
+    } finally {
+      setRecordToDelete(null)
+    }
+  }
 
   if (!open) return null
 
@@ -72,6 +106,7 @@ export function RecordListDialog({ open, title, records, valueField = 'total', o
                 record={selectedRecord}
                 onClose={() => setSelectedRecord(null)}
                 onEdit={() => setEditingRecord(selectedRecord)}
+                onDelete={() => setRecordToDelete(selectedRecord)}
               />
             </div>
           </>
@@ -133,6 +168,29 @@ export function RecordListDialog({ open, title, records, valueField = 'total', o
           </>
         )}
       </div>
+
+      <AlertDialog open={!!recordToDelete} onOpenChange={(open) => !open && setRecordToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare questo record?
+              {recordToDelete && (
+                <span className="block mt-2 font-medium text-foreground">
+                  {recordToDelete.reference || recordToDelete.account}
+                </span>
+              )}
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteRecord} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

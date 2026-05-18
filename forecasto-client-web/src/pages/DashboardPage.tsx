@@ -8,6 +8,16 @@ import { RecordDetail } from '@/components/records/RecordDetail'
 import { RecordForm } from '@/components/records/RecordForm'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { recordsApi } from '@/api/records'
 import { useRecords } from '@/hooks/useRecords'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
@@ -40,10 +50,11 @@ export function DashboardPage() {
   const signature = currentWorkspace?.settings?.reminder_email_signature
   const provider = currentWorkspace?.settings?.reminder_email_provider ?? 'native'
 
-  const { sendReminders, undoReminder, updateRecord, isSendingReminder, isUndoingReminder } = useRecords()
+  const { sendReminders, undoReminder, updateRecord, deleteRecord, isSendingReminder, isUndoingReminder } = useRecords()
   const setCreateRecordDialogOpen = useUiStore(s => s.setCreateRecordDialogOpen)
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
+  const [recordToDelete, setRecordToDelete] = useState<Record | null>(null)
   const [section, setSection] = useState<'focus' | 'solleciti'>('focus')
 
   const textFilter = useFilterStore(s => s.textFilter)
@@ -100,6 +111,20 @@ export function DashboardPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Errore durante l’aggiornamento'
       toast({ title: 'Errore', description: message, variant: 'destructive' })
+    }
+  }
+
+  const confirmDeleteRecord = async () => {
+    if (!recordToDelete) return
+    try {
+      await deleteRecord(recordToDelete.id, recordToDelete.workspace_id)
+      setSelectedRecord(null)
+      toast({ title: 'Record eliminato', variant: 'success' })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Errore durante l’eliminazione'
+      toast({ title: 'Errore', description: message, variant: 'destructive' })
+    } finally {
+      setRecordToDelete(null)
     }
   }
 
@@ -236,10 +261,34 @@ export function DashboardPage() {
               record={selectedRecord}
               onClose={() => setSelectedRecord(null)}
               onEdit={() => setEditingRecord(selectedRecord)}
+              onDelete={() => setRecordToDelete(selectedRecord)}
             />
           ) : null}
         </div>
       )}
+
+      <AlertDialog open={!!recordToDelete} onOpenChange={(open) => !open && setRecordToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare questo record?
+              {recordToDelete && (
+                <span className="block mt-2 font-medium text-foreground">
+                  {recordToDelete.reference || recordToDelete.account}
+                </span>
+              )}
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteRecord} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
