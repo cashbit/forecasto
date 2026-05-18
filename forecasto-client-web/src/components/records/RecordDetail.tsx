@@ -14,9 +14,10 @@ interface RecordDetailProps {
   record: Record
   onClose: () => void
   onEdit?: () => void
+  onDelete?: () => void
 }
 
-export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
+export function RecordDetail({ record, onClose, onEdit, onDelete }: RecordDetailProps) {
   const [auditExpanded, setAuditExpanded] = useState(false)
 
   return (
@@ -271,9 +272,16 @@ export function RecordDetail({ record, onClose, onEdit }: RecordDetailProps) {
       </CardContent>
       <div className="flex-shrink-0 p-4 border-t">
         {!record.deleted_at && (
-          <Button className="w-full" onClick={onEdit} data-tour="btn-edit-record">
-            Modifica Record
-          </Button>
+          <div className="flex gap-2">
+            <Button className="flex-[4]" onClick={onEdit} data-tour="btn-edit-record">
+              Modifica Record
+            </Button>
+            {onDelete && (
+              <Button className="flex-[1]" variant="destructive" onClick={onDelete}>
+                Elimina
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </Card>

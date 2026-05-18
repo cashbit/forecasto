@@ -588,6 +588,7 @@ export function MovimentiPage() {
               record={selectedRecord}
               onClose={() => setSelectedRecord(null)}
               onEdit={() => setEditingRecord(selectedRecord)}
+              onDelete={() => handleDeleteRecord(selectedRecord)}
             />
           ) : null}
         </div>

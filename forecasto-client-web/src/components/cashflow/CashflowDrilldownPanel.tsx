@@ -4,11 +4,22 @@ import { parseISO, format, endOfMonth, addDays } from 'date-fns'
 import { it } from 'date-fns/locale'
 import { X, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { AmountDisplay } from '@/components/common/AmountDisplay'
 import { RecordDetail } from '@/components/records/RecordDetail'
 import { RecordForm } from '@/components/records/RecordForm'
 import { recordsApi } from '@/api/records'
+import { toast } from '@/hooks/useToast'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { AREA_LABELS, getStageLabel } from '@/lib/constants'
 import type { CashflowEntry, CashflowParams } from '@/types/cashflow'
@@ -41,6 +52,7 @@ export function CashflowDrilldownPanel({ entry, params, onClose }: Props) {
   const queryClient = useQueryClient()
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
+  const [recordToDelete, setRecordToDelete] = useState<Record | null>(null)
 
   const activeAreaStages = params.area_stage ?? []
   const areaStageMap = new Map<Area, string[]>()
@@ -99,6 +111,30 @@ export function CashflowDrilldownPanel({ entry, params, onClose }: Props) {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: ({ workspaceId, recordId }: { workspaceId: string; recordId: string }) =>
+      recordsApi.delete(workspaceId, recordId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drilldown'] })
+      queryClient.invalidateQueries({ queryKey: ['cashflow'] })
+      queryClient.invalidateQueries({ queryKey: ['records'] })
+      setSelectedRecord(null)
+    },
+  })
+
+  const confirmDeleteRecord = async () => {
+    if (!recordToDelete) return
+    try {
+      await deleteMutation.mutateAsync({ workspaceId: recordToDelete.workspace_id, recordId: recordToDelete.id })
+      toast({ title: 'Record eliminato', variant: 'success' })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Errore durante l’eliminazione'
+      toast({ title: 'Errore', description: message, variant: 'destructive' })
+    } finally {
+      setRecordToDelete(null)
+    }
+  }
+
   if (!entry) return null
 
   return (
@@ -136,6 +172,7 @@ export function CashflowDrilldownPanel({ entry, params, onClose }: Props) {
                 record={selectedRecord}
                 onClose={() => setSelectedRecord(null)}
                 onEdit={() => setEditingRecord(selectedRecord)}
+                onDelete={() => setRecordToDelete(selectedRecord)}
               />
             </div>
           </>
@@ -209,6 +246,29 @@ export function CashflowDrilldownPanel({ entry, params, onClose }: Props) {
           </>
         )}
       </div>
+
+      <AlertDialog open={!!recordToDelete} onOpenChange={(open) => !open && setRecordToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare questo record?
+              {recordToDelete && (
+                <span className="block mt-2 font-medium text-foreground">
+                  {recordToDelete.reference || recordToDelete.account}
+                </span>
+              )}
+              Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteRecord} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
