@@ -24,7 +24,8 @@ import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { useFilterStore } from '@/stores/filterStore'
 import { useUiStore } from '@/stores/uiStore'
 import { toast } from '@/hooks/useToast'
-import type { Record, RecordUpdate } from '@/types/record'
+import { AREA_LABELS } from '@/lib/constants'
+import type { Record, RecordUpdate, Area } from '@/types/record'
 
 function onboardingBannerStorageKey(workspaceId: string | undefined): string {
   return `forecasto-onboarding-banner-dismissed:${workspaceId ?? 'none'}`
@@ -50,8 +51,9 @@ export function DashboardPage() {
   const signature = currentWorkspace?.settings?.reminder_email_signature
   const provider = currentWorkspace?.settings?.reminder_email_provider ?? 'native'
 
-  const { sendReminders, undoReminder, updateRecord, deleteRecord, isSendingReminder, isUndoingReminder } = useRecords()
+  const { sendReminders, undoReminder, updateRecord, deleteRecord, transferRecord, isSendingReminder, isUndoingReminder } = useRecords()
   const setCreateRecordDialogOpen = useUiStore(s => s.setCreateRecordDialogOpen)
+  const reviewMode = useUiStore(s => s.reviewMode)
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
   const [recordToDelete, setRecordToDelete] = useState<Record | null>(null)
@@ -110,6 +112,37 @@ export function DashboardPage() {
       toast({ title: 'Record aggiornato', variant: 'success' })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Errore durante l’aggiornamento'
+      toast({ title: 'Errore', description: message, variant: 'destructive' })
+    }
+  }
+
+  const handleReviewRecord = async (days: number, formData: RecordUpdate) => {
+    if (!editingRecord) return
+    const nextDate = new Date()
+    nextDate.setDate(nextDate.getDate() + days)
+    try {
+      await updateRecord({
+        recordId: editingRecord.id,
+        data: { ...formData, review_date: nextDate.toISOString().split('T')[0] },
+        workspaceId: editingRecord.workspace_id,
+      })
+      setSelectedRecord(editingRecord)
+      setEditingRecord(null)
+      toast({ title: `Revisione posticipata di ${days} giorni`, variant: 'success' })
+    } catch {
+      toast({ title: 'Errore durante la revisione', variant: 'destructive' })
+    }
+  }
+
+  const handlePromoteRecord = async (recordId: string, toArea: Area, formData: RecordUpdate) => {
+    try {
+      await updateRecord({ recordId, data: { ...formData, stage: '0' } })
+      await transferRecord({ recordId, toArea })
+      setSelectedRecord(editingRecord)
+      setEditingRecord(null)
+      toast({ title: `Record spostato in ${AREA_LABELS[toArea]}`, variant: 'success' })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Errore durante lo spostamento'
       toast({ title: 'Errore', description: message, variant: 'destructive' })
     }
   }
@@ -255,6 +288,9 @@ export function DashboardPage() {
               onSubmit={(data) => handleUpdateRecord(data as RecordUpdate)}
               onCancel={() => setEditingRecord(null)}
               onClose={() => setEditingRecord(null)}
+              reviewMode={reviewMode}
+              onReview={handleReviewRecord}
+              onPromote={handlePromoteRecord}
             />
           ) : selectedRecord ? (
             <RecordDetail
