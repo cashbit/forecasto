@@ -145,6 +145,10 @@ export function useRecords() {
     selectedWorkspaceIds.forEach(workspaceId => {
       queryClient.invalidateQueries({ queryKey: ['records', workspaceId] })
     })
+    queryClient.invalidateQueries({ queryKey: ['focus'] })
+    queryClient.invalidateQueries({ queryKey: ['reminders'] })
+    queryClient.invalidateQueries({ queryKey: ['cashflow'] })
+    queryClient.invalidateQueries({ queryKey: ['drilldown'] })
   }
 
   // For mutations, use the first selected workspace
