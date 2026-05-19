@@ -98,6 +98,9 @@ class DocumentProcessingService:
         self.db.add(job)
         await self.db.flush()
         await self.db.refresh(job)
+        # Commit before enqueue: the worker reads the job in a separate session
+        # and would not see uncommitted rows under WAL mode (race condition).
+        await self.db.commit()
 
         # Enqueue (may raise QueueFullError)
         queue_position = await processing_queue.enqueue(job.id)

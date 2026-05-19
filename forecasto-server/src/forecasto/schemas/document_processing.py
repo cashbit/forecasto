@@ -24,6 +24,14 @@ class DocumentUploadResponse(BaseModel):
     queue_position: int
 
 
+class JobProgressResponse(BaseModel):
+    """Live in-memory progress info for a job currently being processed."""
+    phase: str | None = None
+    output_tokens: int = 0
+    partial_record_count: int = 0
+    updated_at: float | None = None
+
+
 class ProcessingJobResponse(BaseModel):
     """Full job details including usage."""
     id: str
@@ -42,6 +50,7 @@ class ProcessingJobResponse(BaseModel):
     completed_at: datetime | None
     created_at: datetime
     usage: UsageRecordResponse | None = None
+    progress: JobProgressResponse | None = None
 
     @field_serializer("started_at", "completed_at", "created_at")
     def _serialize_utc(self, v: datetime | None) -> str | None:

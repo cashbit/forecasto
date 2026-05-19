@@ -88,6 +88,13 @@ export interface InboxCountResponse {
   pending: number
 }
 
+export interface JobProgress {
+  phase?: string | null
+  output_tokens: number
+  partial_record_count: number
+  updated_at?: number | null
+}
+
 export interface ProcessingJob {
   id: string
   workspace_id: string
@@ -104,6 +111,7 @@ export interface ProcessingJob {
   completed_at?: string
   created_at: string
   usage?: UsageRecordDetail
+  progress?: JobProgress | null
 }
 
 export interface UsageRecordDetail {

@@ -713,6 +713,10 @@ class ProcessingQueue:
 
                 # Call Anthropic API
                 from forecasto.services.llm.anthropic_provider import extract_records_with_usage
+                from forecasto.services.job_progress import set_progress
+
+                def _on_progress(**kw):
+                    set_progress(job_id, phase="extracting", **kw)
 
                 records, usage, reasoning = await extract_records_with_usage(
                     image_blocks=image_blocks,
@@ -722,6 +726,7 @@ class ProcessingQueue:
                     api_key=settings.anthropic_api_key or None,
                     text_content=text_content_for_llm,
                     extra_context_block=open_records_block,
+                    on_progress=_on_progress,
                 )
 
                 # Free memory
@@ -832,6 +837,9 @@ class ProcessingQueue:
                 job.error_message = str(e)[:1000]
                 job.completed_at = datetime.utcnow()
                 await db.commit()
+            finally:
+                from forecasto.services.job_progress import clear_progress
+                clear_progress(job_id)
 
 
 def _convert_to_images(file_bytes: bytes, content_type: str) -> tuple[list[dict], int]:
