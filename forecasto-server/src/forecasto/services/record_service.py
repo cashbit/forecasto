@@ -198,13 +198,17 @@ class RecordService:
     ) -> dict | None:
         """Check if creating a record exceeds the applicable limit.
 
-        Demo workspaces (settings.is_demo) have their own hard cap and don't
-        count against the user's free-tier total. Free-tier users still hit
+        Users with a billing profile have no record limit. Free-tier users in
+        demo workspaces (settings.is_demo) hit a hard 100-record cap that
+        doesn't count against their global total; otherwise they hit
         max_records_free across all their non-demo workspaces combined.
 
         Returns None if OK, or a dict with usage info if near limit.
         Raises ForbiddenException if limit reached.
         """
+        if user.billing_profile_id is not None:
+            return None  # User has billing profile, no record limit
+
         target_ws_result = await self.db.execute(
             select(Workspace.settings).where(Workspace.id == workspace_id)
         )
@@ -226,9 +230,6 @@ class RecordService:
                     "continuare ad aggiungere movimenti."
                 )
             return None
-
-        if user.billing_profile_id is not None:
-            return None  # User has billing profile, no record limit
 
         max_records = user.max_records_free
         if max_records == 0:
