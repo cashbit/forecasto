@@ -83,6 +83,9 @@ if [ "$DEPLOY_SERVER" = true ]; then
       --exclude '.git' \
       --exclude '*.pyc' \
       --exclude 'forecasto.db' \
+      --exclude 'forecasto.db-shm' \
+      --exclude 'forecasto.db-wal' \
+      --exclude '*.db-journal' \
       --exclude '.env' \
       --exclude 'dist' \
       --exclude 'sessioni' \
