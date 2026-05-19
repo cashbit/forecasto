@@ -39,10 +39,12 @@ def _reference_similarity(a: str, b: str) -> float:
 
     Uses rapidfuzz token_set_ratio as the main score (order-independent,
     robust to typos, suffix variations, OCR noise). Falls back to
-    partial_ratio ONLY when one string is much shorter than the other —
-    the abbreviation case "M. Rossi" / "Mario Rossi". Without that guard
-    partial_ratio inflates scores between unrelated short strings that
-    happen to share a few characters.
+    partial_ratio for the abbreviation case ("M. Rossi" / "Mario Rossi")
+    but ONLY when (a) one string is meaningfully shorter than the other
+    AND (b) at least one meaningful token is shared. The shared-token
+    guard avoids inflating scores between unrelated short strings like
+    "Ciari Lavorazioni" / "Alongi Patrizia" that partial_ratio would
+    otherwise score around 0.45 from accidental substring overlaps.
     """
     if not a or not b:
         return 0.0
@@ -53,13 +55,14 @@ def _reference_similarity(a: str, b: str) -> float:
     if canon_a == canon_b:
         return 1.0
     token_score = fuzz.token_set_ratio(canon_a, canon_b) / 100.0
-    # Abbreviation case: only consider partial_ratio when the shorter string
-    # is meaningfully shorter (≤60%) than the longer one.
     short_len = min(len(canon_a), len(canon_b))
     long_len = max(len(canon_a), len(canon_b))
     if long_len > 0 and short_len / long_len <= 0.6:
-        partial_score = fuzz.partial_ratio(canon_a, canon_b) / 100.0
-        return max(token_score, partial_score * 0.9)
+        tokens_a = {t for t in canon_a.split() if len(t) > 2}
+        tokens_b = {t for t in canon_b.split() if len(t) > 2}
+        if tokens_a & tokens_b:
+            partial_score = fuzz.partial_ratio(canon_a, canon_b) / 100.0
+            return max(token_score, partial_score * 0.9)
     return token_score
 
 
@@ -103,15 +106,19 @@ def _amount_similarity(a: float, b: float, is_payment_doc: bool = False) -> floa
       generous, because offer versions and invoice amendments legitimately
       shift the totals. 1.0 within 1%, 0.5 at 10%, 0.0 above ~25%.
 
-    - **Payment documents** (wire_transfer/bank_statement): strict. A bonifico
-      should reconcile to a specific open record — when the same supplier has
-      several open invoices, only the one whose amount really matches should
-      win. 1.0 within ~€2 / 1%, drops sharply, 0.0 above 5%.
+    - **Payment documents** (wire_transfer/bank_statement): strict and
+      sign-aware. A bank credit (positive) cannot reconcile against an
+      outgoing record (negative) and vice versa — opposite signs mean
+      opposite cashflow directions, which is never a real match.
+      1.0 within ~€2 / 1%, drops sharply, 0.0 above 5%.
     """
     if a == 0 and b == 0:
         return 1.0
     max_val = max(abs(a), abs(b))
     if max_val == 0:
+        return 0.0
+    if is_payment_doc and a != 0 and b != 0 and (a > 0) != (b > 0):
+        # Sign mismatch — incoming vs outgoing. Hard zero.
         return 0.0
     diff_abs = abs(abs(a) - abs(b))
     diff_pct = diff_abs / max_val
@@ -239,6 +246,25 @@ def compute_similarity_score(
             reasons.append("riferimento simile")
     scores["reference"] = ref_sim
 
+    # Hard gates for payment documents (wire_transfer / bank_statement).
+    # A bonifico or bank line is only a real match if BOTH hold:
+    #   (a) counterpart name aligns (or P.IVA matches exactly)
+    #   (b) cashflow direction matches (same sign on amount)
+    # Without these, amount + account similarity alone produces confident-
+    # looking junk matches between unrelated counterparties that happen to
+    # share a round number — and Rossi-credit-to-Rossi-debit confusions.
+    is_payment_doc = document_type in ("wire_transfer", "bank_statement")
+    if is_payment_doc:
+        if not vat_match and ref_sim < 0.4:
+            return 0.0, [], "duplicate"
+        try:
+            cand_amt = float(candidate.get("amount") or candidate.get("total") or 0)
+            qry_amt = float(query.get("amount") or query.get("total") or 0)
+            if cand_amt != 0 and qry_amt != 0 and (cand_amt > 0) != (qry_amt > 0):
+                return 0.0, [], "duplicate"
+        except (ValueError, TypeError):
+            pass
+
     # 2. Account match
     acc_a = (candidate.get("account") or "").lower().strip()
     acc_b = (query.get("account") or "").lower().strip()
@@ -249,8 +275,8 @@ def compute_similarity_score(
     else:
         scores["account"] = 0.0
 
-    # 3. Amount similarity (compare imponibile/net amount, fallback to total)
-    is_payment_doc = document_type in ("wire_transfer", "bank_statement")
+    # 3. Amount similarity (compare imponibile/net amount, fallback to total).
+    # is_payment_doc was computed above for the reference gate.
     try:
         amt_a = float(candidate.get("amount") or candidate.get("total") or 0)
         amt_b = float(query.get("amount") or query.get("total") or 0)
@@ -296,7 +322,14 @@ def compute_similarity_score(
     total_score = sum(scores[k] * WEIGHTS[k] for k in WEIGHTS)
 
     # Determine match_type. is_payment_doc was set above when we computed amt_sim.
-    if is_payment_doc and amt_sim >= 0.9 and candidate.get("stage") == "0":
+    # "payment" requires BOTH amount and counterpart name to align — amount alone
+    # is not enough (see Alongi/Ciari false positive that motivated this rule).
+    if (
+        is_payment_doc
+        and amt_sim >= 0.9
+        and ref_sim >= 0.5
+        and candidate.get("stage") == "0"
+    ):
         match_type: Literal["payment", "update", "update_partial", "duplicate"] = "payment"
     elif (
         is_payment_doc

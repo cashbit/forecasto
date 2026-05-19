@@ -224,3 +224,107 @@ def test_bonifico_with_wrong_amount_does_not_promote_to_payment():
     }
     _, _, match_type = compute_similarity_score(candidate, query, document_type="wire_transfer")
     assert match_type != "payment"
+
+
+# ---------------------------------------------------------------------------
+# Payment-doc gates: reference and sign (the user-reported false positives)
+# ---------------------------------------------------------------------------
+
+
+def test_payment_doc_blocks_match_with_unrelated_counterpart():
+    """The Alongi/Ciari false positive: amount matches within 1% and account
+    matches, but counterpart names are unrelated → must NOT be a match."""
+    candidate = {
+        "reference": "Ciari Lavorazioni Esterne",
+        "account": "Consulenze",
+        "amount": -1560.0,
+        "total": -1903.20,
+        "transaction_id": "",
+        "stage": "0",
+        "area": "prospect",
+    }
+    query = {
+        "reference": "Alongi Patrizia",
+        "account": "Consulenze",
+        "amount": -1549.60,
+        "transaction_id": "",
+    }
+    score, reasons, match_type = compute_similarity_score(
+        candidate, query, document_type="bank_statement"
+    )
+    assert score == 0.0
+    assert reasons == []
+
+
+def test_payment_doc_blocks_opposite_signs():
+    """The Rossi credit/debit confusion: bank credit (+126.84) must not
+    match a payslip outflow (-446.90) even when references partially overlap."""
+    candidate = {
+        "reference": "Rossi",
+        "account": "Buste paga",
+        "amount": -446.90,
+        "total": -446.90,
+        "transaction_id": "",
+        "stage": "0",
+        "area": "orders",
+    }
+    query = {
+        "reference": "Da Rossi Gabriele",
+        "account": "Income SW",
+        "amount": 126.84,
+        "transaction_id": "",
+    }
+    score, _, match_type = compute_similarity_score(
+        candidate, query, document_type="bank_statement"
+    )
+    # Amount-sim collapses to 0 because of sign mismatch; score may still be
+    # non-zero from reference, but match_type must not be "payment".
+    assert match_type != "payment"
+
+
+def test_payment_doc_payment_match_requires_both_name_and_amount():
+    """match_type='payment' must require ref_sim>=0.5 AND amt_sim>=0.9.
+    Amount-only match with unrelated names should fall through the gate."""
+    # Same amount, totally different names — should be blocked by ref gate
+    candidate = {
+        "reference": "Ciari Lavorazioni Esterne",
+        "account": "Consulenze",
+        "amount": -1500.0,
+        "total": -1830.0,
+        "transaction_id": "",
+        "stage": "0",
+        "area": "prospect",
+    }
+    query = {
+        "reference": "Alongi Patrizia",
+        "account": "Consulenze",
+        "amount": -1500.0,
+        "transaction_id": "",
+    }
+    score, _, _ = compute_similarity_score(candidate, query, document_type="wire_transfer")
+    assert score == 0.0
+
+
+def test_payment_doc_p_iva_match_bypasses_reference_gate():
+    """If P.IVA matches, the reference gate is bypassed — different display
+    names with the same VAT are the same legal entity."""
+    candidate = {
+        "reference": "ACME Holding",
+        "account": "Hardware",
+        "amount": -1000.0,
+        "stage": "0",
+        "area": "orders",
+        "classification": {"counterpart_vat": "IT01234567890"},
+    }
+    query = {
+        "reference": "Ciari Lavorazioni Esterne",  # bogus name from bank line
+        "account": "Hardware",
+        "amount": -1000.0,
+        "classification": {"counterpart_vat": "IT01234567890"},
+    }
+    score, reasons, match_type = compute_similarity_score(
+        candidate, query, document_type="wire_transfer"
+    )
+    assert score > 0.5
+    assert any("P.IVA" in r for r in reasons)
+    assert match_type == "payment"
