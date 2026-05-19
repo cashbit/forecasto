@@ -80,7 +80,13 @@ export function InboxPage() {
       queryClient.invalidateQueries({ queryKey: ['records'] })
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Errore sconosciuto'
+      const ax = err as { response?: { data?: { error?: string; detail?: string; message?: string } }; message?: string }
+      const msg =
+        ax.response?.data?.error ||
+        ax.response?.data?.detail ||
+        ax.response?.data?.message ||
+        ax.message ||
+        'Errore sconosciuto'
       toast({ title: 'Errore nella conferma', description: msg, variant: 'destructive' })
     },
   })
