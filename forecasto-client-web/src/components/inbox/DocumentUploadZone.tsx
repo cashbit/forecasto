@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Upload, FileText, Loader2, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { inboxApi } from '@/api/inbox'
@@ -27,6 +27,16 @@ interface UploadJob {
   status: 'uploading' | 'queued' | 'processing' | 'completed' | 'failed'
   jobId?: string
   error?: string
+  progress?: { output_tokens: number; partial_record_count: number }
+  startedAt: number
+  endedAt?: number
+}
+
+function formatElapsed(ms: number): string {
+  const totalSec = Math.max(0, Math.floor(ms / 1000))
+  const m = Math.floor(totalSec / 60)
+  const s = totalSec % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
 }
 
 interface DocumentUploadZoneProps {
@@ -39,8 +49,19 @@ interface DocumentUploadZoneProps {
 export function DocumentUploadZone({ workspaceId, onProcessingComplete, quotaExceeded, quotaMessage }: DocumentUploadZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [uploads, setUploads] = useState<UploadJob[]>([])
+  const [, setNowTick] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pollTimers = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map())
+
+  // 1Hz tick to refresh the elapsed-time label while any upload is in flight.
+  useEffect(() => {
+    const hasActive = uploads.some(u =>
+      u.status === 'uploading' || u.status === 'queued' || u.status === 'processing',
+    )
+    if (!hasActive) return
+    const t = setInterval(() => setNowTick(n => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [uploads])
 
   const updateUpload = (id: string, patch: Partial<UploadJob>) => {
     setUploads(prev => prev.map(u => u.id === id ? { ...u, ...patch } : u))
@@ -48,7 +69,7 @@ export function DocumentUploadZone({ workspaceId, onProcessingComplete, quotaExc
 
   const processFile = useCallback(async (file: File) => {
     const uploadId = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-    const upload: UploadJob = { id: uploadId, filename: file.name, status: 'uploading' }
+    const upload: UploadJob = { id: uploadId, filename: file.name, status: 'uploading', startedAt: Date.now() }
     setUploads(prev => [...prev, upload])
 
     try {
@@ -60,7 +81,7 @@ export function DocumentUploadZone({ workspaceId, onProcessingComplete, quotaExc
         try {
           const job = await inboxApi.getJob(workspaceId, result.job_id)
           if (job.status === 'completed') {
-            updateUpload(uploadId, { status: 'completed' })
+            updateUpload(uploadId, { status: 'completed', endedAt: Date.now() })
             clearInterval(timer)
             pollTimers.current.delete(uploadId)
             onProcessingComplete()
@@ -69,16 +90,24 @@ export function DocumentUploadZone({ workspaceId, onProcessingComplete, quotaExc
               setUploads(prev => prev.filter(u => u.id !== uploadId))
             }, 5000)
           } else if (job.status === 'failed') {
-            updateUpload(uploadId, { status: 'failed', error: job.error_message || 'Elaborazione fallita' })
+            updateUpload(uploadId, { status: 'failed', error: job.error_message || 'Elaborazione fallita', endedAt: Date.now() })
             clearInterval(timer)
             pollTimers.current.delete(uploadId)
           } else if (job.status === 'processing') {
-            updateUpload(uploadId, { status: 'processing' })
+            updateUpload(uploadId, {
+              status: 'processing',
+              progress: job.progress
+                ? {
+                    output_tokens: job.progress.output_tokens,
+                    partial_record_count: job.progress.partial_record_count,
+                  }
+                : undefined,
+            })
           }
         } catch {
           // Polling error — ignore, will retry
         }
-      }, 3000)
+      }, 1000)
       pollTimers.current.set(uploadId, timer)
 
     } catch (err: unknown) {
@@ -115,12 +144,23 @@ export function DocumentUploadZone({ workspaceId, onProcessingComplete, quotaExc
     }
   }
 
-  const statusLabel = (status: UploadJob['status']) => {
-    switch (status) {
+  const statusLabel = (u: UploadJob) => {
+    switch (u.status) {
       case 'uploading': return 'Caricamento\u2026'
       case 'queued': return 'In coda'
-      case 'processing': return 'Elaborazione\u2026'
-      case 'completed': return 'Completato'
+      case 'processing': {
+        const parts: string[] = [formatElapsed(Date.now() - u.startedAt)]
+        const p = u.progress
+        if (p) {
+          if (p.partial_record_count > 0) parts.push(`~${p.partial_record_count} record`)
+          if (p.output_tokens > 0) parts.push(`${p.output_tokens.toLocaleString('it-IT')} token`)
+        }
+        return `Elaborazione\u2026 ${parts.join(' \u00b7 ')}`
+      }
+      case 'completed': {
+        const dur = u.endedAt ? formatElapsed(u.endedAt - u.startedAt) : null
+        return dur ? `Completato in ${dur}` : 'Completato'
+      }
       case 'failed': return 'Errore'
     }
   }
@@ -181,7 +221,7 @@ export function DocumentUploadZone({ workspaceId, onProcessingComplete, quotaExc
               <span className="truncate flex-1 text-xs">{u.filename}</span>
               {statusIcon(u.status)}
               <span className={cn('text-xs', u.status === 'failed' ? 'text-red-600' : 'text-muted-foreground')}>
-                {u.error || statusLabel(u.status)}
+                {u.error || statusLabel(u)}
               </span>
             </div>
           ))}

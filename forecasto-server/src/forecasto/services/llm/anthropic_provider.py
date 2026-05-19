@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Callable
 
 import anthropic
 
@@ -19,20 +20,6 @@ EXTRACT_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "reasoning": {
-                "type": "string",
-                "description": (
-                    "Spiegazione SINTETICA in italiano (3-8 frasi) di come hai elaborato il "
-                    "documento. Tocca, dove pertinente: (1) come hai classificato il documento "
-                    "(attivo/passivo, tipo); (2) come hai usato il CONTESTO WORKSPACE (P.IVA, "
-                    "denominazione, conti) per decidere il punto di vista e il segno; "
-                    "(3) come hai gestito le rate / milestone / canoni e perché hai prodotto "
-                    "N record; (4) eventuali abbinamenti con i RECORD APERTI DEL WORKSPACE "
-                    "e/o sospetti di duplicato; (5) assunzioni o ambiguità (es. data calcolata, "
-                    "IVA dedotta al 22% di default). Non descrivere lo schema dei campi: spiega "
-                    "le scelte fatte su QUESTO documento. Sarà mostrato nella GUI all'utente."
-                ),
-            },
             "records": {
                 "type": "array",
                 "items": {
@@ -110,7 +97,21 @@ EXTRACT_TOOL = {
                                  "date_offer", "date_cashflow", "amount", "vat", "total", "stage",
                                  "document_type"],
                 },
-            }
+            },
+            "reasoning": {
+                "type": "string",
+                "description": (
+                    "Spiegazione SINTETICA in italiano (3-8 frasi) di come hai elaborato il "
+                    "documento. Tocca, dove pertinente: (1) come hai classificato il documento "
+                    "(attivo/passivo, tipo); (2) come hai usato il CONTESTO WORKSPACE (P.IVA, "
+                    "denominazione, conti) per decidere il punto di vista e il segno; "
+                    "(3) come hai gestito le rate / milestone / canoni e perché hai prodotto "
+                    "N record; (4) eventuali abbinamenti con i RECORD APERTI DEL WORKSPACE "
+                    "e/o sospetti di duplicato; (5) assunzioni o ambiguità (es. data calcolata, "
+                    "IVA dedotta al 22% di default). Non descrivere lo schema dei campi: spiega "
+                    "le scelte fatte su QUESTO documento. Sarà mostrato nella GUI all'utente."
+                ),
+            },
         },
         "required": ["records"],
     },
@@ -125,6 +126,7 @@ async def extract_records_with_usage(
     api_key: str | None = None,
     text_content: str | None = None,
     extra_context_block: str | None = None,
+    on_progress: Callable[..., None] | None = None,
 ) -> tuple[list[dict], dict, str]:
     """Call Anthropic API and return (records, usage_dict, reasoning).
 
@@ -154,23 +156,81 @@ async def extract_records_with_usage(
     user_text = user_prompt.strip() or "Extract all financial records from this document."
     content.append({"type": "text", "text": user_text})
 
-    response = await client.messages.create(
+    # Use streaming: Anthropic requires it for max_tokens that may exceed a 10-minute
+    # wall clock. The stream helper accumulates deltas into a final Message identical
+    # in shape to the non-streaming response.
+    last_record_count = 0
+    cumulative_output_tokens = 0
+    async with client.messages.stream(
         model=model,
-        max_tokens=4096,
+        max_tokens=32768,
         system=system_prompt,
         tools=[EXTRACT_TOOL],
         tool_choice={"type": "tool", "name": "extract_financial_records"},
         messages=[{"role": "user", "content": content}],
-    )
+    ) as stream:
+        # The SDK's parsed-snapshot accumulation is unreliable for tool_use in
+        # this version (snapshot stays {}), so we accumulate the raw partial_json
+        # fragments ourselves and count records by looking for the first required
+        # field of each record (`"area"`).
+        partial_json = ""
+        async for event in stream:
+            et = getattr(event, "type", None)
+            if et == "input_json":
+                pj = getattr(event, "partial_json", "") or ""
+                if pj:
+                    partial_json += pj
+                    rc = partial_json.count('"area"')
+                    if rc != last_record_count:
+                        last_record_count = rc
+                        if on_progress is not None:
+                            try:
+                                on_progress(
+                                    output_tokens=cumulative_output_tokens,
+                                    partial_record_count=rc,
+                                )
+                            except Exception:
+                                logger.debug("on_progress callback raised; ignoring", exc_info=True)
+            elif et == "message_delta":
+                usage_delta = getattr(event, "usage", None)
+                if usage_delta is not None:
+                    out = getattr(usage_delta, "output_tokens", None)
+                    if isinstance(out, int):
+                        cumulative_output_tokens = out
+                        if on_progress is not None:
+                            try:
+                                on_progress(
+                                    output_tokens=out,
+                                    partial_record_count=last_record_count,
+                                )
+                            except Exception:
+                                logger.debug("on_progress callback raised; ignoring", exc_info=True)
+        response = await stream.get_final_message()
 
     # Extract records and reasoning from tool_use block
     records: list[dict] = []
     reasoning: str = ""
     for block in response.content:
         if block.type == "tool_use" and block.name == "extract_financial_records":
-            records = block.input.get("records", [])
-            reasoning = block.input.get("reasoning", "") or ""
+            block_input = block.input if isinstance(block.input, dict) else {}
+            records = block_input.get("records", []) or []
+            reasoning = block_input.get("reasoning", "") or ""
             break
+
+    if response.stop_reason == "max_tokens":
+        logger.warning(
+            "Anthropic response truncated by max_tokens (model=%s, records=%d). "
+            "Increase max_tokens or shorten the prompt.",
+            model, len(records),
+        )
+        truncation_note = (
+            "⚠️ Risposta troncata dal limite di token. "
+            "Alcune righe potrebbero non essere state estratte — "
+            "ripeti l'elaborazione o spezza il documento."
+        )
+        reasoning = (
+            f"{truncation_note}\n\n{reasoning}" if reasoning else truncation_note
+        )
 
     # Capture usage
     usage = {

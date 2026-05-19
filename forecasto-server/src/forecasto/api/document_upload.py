@@ -15,6 +15,7 @@ from forecasto.models.user import User
 from forecasto.models.workspace import Workspace, WorkspaceMember
 from forecasto.schemas.document_processing import (
     DocumentUploadResponse,
+    JobProgressResponse,
     ProcessingJobResponse,
     QueueStatusResponse,
     UsageRecordResponse,
@@ -22,6 +23,7 @@ from forecasto.schemas.document_processing import (
 )
 from forecasto.services.document_processing_service import DocumentProcessingService
 from forecasto.services.inbox_service import InboxService
+from forecasto.services.job_progress import get_progress
 from forecasto.services.processing_queue import QueueFullError, processing_queue
 
 router = APIRouter()
@@ -184,6 +186,12 @@ async def get_processing_job(
     if job.usage_record:
         usage = UsageRecordResponse.model_validate(job.usage_record)
 
+    progress = None
+    if job.status in ("queued", "processing"):
+        prog_dict = get_progress(job_id)
+        if prog_dict:
+            progress = JobProgressResponse(**prog_dict)
+
     return {
         "success": True,
         "job": ProcessingJobResponse(
@@ -202,6 +210,7 @@ async def get_processing_job(
             completed_at=job.completed_at,
             created_at=job.created_at,
             usage=usage,
+            progress=progress,
         ),
     }
 
