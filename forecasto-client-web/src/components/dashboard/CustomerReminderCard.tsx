@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import { buildReminderMailto, reminderActionFromCount, type EmailProvider } from '@/lib/reminder-mailto'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
 import type { Record } from '@/types/record'
 
 interface CustomerReminderCardProps {
@@ -41,6 +42,12 @@ export function CustomerReminderCard({
   const [sending, setSending] = useState(false)
   const [undoing, setUndoing] = useState(false)
   const disabled = Boolean(busy) || sending || undoing
+
+  const workspaces = useWorkspaceStore((s) => s.workspaces)
+  const selectedWorkspaceIds = useWorkspaceStore((s) => s.selectedWorkspaceIds)
+  const showWorkspace = selectedWorkspaceIds.length > 1
+  const workspaceNameById = (id: string) =>
+    showWorkspace ? workspaces.find((w) => w.id === id)?.name : undefined
 
   const total = records.reduce(
     (sum, r) => sum + Math.abs(parseFloat(r.total || r.amount || '0')),
@@ -129,6 +136,7 @@ export function CustomerReminderCard({
           .sort((a, b) => a.date_cashflow.localeCompare(b.date_cashflow))
           .map((r) => {
             const isOverdue = r.date_cashflow < today
+            const wsName = workspaceNameById(r.workspace_id)
             return (
               <li
                 key={r.id}
@@ -144,6 +152,15 @@ export function CustomerReminderCard({
                           <AlertTriangle className="h-2.5 w-2.5" />
                           In ritardo
                         </span>
+                      )}
+                      {wsName && (
+                        <Badge
+                          variant="secondary"
+                          className="h-4 max-w-[110px] truncate px-1 text-[10px] font-normal"
+                          title={wsName}
+                        >
+                          {wsName}
+                        </Badge>
                       )}
                     </div>
                     <div className="mt-0.5 truncate">{r.account || '-'}</div>

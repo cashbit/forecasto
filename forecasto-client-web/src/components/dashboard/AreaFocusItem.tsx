@@ -2,6 +2,7 @@ import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
+import { useWorkspaceStore } from '@/stores/workspaceStore'
 import type { Record } from '@/types/record'
 
 interface AreaFocusItemProps {
@@ -31,6 +32,12 @@ function daysLabel(days: number): string {
 export function AreaFocusItem({ record, onClick }: AreaFocusItemProps) {
   const days = daysToCashflow(record.date_cashflow)
   const amount = Math.abs(parseFloat(record.total || record.amount || '0'))
+  const workspaces = useWorkspaceStore((s) => s.workspaces)
+  const selectedWorkspaceIds = useWorkspaceStore((s) => s.selectedWorkspaceIds)
+  const showWorkspace = selectedWorkspaceIds.length > 1
+  const workspaceName = showWorkspace
+    ? workspaces.find((w) => w.id === record.workspace_id)?.name
+    : undefined
 
   const daysTone =
     days === null
@@ -67,11 +74,22 @@ export function AreaFocusItem({ record, onClick }: AreaFocusItemProps) {
         <span className={cn('text-[11px] font-medium', daysTone)}>
           {days === null ? '—' : daysLabel(days)}
         </span>
-        {record.owner && (
-          <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-normal">
-            {record.owner}
-          </Badge>
-        )}
+        <div className="flex items-center gap-1.5">
+          {workspaceName && (
+            <Badge
+              variant="secondary"
+              className="h-5 max-w-[120px] truncate px-1.5 text-[10px] font-normal"
+              title={workspaceName}
+            >
+              {workspaceName}
+            </Badge>
+          )}
+          {record.owner && (
+            <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-normal">
+              {record.owner}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {record.nextaction && (
