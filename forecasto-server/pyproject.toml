@@ -24,6 +24,7 @@ dependencies = [
     "Pillow>=10.0.0",
     "defusedxml>=0.7.1",
     "asn1crypto>=1.5.1",
+    "rapidfuzz>=3.6.0",
 ]
 
 [project.optional-dependencies]

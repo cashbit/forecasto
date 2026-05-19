@@ -806,6 +806,7 @@ class InboxService:
         transaction_id: str | None = None,
         note: str | None = None,
         document_type: str | None = None,
+        classification: dict | None = None,
         limit: int = 5,
     ) -> list[dict]:
         """Find existing records similar to a new document extraction.
@@ -815,6 +816,8 @@ class InboxService:
         """
         from forecasto.models.record import Record
         from forecasto.services.similarity import (
+            _normalize_vat,
+            _reference_similarity,
             compute_similarity_score,
             get_search_areas,
             get_suggested_transfer_area,
@@ -827,6 +830,32 @@ class InboxService:
         hint_words = [w.strip() for w in reference.split() if len(w.strip()) > 2]
         candidate_records = []
         seen_ids: set[str] = set()
+
+        # Strategy 0: exact P.IVA match (cheapest, strongest signal). When the
+        # query carries a counterpart VAT, pull any record whose classification
+        # JSON encodes the same VAT before falling back to name-based search.
+        query_vat = _normalize_vat((classification or {}).get("counterpart_vat"))
+        if query_vat:
+            # SQLite JSON LIKE is good enough — counterpart_vat is a leaf string
+            # in the classification dict. We normalize the candidate side in Python.
+            result = await self.db.execute(
+                select(Record).where(
+                    Record.workspace_id == workspace_id,
+                    Record.deleted_at.is_(None),
+                    Record.area.in_(search_areas),
+                    Record.classification.isnot(None),
+                    *([Record.stage != "1"] if is_payment else []),
+                ).limit(200)
+            )
+            for rec in result.scalars().all():
+                cand_class = rec.classification or {}
+                if not isinstance(cand_class, dict):
+                    continue
+                if _normalize_vat(cand_class.get("counterpart_vat")) != query_vat:
+                    continue
+                if rec.id not in seen_ids:
+                    seen_ids.add(rec.id)
+                    candidate_records.append(rec)
 
         # Strategy 1: reference word match
         for word in hint_words[:3]:
@@ -847,10 +876,15 @@ class InboxService:
                     seen_ids.add(rec.id)
                     candidate_records.append(rec)
 
-        # Strategy 2: amount match (if we have an amount)
+        # Strategy 2: amount match (if we have an amount).
+        # For payment docs we now use a tight 5% window — the scoring curve
+        # rejects anything beyond 5% anyway, so widening the SQL prefilter
+        # just gives the scorer junk to chew on. Commercial docs keep the
+        # generous 20% window because offer/invoice amounts legitimately drift.
         if amount is not None and abs(amount) > 0:
             amount_dec = Decimal(str(amount))
-            tolerance = abs(amount_dec) * Decimal("0.20")  # 20% tolerance
+            tol_pct = Decimal("0.05") if is_payment else Decimal("0.20")
+            tolerance = abs(amount_dec) * tol_pct
             result = await self.db.execute(
                 select(Record).where(
                     Record.workspace_id == workspace_id,
@@ -875,6 +909,7 @@ class InboxService:
             "amount": amount,
             "transaction_id": transaction_id,
             "note": note,
+            "classification": classification or {},
         }
 
         scored = []
@@ -888,6 +923,7 @@ class InboxService:
                 "note": rec.note,
                 "stage": rec.stage,
                 "area": rec.area,
+                "classification": rec.classification or {},
             }
             score, reasons, match_type = compute_similarity_score(cand, query, document_type)
             if score >= 0.3:
@@ -917,9 +953,8 @@ class InboxService:
         # overlaps with the bank line's counterpart, propose it anyway with
         # low confidence. The user keeps the option to dismiss it.
         if is_payment and not scored and len(candidate_records) == 1:
-            from forecasto.services.similarity import _normalize_reference
             rec = candidate_records[0]
-            ref_overlap = _normalize_reference(rec.reference or "") & _normalize_reference(reference)
+            ref_overlap = _reference_similarity(rec.reference or "", reference) >= 0.5
             if ref_overlap:
                 transfer_to = get_suggested_transfer_area(document_type, rec.area)
                 scored.append({

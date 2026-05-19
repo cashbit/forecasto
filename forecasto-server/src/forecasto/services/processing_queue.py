@@ -749,6 +749,7 @@ class ProcessingQueue:
                             transaction_id=rec.get("transaction_id"),
                             note=rec.get("note"),
                             document_type=doc_type,
+                            classification=rec.get("classification") or {},
                         )
                         # Filter out already-claimed records
                         available = [m for m in matches if m["record_id"] not in claimed_ids]

@@ -92,6 +92,27 @@ EXTRACT_TOOL = {
                                 "For 'invoice': if payment terms specify installments (30/60/90 days), create one record per installment."
                             ),
                         },
+                        "classification": {
+                            "type": "object",
+                            "description": (
+                                "Counterpart identification used for reliable matching against open records. "
+                                "Fill whenever the document clearly identifies the other party."
+                            ),
+                            "properties": {
+                                "counterpart_name": {
+                                    "type": "string",
+                                    "description": "Legal/company name of the counterpart (mirror of `reference` when applicable).",
+                                },
+                                "counterpart_vat": {
+                                    "type": "string",
+                                    "description": (
+                                        "Italian P.IVA / VAT number of the counterpart if printed on the document. "
+                                        "Include the country prefix when present (e.g. 'IT01234567890'). "
+                                        "Omit when not legible — do not invent it."
+                                    ),
+                                },
+                            },
+                        },
                     },
                     "required": ["area", "type", "account", "reference",
                                  "date_offer", "date_cashflow", "amount", "vat", "total", "stage",
