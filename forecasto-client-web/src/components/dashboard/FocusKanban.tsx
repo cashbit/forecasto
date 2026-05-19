@@ -9,7 +9,7 @@ import { AREAS, AREA_LABELS, AREA_DESCRIPTIONS } from '@/lib/constants'
 import type { Area, Record } from '@/types/record'
 
 interface FocusKanbanProps {
-  workspaceId: string
+  workspaceIds: string[]
   onSelectRecord: (record: Record) => void
 }
 
@@ -52,7 +52,7 @@ function computeArea(records: Record[]): AreaBuckets {
   }
 }
 
-export function FocusKanban({ workspaceId, onSelectRecord }: FocusKanbanProps) {
+export function FocusKanban({ workspaceIds, onSelectRecord }: FocusKanbanProps) {
   const reviewMode = useUiStore((state) => state.reviewMode)
   const recentFilter = useUiStore((state) => state.recentFilter)
   const textFilter = useFilterStore((state) => state.textFilter)
@@ -60,12 +60,20 @@ export function FocusKanban({ workspaceId, onSelectRecord }: FocusKanbanProps) {
   const projectCodeFilter = useFilterStore((state) => state.projectCodeFilter)
   const ownerFilter = useFilterStore((state) => state.ownerFilter)
 
+  const queryDescriptors = useMemo(
+    () =>
+      workspaceIds.flatMap((wsId) =>
+        AREAS.map((area) => ({ workspaceId: wsId, area: area as Area })),
+      ),
+    [workspaceIds],
+  )
+
   const queries = useQueries({
-    queries: AREAS.map((area) => ({
+    queries: queryDescriptors.map(({ workspaceId, area }) => ({
       queryKey: ['focus', workspaceId, area, textFilter, textFilterField, projectCodeFilter],
       queryFn: () =>
         recordsApi.list(workspaceId, {
-          area: area as Area,
+          area,
           stage: '0',
           sign: 'in',
           include_deleted: false,
@@ -109,11 +117,13 @@ export function FocusKanban({ workspaceId, onSelectRecord }: FocusKanbanProps) {
       return out
     }
 
-    return AREAS.map((area, idx) => {
-      const items = queries[idx].data?.items ?? []
+    return AREAS.map((area) => {
+      const items = queryDescriptors.flatMap((desc, idx) =>
+        desc.area === area ? (queries[idx].data?.items ?? []) : [],
+      )
       return { area, ...computeArea(applyFilters(items)) }
     })
-  }, [queries, reviewMode, recentFilter, ownerFilter])
+  }, [queries, queryDescriptors, reviewMode, recentFilter, ownerFilter])
 
   if (isLoading) {
     return (

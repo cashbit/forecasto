@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQueries } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Loader2, Bell, Target, Plus, Sparkles, X } from 'lucide-react'
 import { RemindersKanban } from '@/components/dashboard/RemindersKanban'
@@ -34,10 +34,10 @@ function onboardingBannerStorageKey(workspaceId: string | undefined): string {
 export function DashboardPage() {
   const workspaces = useWorkspaceStore((state) => state.workspaces)
   const selectedWorkspaceIds = useWorkspaceStore((state) => state.selectedWorkspaceIds)
-  const currentWorkspace = workspaces.find((w) => w.id === selectedWorkspaceIds[0])
-  const workspaceId = currentWorkspace?.id
+  const primaryWorkspace = workspaces.find((w) => w.id === selectedWorkspaceIds[0])
+  const primaryWorkspaceId = primaryWorkspace?.id
 
-  const bannerKey = onboardingBannerStorageKey(workspaceId)
+  const bannerKey = onboardingBannerStorageKey(primaryWorkspaceId)
   const [bannerDismissed, setBannerDismissed] = useState<boolean>(
     () => typeof window !== 'undefined' && window.localStorage.getItem(bannerKey) === '1',
   )
@@ -47,9 +47,9 @@ export function DashboardPage() {
       window.localStorage.setItem(bannerKey, '1')
     }
   }
-  const leadDays = currentWorkspace?.settings?.reminder_lead_days ?? 7
-  const signature = currentWorkspace?.settings?.reminder_email_signature
-  const provider = currentWorkspace?.settings?.reminder_email_provider ?? 'native'
+  const leadDays = primaryWorkspace?.settings?.reminder_lead_days ?? 7
+  const signature = primaryWorkspace?.settings?.reminder_email_signature
+  const provider = primaryWorkspace?.settings?.reminder_email_provider ?? 'native'
 
   const { sendReminders, undoReminder, updateRecord, deleteRecord, transferRecord, isSendingReminder, isUndoingReminder } = useRecords()
   const setCreateRecordDialogOpen = useUiStore(s => s.setCreateRecordDialogOpen)
@@ -64,38 +64,59 @@ export function DashboardPage() {
   const projectCodeFilter = useFilterStore(s => s.projectCodeFilter)
   const ownerFilter = useFilterStore(s => s.ownerFilter)
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['reminders', workspaceId, textFilter, textFilterField, projectCodeFilter],
-    queryFn: async () => {
-      if (!workspaceId) return { items: [] as Record[] }
-      return recordsApi.list(workspaceId, {
-        area: 'actual',
-        stage: '0',
-        sign: 'in',
-        include_deleted: false,
-        text_filter: textFilter || undefined,
-        text_filter_field: textFilter && textFilterField ? textFilterField : undefined,
-        project_code: projectCodeFilter || undefined,
-      })
-    },
-    enabled: !!workspaceId && section === 'solleciti',
-    staleTime: 30000,
+  const { items: reminderItems, isLoading, isError } = useQueries({
+    queries: selectedWorkspaceIds.map((wsId) => ({
+      queryKey: ['reminders', wsId, textFilter, textFilterField, projectCodeFilter],
+      queryFn: () =>
+        recordsApi.list(wsId, {
+          area: 'actual',
+          stage: '0',
+          sign: 'in',
+          include_deleted: false,
+          text_filter: textFilter || undefined,
+          text_filter_field: textFilter && textFilterField ? textFilterField : undefined,
+          project_code: projectCodeFilter || undefined,
+        }),
+      enabled: section === 'solleciti',
+      staleTime: 30000,
+    })),
+    combine: (results) => ({
+      items: results.flatMap((r) => r.data?.items ?? []) as Record[],
+      isLoading: results.some((r) => r.isLoading),
+      isError: results.some((r) => r.isError),
+    }),
   })
 
   const records = useMemo(() => {
-    const all = data?.items ?? []
-    if (ownerFilter.length === 0) return all
-    return all.filter(r => {
+    if (ownerFilter.length === 0) return reminderItems
+    return reminderItems.filter((r) => {
       const owner = r.owner || ''
       if (ownerFilter.includes('_noowner_') && !owner) return true
       return ownerFilter.includes(owner)
     })
-  }, [data, ownerFilter])
+  }, [reminderItems, ownerFilter])
+
+  const groupRecordIdsByWorkspace = (recordIds: string[]): Map<string, string[]> => {
+    const byWs = new Map<string, string[]>()
+    for (const id of recordIds) {
+      const rec = records.find((r) => r.id === id)
+      if (!rec) continue
+      const arr = byWs.get(rec.workspace_id) ?? []
+      arr.push(id)
+      byWs.set(rec.workspace_id, arr)
+    }
+    return byWs
+  }
 
   const handleSend = async (recordIds: string[]) => {
-    if (!workspaceId) return
+    const byWs = groupRecordIdsByWorkspace(recordIds)
+    if (byWs.size === 0) return
     try {
-      await sendReminders({ recordIds, workspaceId })
+      await Promise.all(
+        Array.from(byWs.entries()).map(([wsId, ids]) =>
+          sendReminders({ recordIds: ids, workspaceId: wsId }),
+        ),
+      )
       toast({ title: 'Promemoria inviato', description: `Aggiornati ${recordIds.length} record.` })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Errore durante l’invio'
@@ -162,9 +183,14 @@ export function DashboardPage() {
   }
 
   const handleUndo = async (recordIds: string[]) => {
-    if (!workspaceId) return
+    const byWs = groupRecordIdsByWorkspace(recordIds)
+    if (byWs.size === 0) return
     try {
-      await undoReminder({ recordIds, workspaceId })
+      await Promise.all(
+        Array.from(byWs.entries()).map(([wsId, ids]) =>
+          undoReminder({ recordIds: ids, workspaceId: wsId }),
+        ),
+      )
       toast({ title: 'Annullato', description: 'Ultimo promemoria annullato.' })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Errore durante l’annullamento'
@@ -172,7 +198,7 @@ export function DashboardPage() {
     }
   }
 
-  if (!workspaceId) {
+  if (!primaryWorkspaceId) {
     return (
       <div className="flex flex-1 items-center justify-center text-muted-foreground">
         Seleziona un workspace per visualizzare la dashboard.
@@ -230,7 +256,7 @@ export function DashboardPage() {
             <Button
               size="sm"
               onClick={() => setCreateRecordDialogOpen(true)}
-              disabled={!workspaceId}
+              disabled={!primaryWorkspaceId}
             >
               <Plus className="h-4 w-4 mr-1" />
               Nuovo
@@ -243,7 +269,7 @@ export function DashboardPage() {
                 Entrate aperte (stage 0) per area. Per ogni colonna le voci che compongono l'80% del totale.
               </p>
             </div>
-            <FocusKanban workspaceId={workspaceId} onSelectRecord={setSelectedRecord} />
+            <FocusKanban workspaceIds={selectedWorkspaceIds} onSelectRecord={setSelectedRecord} />
           </TabsContent>
 
           <TabsContent value="solleciti" className="mt-3 min-h-0 flex-1 flex flex-col overflow-hidden data-[state=inactive]:hidden">
