@@ -255,7 +255,11 @@ def compute_similarity_score(
     # share a round number — and Rossi-credit-to-Rossi-debit confusions.
     is_payment_doc = document_type in ("wire_transfer", "bank_statement")
     if is_payment_doc:
-        if not vat_match and ref_sim < 0.4:
+        # Gate threshold 0.5 (not 0.4): rapidfuzz token_set_ratio on short
+        # unrelated strings still scores ~0.40-0.43 from accidental character
+        # overlap (e.g. "CIARI" vs "ALONGI PATRIZIA" = 0.40, "SABINI" vs
+        # "BONIFICO" = 0.43). Real matches almost always score >= 0.7.
+        if not vat_match and ref_sim < 0.5:
             return 0.0, [], "duplicate"
         try:
             cand_amt = float(candidate.get("amount") or candidate.get("total") or 0)
