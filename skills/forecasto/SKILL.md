@@ -14,6 +14,8 @@ compatibility: "Richiede il server MCP 'Forecasto APP' connesso in Claude.ai"
 
 > ⚡ **Inizio sessione:** chiamare `ToolSearch` con query `"forecasto"` una sola volta per caricare le definizioni dei tool Forecasto APP (sono deferred nel system-reminder). Farlo come prima azione, prima di qualsiasi altro tool. Gli schema qui documentati rispecchiano la versione attiva del server MCP.
 
+> 🔗 Per l'**archivio documentale** (collection NoSQL: estratti conto, buste paga, contratti, fatture archiviate, ricerca documenti per contenuto, quarantena) usa la skill **`forecasto-collections`**. Questa skill copre solo i record finanziari / cashflow.
+
 ---
 
 ## Struttura del Sistema
