@@ -15,6 +15,7 @@ from forecasto.models.inbox import InboxItem
 from forecasto.models.prompt_generation import PromptGenerationJob
 from forecasto.models.bank_account import BankAccount, BankAccountBalance
 from forecasto.models.base import Base
+from forecasto.models.collection import Collection, CollectionDocument
 from forecasto.models.record import Record
 from forecasto.models.registration_code import RegistrationCode, RegistrationCodeBatch
 from forecasto.models.session import (
@@ -55,5 +56,7 @@ __all__ = [
     "VatBalance",
     "InboxItem",
     "PromptGenerationJob",
+    "Collection",
+    "CollectionDocument",
 ]
 

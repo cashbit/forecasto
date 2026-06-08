@@ -127,8 +127,8 @@ export function DashboardPage() {
   const handleUpdateRecord = async (data: RecordUpdate) => {
     if (!editingRecord) return
     try {
-      await updateRecord({ recordId: editingRecord.id, data, workspaceId: editingRecord.workspace_id })
-      setSelectedRecord(editingRecord)
+      const updated = await updateRecord({ recordId: editingRecord.id, data, workspaceId: editingRecord.workspace_id })
+      setSelectedRecord(updated)
       setEditingRecord(null)
       toast({ title: 'Record aggiornato', variant: 'success' })
     } catch (err) {
@@ -142,12 +142,12 @@ export function DashboardPage() {
     const nextDate = new Date()
     nextDate.setDate(nextDate.getDate() + days)
     try {
-      await updateRecord({
+      const updated = await updateRecord({
         recordId: editingRecord.id,
         data: { ...formData, review_date: nextDate.toISOString().split('T')[0] },
         workspaceId: editingRecord.workspace_id,
       })
-      setSelectedRecord(editingRecord)
+      setSelectedRecord(updated)
       setEditingRecord(null)
       toast({ title: `Revisione posticipata di ${days} giorni`, variant: 'success' })
     } catch {
@@ -158,8 +158,8 @@ export function DashboardPage() {
   const handlePromoteRecord = async (recordId: string, toArea: Area, formData: RecordUpdate) => {
     try {
       await updateRecord({ recordId, data: { ...formData, stage: '0' } })
-      await transferRecord({ recordId, toArea })
-      setSelectedRecord(editingRecord)
+      const transferred = await transferRecord({ recordId, toArea })
+      setSelectedRecord(transferred)
       setEditingRecord(null)
       toast({ title: `Record spostato in ${AREA_LABELS[toArea]}`, variant: 'success' })
     } catch (err) {

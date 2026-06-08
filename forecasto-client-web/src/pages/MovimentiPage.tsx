@@ -109,13 +109,13 @@ export function MovimentiPage() {
     const nextDate = new Date()
     nextDate.setDate(nextDate.getDate() + days)
     try {
-      await updateRecord({
+      const updated = await updateRecord({
         recordId: editingRecord.id,
         data: { ...formData, review_date: nextDate.toISOString().split('T')[0] },
         workspaceId: editingRecord.workspace_id,
       })
       markEdited(editingRecord.id)
-      setSelectedRecord(editingRecord)
+      setSelectedRecord(updated)
       setEditingRecord(null)
       toast({ title: `Revisione posticipata di ${days} giorni`, variant: 'success' })
     } catch {
@@ -126,9 +126,9 @@ export function MovimentiPage() {
   const handleUpdateRecord = async (data: RecordUpdate) => {
     if (!editingRecord) return
     try {
-      await updateRecord({ recordId: editingRecord.id, data, workspaceId: editingRecord.workspace_id })
+      const updated = await updateRecord({ recordId: editingRecord.id, data, workspaceId: editingRecord.workspace_id })
       markEdited(editingRecord.id)
-      setSelectedRecord(editingRecord)
+      setSelectedRecord(updated)
       setEditingRecord(null)
       toast({ title: 'Record aggiornato', variant: 'success' })
     } catch (error) {
@@ -161,9 +161,9 @@ export function MovimentiPage() {
     try {
       // Save form changes with stage reset to 0, then transfer
       await updateRecord({ recordId, data: { ...formData, stage: '0' } })
-      await transferRecord({ recordId, toArea })
+      const transferred = await transferRecord({ recordId, toArea })
       markEdited(recordId)
-      setSelectedRecord(editingRecord)
+      setSelectedRecord(transferred)
       setEditingRecord(null)
       toast({ title: `Record spostato in ${AREA_LABELS[toArea]}`, variant: 'success' })
     } catch (error) {

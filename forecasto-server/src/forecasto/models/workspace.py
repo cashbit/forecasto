@@ -14,6 +14,7 @@ from forecasto.models.base import Base, TimestampMixin, UUIDMixin, generate_uuid
 
 if TYPE_CHECKING:
     from forecasto.models.bank_account import BankAccount
+    from forecasto.models.collection import Collection, CollectionDocument
     from forecasto.models.inbox import InboxItem
     from forecasto.models.record import Record
     from forecasto.models.session import Session
@@ -85,6 +86,12 @@ class Workspace(Base, UUIDMixin, TimestampMixin):
     )
     inbox_items: Mapped[list["InboxItem"]] = relationship(
         "InboxItem", back_populates="workspace", cascade="all, delete-orphan"
+    )
+    collections: Mapped[list["Collection"]] = relationship(
+        "Collection", back_populates="workspace", cascade="all, delete-orphan"
+    )
+    collection_documents: Mapped[list["CollectionDocument"]] = relationship(
+        "CollectionDocument", back_populates="workspace", cascade="all, delete-orphan"
     )
 
 def _default_granular_permissions() -> dict:
