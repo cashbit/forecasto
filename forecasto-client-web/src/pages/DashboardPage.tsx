@@ -8,6 +8,7 @@ import { RecordDetail } from '@/components/records/RecordDetail'
 import { RecordForm } from '@/components/records/RecordForm'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,15 @@ import type { Record, RecordUpdate, Area } from '@/types/record'
 
 function onboardingBannerStorageKey(workspaceId: string | undefined): string {
   return `forecasto-onboarding-banner-dismissed:${workspaceId ?? 'none'}`
+}
+
+const DASHBOARD_SECTION_STORAGE_KEY = 'forecasto-dashboard-section'
+
+function readDashboardSection(): 'focus' | 'solleciti' {
+  if (typeof window === 'undefined') return 'focus'
+  return window.localStorage.getItem(DASHBOARD_SECTION_STORAGE_KEY) === 'solleciti'
+    ? 'solleciti'
+    : 'focus'
 }
 
 export function DashboardPage() {
@@ -54,10 +64,12 @@ export function DashboardPage() {
   const { sendReminders, undoReminder, updateRecord, deleteRecord, transferRecord, isSendingReminder, isUndoingReminder } = useRecords()
   const setCreateRecordDialogOpen = useUiStore(s => s.setCreateRecordDialogOpen)
   const reviewMode = useUiStore(s => s.reviewMode)
+  const vatMode = useUiStore(s => s.vatMode)
+  const setVatMode = useUiStore(s => s.setVatMode)
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
   const [recordToDelete, setRecordToDelete] = useState<Record | null>(null)
-  const [section, setSection] = useState<'focus' | 'solleciti'>('focus')
+  const [section, setSection] = useState<'focus' | 'solleciti'>(readDashboardSection)
 
   const textFilter = useFilterStore(s => s.textFilter)
   const textFilterField = useFilterStore(s => s.textFilterField)
@@ -239,7 +251,13 @@ export function DashboardPage() {
         )}
         <Tabs
           value={section}
-          onValueChange={(v) => setSection(v as 'focus' | 'solleciti')}
+          onValueChange={(v) => {
+            const next = v as 'focus' | 'solleciti'
+            setSection(next)
+            if (typeof window !== 'undefined') {
+              window.localStorage.setItem(DASHBOARD_SECTION_STORAGE_KEY, next)
+            }
+          }}
           className="flex min-h-0 flex-1 flex-col"
         >
           <div className="flex items-center justify-between gap-2">
@@ -253,14 +271,29 @@ export function DashboardPage() {
                 Solleciti
               </TabsTrigger>
             </TabsList>
-            <Button
-              size="sm"
-              onClick={() => setCreateRecordDialogOpen(true)}
-              disabled={!primaryWorkspaceId}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Nuovo
-            </Button>
+            <div className="flex items-center gap-3">
+              <label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-muted-foreground">
+                <span className={vatMode === 'net' ? 'text-foreground' : undefined}>
+                  Senza IVA
+                </span>
+                <Switch
+                  checked={vatMode === 'gross'}
+                  onCheckedChange={(checked) => setVatMode(checked ? 'gross' : 'net')}
+                  aria-label="Mostra importi con IVA"
+                />
+                <span className={vatMode === 'gross' ? 'text-foreground' : undefined}>
+                  Con IVA
+                </span>
+              </label>
+              <Button
+                size="sm"
+                onClick={() => setCreateRecordDialogOpen(true)}
+                disabled={!primaryWorkspaceId}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Nuovo
+              </Button>
+            </div>
           </div>
 
           <TabsContent value="focus" className="mt-3 min-h-0 flex-1 flex flex-col overflow-hidden data-[state=inactive]:hidden">

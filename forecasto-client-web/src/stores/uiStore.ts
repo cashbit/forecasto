@@ -1,6 +1,14 @@
 import { create } from 'zustand'
 
 export type RecentFilter = 'all' | 'today' | 'week' | 'month'
+export type VatMode = 'gross' | 'net'
+
+const VAT_MODE_STORAGE_KEY = 'forecasto-dashboard-vat-mode'
+
+function readVatMode(): VatMode {
+  if (typeof window === 'undefined') return 'gross'
+  return window.localStorage.getItem(VAT_MODE_STORAGE_KEY) === 'net' ? 'net' : 'gross'
+}
 
 interface UiState {
   sidebarOpen: boolean
@@ -11,6 +19,7 @@ interface UiState {
   createRecordDialogOpen: boolean
   reviewMode: boolean
   recentFilter: RecentFilter
+  vatMode: VatMode
 
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
@@ -24,6 +33,8 @@ interface UiState {
   toggleReviewMode: () => void
   setReviewMode: (enabled: boolean) => void
   setRecentFilter: (value: RecentFilter) => void
+  setVatMode: (value: VatMode) => void
+  toggleVatMode: () => void
 }
 
 export const useUiStore = create<UiState>()((set) => ({
@@ -35,6 +46,7 @@ export const useUiStore = create<UiState>()((set) => ({
   createRecordDialogOpen: false,
   reviewMode: false,
   recentFilter: 'all',
+  vatMode: readVatMode(),
 
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -64,4 +76,20 @@ export const useUiStore = create<UiState>()((set) => ({
   setReviewMode: (enabled) => set({ reviewMode: enabled }),
 
   setRecentFilter: (value) => set({ recentFilter: value }),
+
+  setVatMode: (value) => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(VAT_MODE_STORAGE_KEY, value)
+    }
+    set({ vatMode: value })
+  },
+
+  toggleVatMode: () =>
+    set((state) => {
+      const next: VatMode = state.vatMode === 'gross' ? 'net' : 'gross'
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(VAT_MODE_STORAGE_KEY, next)
+      }
+      return { vatMode: next }
+    }),
 }))

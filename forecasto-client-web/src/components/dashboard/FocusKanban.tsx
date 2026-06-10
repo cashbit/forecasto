@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { AreaFocusColumn } from './AreaFocusColumn'
+import { recordAmount } from '@/lib/formatters'
 import { recordsApi } from '@/api/records'
 import { useUiStore } from '@/stores/uiStore'
 import { useFilterStore } from '@/stores/filterStore'
@@ -19,16 +20,14 @@ interface AreaBuckets {
   extraItems: Record[]
 }
 
-function computeArea(records: Record[]): AreaBuckets {
+function computeArea(records: Record[], includeVat: boolean): AreaBuckets {
   const sorted = records
     .slice()
     .sort(
-      (a, b) =>
-        Math.abs(parseFloat(b.total || b.amount || '0')) -
-        Math.abs(parseFloat(a.total || a.amount || '0')),
+      (a, b) => recordAmount(b, includeVat) - recordAmount(a, includeVat),
     )
   const totale = sorted.reduce(
-    (sum, r) => sum + Math.abs(parseFloat(r.total || r.amount || '0')),
+    (sum, r) => sum + recordAmount(r, includeVat),
     0,
   )
 
@@ -40,7 +39,7 @@ function computeArea(records: Record[]): AreaBuckets {
   let cumulative = 0
   let cutoff = 0
   for (let i = 0; i < sorted.length; i++) {
-    cumulative += Math.abs(parseFloat(sorted[i].total || sorted[i].amount || '0'))
+    cumulative += recordAmount(sorted[i], includeVat)
     cutoff = i + 1
     if (cumulative >= threshold) break
   }
@@ -55,6 +54,7 @@ function computeArea(records: Record[]): AreaBuckets {
 export function FocusKanban({ workspaceIds, onSelectRecord }: FocusKanbanProps) {
   const reviewMode = useUiStore((state) => state.reviewMode)
   const recentFilter = useUiStore((state) => state.recentFilter)
+  const vatMode = useUiStore((state) => state.vatMode)
   const textFilter = useFilterStore((state) => state.textFilter)
   const textFilterField = useFilterStore((state) => state.textFilterField)
   const projectCodeFilter = useFilterStore((state) => state.projectCodeFilter)
@@ -121,9 +121,9 @@ export function FocusKanban({ workspaceIds, onSelectRecord }: FocusKanbanProps) 
       const items = queryDescriptors.flatMap((desc, idx) =>
         desc.area === area ? (queries[idx].data?.items ?? []) : [],
       )
-      return { area, ...computeArea(applyFilters(items)) }
+      return { area, ...computeArea(applyFilters(items), vatMode === 'gross') }
     })
-  }, [queries, queryDescriptors, reviewMode, recentFilter, ownerFilter])
+  }, [queries, queryDescriptors, reviewMode, recentFilter, ownerFilter, vatMode])
 
   if (isLoading) {
     return (

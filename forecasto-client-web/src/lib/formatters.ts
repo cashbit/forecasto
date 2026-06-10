@@ -56,6 +56,21 @@ export function formatNumber(value: number | string): string {
   return new Intl.NumberFormat('it-IT').format(numericValue)
 }
 
+/**
+ * Importo assoluto di un record da mostrare nelle card della dashboard.
+ * `includeVat=true` usa il totale lordo (`total`, con IVA); `false` usa
+ * l'imponibile (`amount`, senza IVA). Con fallback reciproco se uno manca.
+ */
+export function recordAmount(
+  record: { total?: string | null; amount?: string | null },
+  includeVat: boolean,
+): number {
+  const raw = includeVat
+    ? record.total || record.amount
+    : record.amount || record.total
+  return Math.abs(parseFloat(raw || '0'))
+}
+
 export function formatPercentage(value: number | string): string {
   const numericValue = typeof value === 'string' ? parseFloat(value) : value
   return new Intl.NumberFormat('it-IT', {

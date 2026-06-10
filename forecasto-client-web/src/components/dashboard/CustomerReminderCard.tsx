@@ -9,8 +9,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/components/ui/dropdown-menu'
-import { formatCurrency, formatDate } from '@/lib/formatters'
+import { formatCurrency, formatDate, recordAmount } from '@/lib/formatters'
 import { buildReminderMailto, reminderActionFromCount, type EmailProvider } from '@/lib/reminder-mailto'
+import { useUiStore } from '@/stores/uiStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import type { Record } from '@/types/record'
 
@@ -49,10 +50,8 @@ export function CustomerReminderCard({
   const workspaceNameById = (id: string) =>
     showWorkspace ? workspaces.find((w) => w.id === id)?.name : undefined
 
-  const total = records.reduce(
-    (sum, r) => sum + Math.abs(parseFloat(r.total || r.amount || '0')),
-    0,
-  )
+  const includeVat = useUiStore((s) => s.vatMode) === 'gross'
+  const total = records.reduce((sum, r) => sum + recordAmount(r, includeVat), 0)
 
   // Tutti i record del gruppo condividono lo stesso reminder_count (sono nella stessa colonna)
   const currentCount = records[0]?.reminder_count ?? -1
@@ -166,7 +165,7 @@ export function CustomerReminderCard({
                     <div className="mt-0.5 truncate">{r.account || '-'}</div>
                   </div>
                   <span className="whitespace-nowrap font-medium tabular-nums">
-                    {formatCurrency(Math.abs(parseFloat(r.total || r.amount || '0')))}
+                    {formatCurrency(recordAmount(r, includeVat))}
                   </span>
                 </div>
               </li>

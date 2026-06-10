@@ -1,7 +1,8 @@
 import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
-import { formatCurrency } from '@/lib/formatters'
+import { formatCurrency, recordAmount } from '@/lib/formatters'
 import { cn } from '@/lib/utils'
+import { useUiStore } from '@/stores/uiStore'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
 import type { Record } from '@/types/record'
 
@@ -31,7 +32,8 @@ function daysLabel(days: number): string {
 
 export function AreaFocusItem({ record, onClick }: AreaFocusItemProps) {
   const days = daysToCashflow(record.date_cashflow)
-  const amount = Math.abs(parseFloat(record.total || record.amount || '0'))
+  const vatMode = useUiStore((s) => s.vatMode)
+  const amount = recordAmount(record, vatMode === 'gross')
   const workspaces = useWorkspaceStore((s) => s.workspaces)
   const selectedWorkspaceIds = useWorkspaceStore((s) => s.selectedWorkspaceIds)
   const showWorkspace = selectedWorkspaceIds.length > 1

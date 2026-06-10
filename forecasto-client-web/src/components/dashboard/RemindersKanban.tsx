@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { KanbanColumn } from './KanbanColumn'
 import { CustomerReminderCard } from './CustomerReminderCard'
+import { recordAmount } from '@/lib/formatters'
+import { useUiStore } from '@/stores/uiStore'
 import type { EmailProvider } from '@/lib/reminder-mailto'
 import type { Record } from '@/types/record'
 
@@ -56,8 +58,8 @@ function groupByReference(records: Record[]): Map<string, Record[]> {
   return out
 }
 
-function totalOf(records: Record[]): number {
-  return records.reduce((sum, r) => sum + Math.abs(parseFloat(r.total || r.amount || '0')), 0)
+function totalOf(records: Record[], includeVat: boolean): number {
+  return records.reduce((sum, r) => sum + recordAmount(r, includeVat), 0)
 }
 
 function oldestDate(records: Record[]): string {
@@ -75,6 +77,7 @@ export function RemindersKanban({
   busy,
 }: RemindersKanbanProps) {
   const today = todayYmd()
+  const includeVat = useUiStore((s) => s.vatMode) === 'gross'
 
   const columns = useMemo(() => {
     const buckets: Record<ColumnKey, Record[]> = {
@@ -119,7 +122,7 @@ export function RemindersKanban({
         title="Promemoria"
         subtitle={`Entro ${leadDays} giorni`}
         rowCount={columns.promemoria.length}
-        total={totalOf(columns.promemoria)}
+        total={totalOf(columns.promemoria, includeVat)}
         tone="default"
       >
         {renderColumnContent('promemoria')}
@@ -129,7 +132,7 @@ export function RemindersKanban({
         title="1° sollecito"
         subtitle="Dopo scadenza"
         rowCount={columns.sollecito_1.length}
-        total={totalOf(columns.sollecito_1)}
+        total={totalOf(columns.sollecito_1, includeVat)}
         tone="warning"
       >
         {renderColumnContent('sollecito_1')}
@@ -138,7 +141,7 @@ export function RemindersKanban({
       <KanbanColumn
         title="2° sollecito"
         rowCount={columns.sollecito_2.length}
-        total={totalOf(columns.sollecito_2)}
+        total={totalOf(columns.sollecito_2, includeVat)}
         tone="warning"
       >
         {renderColumnContent('sollecito_2')}
@@ -148,7 +151,7 @@ export function RemindersKanban({
         title="Oltre 3° sollecito"
         subtitle="Ritardo cronico"
         rowCount={columns.sollecito_3_plus.length}
-        total={totalOf(columns.sollecito_3_plus)}
+        total={totalOf(columns.sollecito_3_plus, includeVat)}
         tone="danger"
       >
         {renderColumnContent('sollecito_3_plus')}
