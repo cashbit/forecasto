@@ -180,6 +180,38 @@ def check_export_permission(member: WorkspaceMember) -> None:
         )
 
 
+def check_collection_permission(member: WorkspaceMember, action: str) -> None:
+    """Check if member can act on collections. action: 'create'|'write'|'read'.
+
+    'create' = create new collections; 'write' = create/update/delete documents
+    in existing collections; 'read' = read collections and their documents.
+
+    Owner and admin always have permissions. Viewers are read-only by role
+    (they can never create/write, regardless of their stored flags). For regular
+    members the three per-member flags govern access.
+    """
+    if member.role in ("owner", "admin"):
+        return
+
+    messages = {
+        "create": "Non hai il permesso di creare nuove collection",
+        "write": "Non hai il permesso di scrivere nelle collection",
+        "read": "Non hai il permesso di leggere le collection",
+    }
+
+    if member.role == "viewer" and action in ("create", "write"):
+        raise ForbiddenException(messages[action])
+
+    allowed = {
+        "create": member.can_create_collections,
+        "write": member.can_write_collections,
+        "read": member.can_read_collections,
+    }[action]
+
+    if not allowed:
+        raise ForbiddenException(messages[action])
+
+
 async def require_admin(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:

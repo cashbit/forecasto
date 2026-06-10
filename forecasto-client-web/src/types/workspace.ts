@@ -16,6 +16,9 @@ export interface Workspace {
   can_import?: boolean
   can_import_sdi?: boolean
   can_export?: boolean
+  can_create_collections?: boolean
+  can_write_collections?: boolean
+  can_read_collections?: boolean
 }
 
 export interface SdiSupplierMapping {
@@ -112,6 +115,9 @@ export interface WorkspaceMember {
   can_import: boolean
   can_import_sdi: boolean
   can_export: boolean
+  can_create_collections?: boolean
+  can_write_collections?: boolean
+  can_read_collections?: boolean
   user: {
     id: string
     email: string
@@ -128,6 +134,9 @@ export interface MemberUpdate {
   can_import?: boolean
   can_import_sdi?: boolean
   can_export?: boolean
+  can_create_collections?: boolean
+  can_write_collections?: boolean
+  can_read_collections?: boolean
 }
 
 export interface PendingInvitation {
@@ -140,6 +149,9 @@ export interface PendingInvitation {
   can_import: boolean
   can_import_sdi: boolean
   can_export: boolean
+  can_create_collections?: boolean
+  can_write_collections?: boolean
+  can_read_collections?: boolean
   created_at: string
   expires_at: string
 }
@@ -154,6 +166,9 @@ export interface WorkspaceInvitation {
   can_import: boolean
   can_import_sdi: boolean
   can_export: boolean
+  can_create_collections?: boolean
+  can_write_collections?: boolean
+  can_read_collections?: boolean
   created_at: string
   expires_at: string
 }

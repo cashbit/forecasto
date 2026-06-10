@@ -147,6 +147,10 @@ class WorkspaceMember(Base, UUIDMixin):
     can_import: Mapped[bool] = mapped_column(Boolean, default=True)
     can_import_sdi: Mapped[bool] = mapped_column(Boolean, default=True)
     can_export: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Collection (document store) permissions — owner/admin bypass these checks.
+    can_create_collections: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_write_collections: Mapped[bool] = mapped_column(Boolean, default=True)
+    can_read_collections: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="members")
@@ -180,6 +184,9 @@ class Invitation(Base, UUIDMixin):
     can_import: Mapped[bool] = mapped_column(Boolean, default=True)
     can_import_sdi: Mapped[bool] = mapped_column(Boolean, default=True)
     can_export: Mapped[bool] = mapped_column(Boolean, default=True)
+    can_create_collections: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_write_collections: Mapped[bool] = mapped_column(Boolean, default=True)
+    can_read_collections: Mapped[bool] = mapped_column(Boolean, default=True)
     token_hash: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

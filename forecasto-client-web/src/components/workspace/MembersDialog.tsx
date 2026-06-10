@@ -102,12 +102,19 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
   const [inviteCanImport, setInviteCanImport] = useState(true)
   const [inviteCanImportSdi, setInviteCanImportSdi] = useState(true)
   const [inviteCanExport, setInviteCanExport] = useState(true)
+  // Collection (document store) permissions — invito di default: leggi+scrivi sì, crea no
+  const [inviteCanCreateCollections, setInviteCanCreateCollections] = useState(false)
+  const [inviteCanWriteCollections, setInviteCanWriteCollections] = useState(true)
+  const [inviteCanReadCollections, setInviteCanReadCollections] = useState(true)
   const [isInviting, setIsInviting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [editedPermissions, setEditedPermissions] = useState<GranularAreaPermissions | null>(null)
   const [editedCanImport, setEditedCanImport] = useState(true)
   const [editedCanImportSdi, setEditedCanImportSdi] = useState(true)
   const [editedCanExport, setEditedCanExport] = useState(true)
+  const [editedCanCreateCollections, setEditedCanCreateCollections] = useState(false)
+  const [editedCanWriteCollections, setEditedCanWriteCollections] = useState(true)
+  const [editedCanReadCollections, setEditedCanReadCollections] = useState(true)
   const [lookupResult, setLookupResult] = useState<{ name: string } | null>(null)
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [isLookingUp, setIsLookingUp] = useState(false)
@@ -160,11 +167,17 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
       setEditedCanImport(selectedMember.can_import ?? true)
       setEditedCanImportSdi(selectedMember.can_import_sdi ?? true)
       setEditedCanExport(selectedMember.can_export ?? true)
+      setEditedCanCreateCollections(selectedMember.can_create_collections ?? false)
+      setEditedCanWriteCollections(selectedMember.can_write_collections ?? true)
+      setEditedCanReadCollections(selectedMember.can_read_collections ?? true)
     } else {
       setEditedPermissions(null)
       setEditedCanImport(true)
       setEditedCanImportSdi(true)
       setEditedCanExport(true)
+      setEditedCanCreateCollections(false)
+      setEditedCanWriteCollections(true)
+      setEditedCanReadCollections(true)
     }
   }, [selectedMember])
 
@@ -224,6 +237,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
     setEditedCanImport(invitation.can_import ?? true)
     setEditedCanImportSdi(invitation.can_import_sdi ?? true)
     setEditedCanExport(invitation.can_export ?? true)
+    setEditedCanCreateCollections(invitation.can_create_collections ?? false)
+    setEditedCanWriteCollections(invitation.can_write_collections ?? true)
+    setEditedCanReadCollections(invitation.can_read_collections ?? true)
     // Clear invite code
     setInviteCode('')
     setLookupResult(null)
@@ -277,7 +293,10 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
         inviteCanImport,
         inviteCanImportSdi,
         inviteCanExport,
-        true // byUserId
+        true, // byUserId
+        inviteCanCreateCollections,
+        inviteCanWriteCollections,
+        inviteCanReadCollections
       )
       toast({ title: 'Invito inviato', variant: 'success' })
       loadMembers()
@@ -305,7 +324,11 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
         invitePermissions,
         inviteCanImport,
         inviteCanImportSdi,
-        inviteCanExport
+        inviteCanExport,
+        false, // byUserId
+        inviteCanCreateCollections,
+        inviteCanWriteCollections,
+        inviteCanReadCollections
       )
       toast({ title: 'Invito inviato', variant: 'success' })
       setInviteCode('')
@@ -314,6 +337,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
       setInviteCanImport(true)
       setInviteCanImportSdi(true)
       setInviteCanExport(true)
+      setInviteCanCreateCollections(false)
+      setInviteCanWriteCollections(true)
+      setInviteCanReadCollections(true)
       loadMembers()
     } catch (error: unknown) {
       // Extract error message from axios response
@@ -389,6 +415,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
         can_import: editedCanImport,
         can_import_sdi: editedCanImportSdi,
         can_export: editedCanExport,
+        can_create_collections: editedCanCreateCollections,
+        can_write_collections: editedCanWriteCollections,
+        can_read_collections: editedCanReadCollections,
       }
       await workspacesApi.updateMember(workspaceId, selectedMember.user.id, update)
       toast({ title: 'Permessi aggiornati', variant: 'success' })
@@ -409,6 +438,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
         can_import: editedCanImport,
         can_import_sdi: editedCanImportSdi,
         can_export: editedCanExport,
+        can_create_collections: editedCanCreateCollections,
+        can_write_collections: editedCanWriteCollections,
+        can_read_collections: editedCanReadCollections,
       }
       await workspacesApi.updateInvitation(workspaceId, selectedInvitation.id, update)
       toast({ title: 'Permessi invito aggiornati', variant: 'success' })
@@ -441,6 +473,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
     setEditedCanImport(value)
     setEditedCanImportSdi(value)
     setEditedCanExport(value)
+    setEditedCanCreateCollections(value)
+    setEditedCanWriteCollections(value)
+    setEditedCanReadCollections(value)
   }
 
   const canEditMember = (member: WorkspaceMember) => {
@@ -699,6 +734,36 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
                             Esporta JSON
                           </Label>
                         </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="invite-can-read-collections"
+                            checked={inviteCanReadCollections}
+                            onCheckedChange={(checked) => setInviteCanReadCollections(!!checked)}
+                          />
+                          <Label htmlFor="invite-can-read-collections" className="text-xs cursor-pointer">
+                            Leggi le collection
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="invite-can-write-collections"
+                            checked={inviteCanWriteCollections}
+                            onCheckedChange={(checked) => setInviteCanWriteCollections(!!checked)}
+                          />
+                          <Label htmlFor="invite-can-write-collections" className="text-xs cursor-pointer">
+                            Scrivi nelle collection
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="invite-can-create-collections"
+                            checked={inviteCanCreateCollections}
+                            onCheckedChange={(checked) => setInviteCanCreateCollections(!!checked)}
+                          />
+                          <Label htmlFor="invite-can-create-collections" className="text-xs cursor-pointer">
+                            Crea nuove collection
+                          </Label>
+                        </div>
                       </div>
                     </div>
 
@@ -826,6 +891,36 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
                           />
                           <Label htmlFor="inv-edit-can-export" className="text-xs cursor-pointer">
                             Esporta JSON
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="inv-edit-can-read-collections"
+                            checked={editedCanReadCollections}
+                            onCheckedChange={(checked) => setEditedCanReadCollections(!!checked)}
+                          />
+                          <Label htmlFor="inv-edit-can-read-collections" className="text-xs cursor-pointer">
+                            Leggi le collection
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="inv-edit-can-write-collections"
+                            checked={editedCanWriteCollections}
+                            onCheckedChange={(checked) => setEditedCanWriteCollections(!!checked)}
+                          />
+                          <Label htmlFor="inv-edit-can-write-collections" className="text-xs cursor-pointer">
+                            Scrivi nelle collection
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="inv-edit-can-create-collections"
+                            checked={editedCanCreateCollections}
+                            onCheckedChange={(checked) => setEditedCanCreateCollections(!!checked)}
+                          />
+                          <Label htmlFor="inv-edit-can-create-collections" className="text-xs cursor-pointer">
+                            Crea nuove collection
                           </Label>
                         </div>
                       </div>
@@ -968,6 +1063,36 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
                           />
                           <Label htmlFor="member-can-export" className="text-xs cursor-pointer">
                             Esporta JSON
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="member-can-read-collections"
+                            checked={editedCanReadCollections}
+                            onCheckedChange={(checked) => setEditedCanReadCollections(!!checked)}
+                          />
+                          <Label htmlFor="member-can-read-collections" className="text-xs cursor-pointer">
+                            Leggi le collection
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="member-can-write-collections"
+                            checked={editedCanWriteCollections}
+                            onCheckedChange={(checked) => setEditedCanWriteCollections(!!checked)}
+                          />
+                          <Label htmlFor="member-can-write-collections" className="text-xs cursor-pointer">
+                            Scrivi nelle collection
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="member-can-create-collections"
+                            checked={editedCanCreateCollections}
+                            onCheckedChange={(checked) => setEditedCanCreateCollections(!!checked)}
+                          />
+                          <Label htmlFor="member-can-create-collections" className="text-xs cursor-pointer">
+                            Crea nuove collection
                           </Label>
                         </div>
                       </div>

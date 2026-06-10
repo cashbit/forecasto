@@ -53,6 +53,9 @@ async def list_workspaces(
             can_import=member.can_import,
             can_import_sdi=member.can_import_sdi,
             can_export=member.can_export,
+            can_create_collections=member.can_create_collections,
+            can_write_collections=member.can_write_collections,
+            can_read_collections=member.can_read_collections,
         )
         for ws, member in results
     ]
@@ -79,6 +82,9 @@ async def create_workspace(
         can_import=True,
         can_import_sdi=True,
         can_export=True,
+        can_create_collections=True,
+        can_write_collections=True,
+        can_read_collections=True,
     )}
 
 @router.get("/{workspace_id}", response_model=dict)

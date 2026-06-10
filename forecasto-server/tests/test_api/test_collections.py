@@ -201,6 +201,103 @@ async def test_viewer_cannot_create_collection(viewer_client: AsyncClient, test_
     assert resp.status_code == 403
 
 
+async def _member_headers(
+    db_session: AsyncSession, test_workspace, *, email: str, role: str = "member", **flags
+) -> dict:
+    """Create a workspace member with the given collection flags; return auth headers."""
+    user = User(
+        email=email,
+        password_hash=hash_password("x"),
+        name="Member",
+        email_verified=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    db_session.add(
+        WorkspaceMember(
+            workspace_id=test_workspace.id, user_id=user.id, role=role, **flags
+        )
+    )
+    await db_session.commit()
+    token = create_access_token({"sub": user.id, "email": user.email})
+    return {"Authorization": f"Bearer {token}"}
+
+
+async def test_member_cannot_create_collection_by_default(
+    authenticated_client: AsyncClient, db_session: AsyncSession, test_workspace
+):
+    headers = await _member_headers(db_session, test_workspace, email="m-create-no@example.com")
+    resp = await authenticated_client.post(
+        f"{_ws(test_workspace)}/collections", json={"name": "Nope"}, headers=headers
+    )
+    assert resp.status_code == 403
+
+
+async def test_member_can_create_collection_when_enabled(
+    authenticated_client: AsyncClient, db_session: AsyncSession, test_workspace
+):
+    headers = await _member_headers(
+        db_session, test_workspace, email="m-create-yes@example.com", can_create_collections=True
+    )
+    resp = await authenticated_client.post(
+        f"{_ws(test_workspace)}/collections", json={"name": "Member Coll"}, headers=headers
+    )
+    assert resp.status_code == 201, resp.text
+
+
+async def test_member_cannot_write_documents_without_permission(
+    authenticated_client: AsyncClient, db_session: AsyncSession, test_workspace
+):
+    coll_id = (
+        await authenticated_client.post(
+            f"{_ws(test_workspace)}/collections", json={"name": "WriteGate"}
+        )
+    ).json()["collection"]["id"]
+
+    headers = await _member_headers(
+        db_session, test_workspace, email="m-write-no@example.com", can_write_collections=False
+    )
+    resp = await authenticated_client.post(
+        f"{_ws(test_workspace)}/collections/{coll_id}/documents",
+        json={"data": {"x": 1}},
+        headers=headers,
+    )
+    assert resp.status_code == 403
+
+    # With write enabled (default) the same member can write.
+    headers_ok = await _member_headers(db_session, test_workspace, email="m-write-yes@example.com")
+    ok = await authenticated_client.post(
+        f"{_ws(test_workspace)}/collections/{coll_id}/documents",
+        json={"data": {"x": 1}},
+        headers=headers_ok,
+    )
+    assert ok.status_code == 201, ok.text
+
+
+async def test_member_cannot_read_without_permission(
+    authenticated_client: AsyncClient, db_session: AsyncSession, test_workspace
+):
+    coll_id = (
+        await authenticated_client.post(
+            f"{_ws(test_workspace)}/collections", json={"name": "ReadGate"}
+        )
+    ).json()["collection"]["id"]
+
+    headers = await _member_headers(
+        db_session, test_workspace, email="m-read-no@example.com", can_read_collections=False
+    )
+    listed = await authenticated_client.get(
+        f"{_ws(test_workspace)}/collections", headers=headers
+    )
+    assert listed.status_code == 403
+
+    got = await authenticated_client.get(
+        f"{_ws(test_workspace)}/collections/{coll_id}", headers=headers
+    )
+    assert got.status_code == 403
+
+
 async def test_non_member_gets_403(client: AsyncClient, db_session: AsyncSession, test_workspace):
     outsider = User(
         email="out@example.com",

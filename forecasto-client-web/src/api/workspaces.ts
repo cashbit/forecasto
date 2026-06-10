@@ -61,7 +61,10 @@ export const workspacesApi = {
     canImport?: boolean,
     canImportSdi?: boolean,
     canExport?: boolean,
-    byUserId?: boolean
+    byUserId?: boolean,
+    canCreateCollections?: boolean,
+    canWriteCollections?: boolean,
+    canReadCollections?: boolean
   ): Promise<void> => {
     const body: Record<string, unknown> = {
       role,
@@ -69,6 +72,9 @@ export const workspacesApi = {
       can_import: canImport,
       can_import_sdi: canImportSdi,
       can_export: canExport,
+      can_create_collections: canCreateCollections,
+      can_write_collections: canWriteCollections,
+      can_read_collections: canReadCollections,
     }
     if (byUserId) {
       body.user_id = inviteCodeOrUserId

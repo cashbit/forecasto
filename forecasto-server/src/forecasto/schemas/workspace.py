@@ -92,6 +92,9 @@ class WorkspaceWithRole(BaseModel):
     can_import: bool = True
     can_import_sdi: bool = True
     can_export: bool = True
+    can_create_collections: bool = False
+    can_write_collections: bool = True
+    can_read_collections: bool = True
 
     model_config = {"from_attributes": True}
 
@@ -116,6 +119,9 @@ class MemberResponse(BaseModel):
     can_import: bool
     can_import_sdi: bool
     can_export: bool
+    can_create_collections: bool = False
+    can_write_collections: bool = True
+    can_read_collections: bool = True
     joined_at: datetime
 
     model_config = {"from_attributes": True}
@@ -130,6 +136,9 @@ class MemberUpdate(BaseModel):
     can_import: bool | None = None
     can_import_sdi: bool | None = None
     can_export: bool | None = None
+    can_create_collections: bool | None = None
+    can_write_collections: bool | None = None
+    can_read_collections: bool | None = None
 
 class InvitationCreate(BaseModel):
     """Invitation creation request. Provide either invite_code or user_id."""
@@ -142,6 +151,9 @@ class InvitationCreate(BaseModel):
     can_import: bool = True
     can_import_sdi: bool = True
     can_export: bool = True
+    can_create_collections: bool = False
+    can_write_collections: bool = True
+    can_read_collections: bool = True
 
     @field_validator('invite_code')
     @classmethod
@@ -175,6 +187,9 @@ class InvitationResponse(BaseModel):
     can_import: bool
     can_import_sdi: bool
     can_export: bool
+    can_create_collections: bool = False
+    can_write_collections: bool = True
+    can_read_collections: bool = True
     created_at: datetime
     expires_at: datetime
     accepted_at: datetime | None = None

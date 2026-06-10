@@ -13,7 +13,11 @@ from fastapi import APIRouter, Depends, Header, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from forecasto.database import get_db
-from forecasto.dependencies import get_current_user, get_current_workspace
+from forecasto.dependencies import (
+    check_collection_permission,
+    get_current_user,
+    get_current_workspace,
+)
 from forecasto.exceptions import ForbiddenException, UnauthorizedException
 from forecasto.models.user import User
 from forecasto.models.workspace import Workspace, WorkspaceMember
@@ -37,15 +41,10 @@ WorkspaceDep = Annotated[tuple[Workspace, WorkspaceMember], Depends(get_current_
 
 
 def _require_collection_admin(member: WorkspaceMember) -> None:
-    """Structural mutations (collections, routing, deletes) are owner/admin only."""
+    """Structural collection mutations (update/delete a collection, quarantine
+    routing/discard) remain owner/admin only."""
     if member.role not in ("owner", "admin"):
         raise ForbiddenException("Solo owner o admin possono modificare le collezioni")
-
-
-def _require_writer(member: WorkspaceMember) -> None:
-    """Document writes are allowed for any member except viewers."""
-    if member.role == "viewer":
-        raise ForbiddenException("I viewer non possono modificare i documenti")
 
 
 async def _authenticate_machine(
@@ -82,7 +81,7 @@ async def create_collection(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     _, member = workspace_data
-    _require_collection_admin(member)
+    check_collection_permission(member, "create")
     service = CollectionService(db)
     collection = await service.create_collection(workspace_id, data, user_id=current_user.id)
     await db.commit()
@@ -101,6 +100,8 @@ async def list_collections(
     db: Annotated[AsyncSession, Depends(get_db)],
     include_archived: bool = Query(False),
 ):
+    _, member = workspace_data
+    check_collection_permission(member, "read")
     service = CollectionService(db)
     collections = await service.list_collections(workspace_id, include_archived=include_archived)
     return {
@@ -116,6 +117,8 @@ async def get_collection(
     workspace_data: WorkspaceDep,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    _, member = workspace_data
+    check_collection_permission(member, "read")
     service = CollectionService(db)
     collection = await service.get_collection(workspace_id, collection_id)
     return {"success": True, "collection": CollectionResponse.model_validate(collection)}
@@ -175,6 +178,8 @@ async def list_documents(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
+    _, member = workspace_data
+    check_collection_permission(member, "read")
     service = CollectionService(db)
     docs, total = await service.list_documents(workspace_id, collection_id, limit=limit, offset=offset)
     return {
@@ -192,6 +197,8 @@ async def query_documents(
     workspace_data: WorkspaceDep,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    _, member = workspace_data
+    check_collection_permission(member, "read")
     service = CollectionService(db)
     docs, total = await service.query_documents(workspace_id, collection_id, query)
     return {
@@ -211,7 +218,7 @@ async def create_document(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     _, member = workspace_data
-    _require_writer(member)
+    check_collection_permission(member, "write")
     service = CollectionService(db)
     # Path param is authoritative for the target collection.
     data.collection_id = collection_id
@@ -248,7 +255,7 @@ async def update_document(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     _, member = workspace_data
-    _require_writer(member)
+    check_collection_permission(member, "write")
     service = CollectionService(db)
     doc = await service.update_document(workspace_id, document_id, data)
     await db.commit()
@@ -264,7 +271,7 @@ async def delete_document(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     _, member = workspace_data
-    _require_writer(member)
+    check_collection_permission(member, "write")
     service = CollectionService(db)
     await service.delete_document(workspace_id, document_id)
     await db.commit()
@@ -281,6 +288,8 @@ async def get_quarantine_count(
     workspace_data: WorkspaceDep,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
+    _, member = workspace_data
+    check_collection_permission(member, "read")
     service = CollectionService(db)
     count = await service.count_quarantine(workspace_id)
     return QuarantineCountResponse(quarantined=count)
@@ -294,6 +303,8 @@ async def list_quarantine(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
+    _, member = workspace_data
+    check_collection_permission(member, "read")
     service = CollectionService(db)
     docs, total = await service.list_quarantine(workspace_id, limit=limit, offset=offset)
     return {

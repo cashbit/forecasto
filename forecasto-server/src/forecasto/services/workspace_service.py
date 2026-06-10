@@ -86,6 +86,9 @@ class WorkspaceService:
                 "prospect": "write",
                 "budget": "write",
             },
+            can_create_collections=True,
+            can_write_collections=True,
+            can_read_collections=True,
         )
         self.db.add(member)
 
@@ -173,6 +176,15 @@ class WorkspaceService:
 
         if data.can_export is not None:
             member.can_export = data.can_export
+
+        if data.can_create_collections is not None:
+            member.can_create_collections = data.can_create_collections
+
+        if data.can_write_collections is not None:
+            member.can_write_collections = data.can_write_collections
+
+        if data.can_read_collections is not None:
+            member.can_read_collections = data.can_read_collections
 
         return member
 
@@ -336,6 +348,9 @@ class WorkspaceService:
             can_import=data.can_import,
             can_import_sdi=data.can_import_sdi,
             can_export=data.can_export,
+            can_create_collections=data.can_create_collections,
+            can_write_collections=data.can_write_collections,
+            can_read_collections=data.can_read_collections,
             token_hash=hash_password(token),
             expires_at=datetime.utcnow() + timedelta(days=7),
         )
@@ -492,6 +507,9 @@ class WorkspaceService:
                 "can_import": inv.can_import,
                 "can_import_sdi": inv.can_import_sdi,
                 "can_export": inv.can_export,
+                "can_create_collections": inv.can_create_collections,
+                "can_write_collections": inv.can_write_collections,
+                "can_read_collections": inv.can_read_collections,
                 "created_at": inv.created_at,
                 "expires_at": inv.expires_at,
             })
@@ -538,6 +556,15 @@ class WorkspaceService:
 
         if data.can_export is not None:
             invitation.can_export = data.can_export
+
+        if data.can_create_collections is not None:
+            invitation.can_create_collections = data.can_create_collections
+
+        if data.can_write_collections is not None:
+            invitation.can_write_collections = data.can_write_collections
+
+        if data.can_read_collections is not None:
+            invitation.can_read_collections = data.can_read_collections
 
         return invitation
 
@@ -604,6 +631,9 @@ class WorkspaceService:
             can_import=invitation.can_import,
             can_import_sdi=invitation.can_import_sdi,
             can_export=invitation.can_export,
+            can_create_collections=invitation.can_create_collections,
+            can_write_collections=invitation.can_write_collections,
+            can_read_collections=invitation.can_read_collections,
         )
         self.db.add(member)
 
