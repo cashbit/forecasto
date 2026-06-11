@@ -28,16 +28,31 @@ from forecasto.schemas.collection import (
     CollectionDocumentUpdate,
     CollectionResponse,
     CollectionUpdate,
+    DocumentAggregateQuery,
     DocumentQuery,
     DocumentRouteRequest,
     QuarantineCountResponse,
 )
-from forecasto.services.collection_service import CollectionService
+from forecasto.services.collection_service import CollectionService, project_data
 from forecasto.services.event_bus import event_bus
 
 router = APIRouter()
 
 WorkspaceDep = Annotated[tuple[Workspace, WorkspaceMember], Depends(get_current_workspace)]
+
+
+def _serialize_documents(docs, fields: list[str] | None) -> list[CollectionDocumentResponse]:
+    """Map ORM docs to responses, optionally projecting `data` to `fields` only.
+
+    Projection reassigns `r.data` (never mutates the ORM object, which would
+    otherwise persist the trimmed payload at commit time)."""
+    responses = []
+    for d in docs:
+        r = CollectionDocumentResponse.model_validate(d)
+        if fields:
+            r.data = project_data(d.data or {}, fields)
+        responses.append(r)
+    return responses
 
 
 def _require_collection_admin(member: WorkspaceMember) -> None:
@@ -177,6 +192,7 @@ async def list_documents(
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
+    fields: list[str] | None = Query(None),
 ):
     _, member = workspace_data
     check_collection_permission(member, "read")
@@ -184,7 +200,7 @@ async def list_documents(
     docs, total = await service.list_documents(workspace_id, collection_id, limit=limit, offset=offset)
     return {
         "success": True,
-        "documents": [CollectionDocumentResponse.model_validate(d) for d in docs],
+        "documents": _serialize_documents(docs, fields),
         "total": total,
     }
 
@@ -203,8 +219,27 @@ async def query_documents(
     docs, total = await service.query_documents(workspace_id, collection_id, query)
     return {
         "success": True,
-        "documents": [CollectionDocumentResponse.model_validate(d) for d in docs],
+        "documents": _serialize_documents(docs, query.fields),
         "total": total,
+    }
+
+
+@router.post("/{workspace_id}/collections/{collection_id}/documents/aggregate", response_model=dict)
+async def aggregate_documents(
+    workspace_id: str,
+    collection_id: str,
+    query: DocumentAggregateQuery,
+    workspace_data: WorkspaceDep,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    _, member = workspace_data
+    check_collection_permission(member, "read")
+    service = CollectionService(db)
+    results, total_groups = await service.aggregate_documents(workspace_id, collection_id, query)
+    return {
+        "success": True,
+        "results": results,
+        "total_groups": total_groups,
     }
 
 

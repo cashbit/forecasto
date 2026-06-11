@@ -10,6 +10,20 @@ const FILTER = z.object({
   value: z.unknown().describe("Value to compare against"),
 });
 
+const ORDER_BY = z.object({
+  path: z.string().describe("JSON path of the field to sort by, e.g. '$.totale'"),
+  direction: z.enum(["asc", "desc"]).default("asc"),
+});
+
+const AGGREGATE = z.object({
+  field: z.string().describe("JSON path of the field to aggregate, e.g. '$.totale'"),
+  fn: z.enum(["sum", "count", "avg", "min", "max"]),
+  as: z.string().describe("Output key name for this aggregate in each result row"),
+});
+
+const FIELDS_DESC =
+  "JSON paths to include in each document's 'data' (e.g. ['$.cliente','$.totale']). If omitted, returns the full data. Dramatically reduces payload size when you only need a few fields.";
+
 export function registerCollectionTools(
   server: McpServer,
   getClient: () => ForecastoClient,
@@ -112,13 +126,15 @@ export function registerCollectionTools(
       collection_id: z.string().describe("Collection UUID"),
       limit: z.number().int().min(1).max(200).default(50).describe("Max documents per page (default 50)"),
       offset: z.number().int().min(0).default(0).describe("Pagination offset (default 0)"),
+      fields: z.array(z.string()).optional().describe(FIELDS_DESC),
     },
     { title: "List Collection Documents", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    async ({ workspace_id, collection_id, limit, offset }) => {
-      const data = await getClient().get(`/api/v1/workspaces/${workspace_id}/collections/${collection_id}/documents`, {
-        limit: String(limit),
-        offset: String(offset),
-      });
+    async ({ workspace_id, collection_id, limit, offset, fields }) => {
+      const qs = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+      for (const f of fields ?? []) qs.append("fields", f);
+      const data = await getClient().get(
+        `/api/v1/workspaces/${workspace_id}/collections/${collection_id}/documents?${qs.toString()}`,
+      );
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
     },
   );
@@ -140,18 +156,41 @@ export function registerCollectionTools(
 
   server.tool(
     "query_collection_documents",
-    "Query documents in a collection by JSON-field predicates (filters are ANDed). Each filter targets a JSON path inside the document 'data'. Example: filter on '$.banca' eq 'Intesa'. Use this instead of listing everything when you need to find specific documents.",
+    "Query documents in a collection by JSON-field predicates (filters are ANDed). Each filter targets a JSON path inside the document 'data'. Example: filter on '$.banca' eq 'Intesa'. Use 'fields' to project only the JSON paths you need (much smaller payload) and 'order_by' to sort. Use this instead of listing everything when you need to find specific documents.",
     {
       workspace_id: z.string().describe("Workspace UUID"),
       collection_id: z.string().describe("Collection UUID"),
       filters: z.array(FILTER).default([]).describe("JSON-field predicates, all combined with AND"),
+      fields: z.array(z.string()).optional().describe(FIELDS_DESC),
+      order_by: z.array(ORDER_BY).optional().describe("Sort directives on JSON paths (applied in order)"),
       limit: z.number().int().min(1).max(200).default(50),
       offset: z.number().int().min(0).default(0),
     },
     { title: "Query Collection Documents", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    async ({ workspace_id, collection_id, filters, limit, offset }) => {
+    async ({ workspace_id, collection_id, filters, fields, order_by, limit, offset }) => {
       const data = await getClient().post(`/api/v1/workspaces/${workspace_id}/collections/${collection_id}/documents/query`, {
-        filters, limit, offset,
+        filters, fields, order_by, limit, offset,
+      });
+      return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+    },
+  );
+
+  server.tool(
+    "aggregate_collection_documents",
+    "Aggregate documents server-side (GROUP BY + sum/count/avg/min/max over JSON paths) without downloading them. Ideal for financial reports, e.g. revenue per client. Returns { results, total_groups }, where each result row is keyed by the group_by paths plus the aggregate aliases.",
+    {
+      workspace_id: z.string().describe("Workspace UUID"),
+      collection_id: z.string().describe("Collection UUID"),
+      filters: z.array(FILTER).default([]).describe("JSON-field predicates, all combined with AND (optional)"),
+      group_by: z.array(z.string()).default([]).describe("JSON paths to group by, e.g. ['$.cliente','$.anno']"),
+      aggregates: z.array(AGGREGATE).describe("Aggregations to compute per group"),
+      order_by: z.array(ORDER_BY).optional().describe("Sort by an aggregate alias (e.g. '$.fatturato_totale') or a group path"),
+      limit: z.number().int().min(1).max(500).default(100),
+    },
+    { title: "Aggregate Collection Documents", readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    async ({ workspace_id, collection_id, filters, group_by, aggregates, order_by, limit }) => {
+      const data = await getClient().post(`/api/v1/workspaces/${workspace_id}/collections/${collection_id}/documents/aggregate`, {
+        filters, group_by, aggregates, order_by, limit,
       });
       return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
     },

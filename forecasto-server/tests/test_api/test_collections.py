@@ -106,6 +106,76 @@ async def test_json_query(authenticated_client: AsyncClient, test_workspace):
     assert resp2.json()["total"] == 2
 
 
+async def test_query_projection_and_sort(authenticated_client: AsyncClient, test_workspace):
+    coll_id = (
+        await authenticated_client.post(
+            f"{_ws(test_workspace)}/collections", json={"name": "Fatture"}
+        )
+    ).json()["collection"]["id"]
+
+    for cliente, totale in [("A", 100), ("B", 300), ("C", 200)]:
+        await authenticated_client.post(
+            f"{_ws(test_workspace)}/collections/{coll_id}/documents",
+            json={"data": {"cliente": cliente, "totale": totale, "note": "x" * 50}},
+        )
+
+    # Projection: only the requested fields come back in `data`.
+    resp = await authenticated_client.post(
+        f"{_ws(test_workspace)}/collections/{coll_id}/documents/query",
+        json={
+            "fields": ["$.cliente", "$.totale"],
+            "order_by": [{"path": "$.totale", "direction": "desc"}],
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    docs = resp.json()["documents"]
+    assert [d["data"] for d in docs] == [
+        {"cliente": "B", "totale": 300},
+        {"cliente": "C", "totale": 200},
+        {"cliente": "A", "totale": 100},
+    ]
+
+
+async def test_aggregate_endpoint(authenticated_client: AsyncClient, test_workspace):
+    coll_id = (
+        await authenticated_client.post(
+            f"{_ws(test_workspace)}/collections", json={"name": "Fatture"}
+        )
+    ).json()["collection"]["id"]
+
+    rows = [
+        {"cliente": "SIAD", "anno": 2025, "imponibile": 100, "totale": 122},
+        {"cliente": "SIAD", "anno": 2025, "imponibile": 200, "totale": 244},
+        {"cliente": "ACME", "anno": 2025, "imponibile": 50, "totale": 61},
+        {"cliente": "ACME", "anno": 2024, "imponibile": 999, "totale": 999},
+    ]
+    for data in rows:
+        await authenticated_client.post(
+            f"{_ws(test_workspace)}/collections/{coll_id}/documents",
+            json={"data": data},
+        )
+
+    resp = await authenticated_client.post(
+        f"{_ws(test_workspace)}/collections/{coll_id}/documents/aggregate",
+        json={
+            "filters": [{"path": "$.anno", "op": "eq", "value": 2025}],
+            "group_by": ["$.cliente"],
+            "aggregates": [
+                {"field": "$.imponibile", "fn": "sum", "as": "imponibile_totale"},
+                {"field": "$.totale", "fn": "sum", "as": "fatturato_totale"},
+                {"field": "$.cliente", "fn": "count", "as": "n_fatture"},
+            ],
+            "order_by": [{"path": "$.fatturato_totale", "direction": "desc"}],
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    out = resp.json()
+    assert out["total_groups"] == 2
+    assert out["results"][0]["$.cliente"] == "SIAD"
+    assert out["results"][0]["fatturato_totale"] == 366
+    assert out["results"][0]["n_fatture"] == 2
+
+
 async def test_quarantine_flow(authenticated_client: AsyncClient, test_workspace):
     # Ingest into quarantine (no collection)
     ing = await authenticated_client.post(

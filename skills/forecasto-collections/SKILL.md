@@ -140,6 +140,7 @@ workspace_id (req)
 collection_id (req)
 limit                — default 50, max 200
 offset               — default 0 (paginazione)
+fields               — array di JSON path da includere nel `data` (projection). Se assente, `data` completo.
 ```
 Più recenti per primi. Usa `query_collection_documents` quando devi **filtrare**.
 
@@ -183,10 +184,38 @@ filters              — array di predicati, combinati in AND (default [])
   path (req)         — JSON path SQLite nel `data`, es. "$.banca", "$.header.iban", "$.righe[0].importo"
   op                 — "eq"|"ne"|"gt"|"gte"|"lt"|"lte"|"contains"   (default "eq")
   value              — valore di confronto
+fields               — array di JSON path da includere nel `data` (projection). Se assente, `data` completo.
+order_by             — array di { path, direction: "asc"|"desc" }. Default: created_at desc.
 limit                — default 50, max 200
 offset               — default 0
 ```
 > `contains` = `LIKE` su sottostringa. I filtri multipli sono in **AND**.
+> **`fields`**: usalo sempre quando ti servono solo pochi campi — riduce il payload del ~90%
+> su documenti ricchi (es. fatture con array `righe`). Es. `fields: ["$.cliente","$.totale"]`.
+
+#### 12. `aggregate_collection_documents` ⭐ (somme/conteggi server-side)
+```
+workspace_id (req)
+collection_id (req)
+filters              — stessi predicati di query (opzionale, AND)
+group_by             — array di JSON path su cui raggruppare, es. ["$.cliente","$.anno"]
+aggregates (req)     — array di { field (JSON path), fn: "sum"|"count"|"avg"|"min"|"max", as: nome output }
+order_by             — array di { path, direction }; `path` può essere un alias `as` o un path di group_by
+limit                — default 100, max 500
+```
+Restituisce `{ results, total_groups }`. Ogni riga di `results` è chiave-valore con i path di
+`group_by` (es. `"$.cliente"`) **più** gli alias `as` degli aggregati. Esempio (fatturato per
+cliente, anno 2025):
+```
+group_by: ["$.cliente"]
+aggregates: [
+  { field: "$.imponibile", fn: "sum",   as: "imponibile_totale" },
+  { field: "$.totale",     fn: "sum",   as: "fatturato_totale" },
+  { field: "$.numero",     fn: "count", as: "n_fatture" }
+]
+order_by: [{ path: "$.fatturato_totale", direction: "desc" }]
+filters: [{ path: "$.anno", op: "eq", value: 2025 }]
+```
 
 ---
 
@@ -234,10 +263,13 @@ filters: [{ path: "$.data", op: "gte", value: "2026-02-01" },
 ```
 (le date come stringhe `YYYY-MM-DD` si confrontano lessicograficamente → ordinamento corretto)
 
-### 5. Aggregazioni (somme, conteggi, totali per fornitore)
-Il motore di query **non aggrega**: filtra e restituisce documenti. Per "quanto ho comprato da X"
-→ filtra per `$.fornitore` e somma `lato Claude` i `totale_imponibile` / `totale_documento`
-dei documenti tornati. Se i risultati superano `limit`, **pagina** con `offset`.
+### 5. Aggregazioni (somme, conteggi, totali per fornitore) → usa `aggregate_collection_documents`
+Per "quanto ho comprato da X", "fatturato per cliente", conteggi e medie usa **sempre**
+`aggregate_collection_documents`: aggrega lato server (GROUP BY + sum/count/avg/min/max) senza
+scaricare i documenti. Es. `group_by: ["$.fornitore"]` + `{ field: "$.totale_documento", fn: "sum", as: "totale" }`.
+> Aggrega lato Claude (filtra + somma a mano) **solo** come fallback se ti serve una logica non
+> esprimibile con le funzioni disponibili. Quando ti servono solo pochi campi grezzi, usa `fields`
+> (projection) su `query_collection_documents` invece di scaricare il `data` completo.
 
 ---
 

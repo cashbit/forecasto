@@ -114,12 +114,42 @@ class DocumentFilter(BaseModel):
     value: Any = None
 
 
+class DocumentOrderBy(BaseModel):
+    """Sort directive on a JSON path, e.g. {path: "$.totale", direction: "desc"}."""
+
+    path: str
+    direction: Literal["asc", "desc"] = "asc"
+
+
 class DocumentQuery(BaseModel):
     """Query documents within a collection by JSON-field predicates."""
 
     filters: list[DocumentFilter] = Field(default_factory=list)
+    # Projection: JSON paths to keep in each document's `data` (None = full data).
+    fields: list[str] | None = None
+    order_by: list[DocumentOrderBy] | None = None
     limit: int = Field(default=50, ge=1, le=200)
     offset: int = Field(default=0, ge=0)
+
+
+class DocumentAggregate(BaseModel):
+    """A single aggregation: apply `fn` to JSON path `field`, output as `as`."""
+
+    field: str
+    fn: Literal["sum", "count", "avg", "min", "max"]
+    result_name: str = Field(alias="as")
+
+    model_config = {"populate_by_name": True}
+
+
+class DocumentAggregateQuery(BaseModel):
+    """GROUP BY + aggregation over a collection's documents (server-side)."""
+
+    filters: list[DocumentFilter] = Field(default_factory=list)
+    group_by: list[str] = Field(default_factory=list)
+    aggregates: list[DocumentAggregate] = Field(default_factory=list)
+    order_by: list[DocumentOrderBy] | None = None
+    limit: int = Field(default=100, ge=1, le=500)
 
 
 class QuarantineCountResponse(BaseModel):
