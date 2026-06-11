@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from forecasto.models.bank_account import BankAccount
     from forecasto.models.collection import Collection, CollectionDocument
     from forecasto.models.inbox import InboxItem
+    from forecasto.models.numerator import Numerator
     from forecasto.models.record import Record
     from forecasto.models.session import Session
     from forecasto.models.user import User
@@ -93,6 +94,9 @@ class Workspace(Base, UUIDMixin, TimestampMixin):
     collection_documents: Mapped[list["CollectionDocument"]] = relationship(
         "CollectionDocument", back_populates="workspace", cascade="all, delete-orphan"
     )
+    numerators: Mapped[list["Numerator"]] = relationship(
+        "Numerator", back_populates="workspace", cascade="all, delete-orphan"
+    )
 
 def _default_granular_permissions() -> dict:
     """Default granular permissions - all permissions enabled."""
@@ -151,6 +155,10 @@ class WorkspaceMember(Base, UUIDMixin):
     can_create_collections: Mapped[bool] = mapped_column(Boolean, default=False)
     can_write_collections: Mapped[bool] = mapped_column(Boolean, default=True)
     can_read_collections: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Numerator (document numbering) permissions — owner/admin bypass these checks.
+    can_create_numerators: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_write_numerators: Mapped[bool] = mapped_column(Boolean, default=True)
+    can_read_numerators: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
     workspace: Mapped["Workspace"] = relationship("Workspace", back_populates="members")
@@ -187,6 +195,9 @@ class Invitation(Base, UUIDMixin):
     can_create_collections: Mapped[bool] = mapped_column(Boolean, default=False)
     can_write_collections: Mapped[bool] = mapped_column(Boolean, default=True)
     can_read_collections: Mapped[bool] = mapped_column(Boolean, default=True)
+    can_create_numerators: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_write_numerators: Mapped[bool] = mapped_column(Boolean, default=True)
+    can_read_numerators: Mapped[bool] = mapped_column(Boolean, default=True)
     token_hash: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)

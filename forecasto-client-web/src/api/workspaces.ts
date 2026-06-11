@@ -64,7 +64,10 @@ export const workspacesApi = {
     byUserId?: boolean,
     canCreateCollections?: boolean,
     canWriteCollections?: boolean,
-    canReadCollections?: boolean
+    canReadCollections?: boolean,
+    canCreateNumerators?: boolean,
+    canWriteNumerators?: boolean,
+    canReadNumerators?: boolean
   ): Promise<void> => {
     const body: Record<string, unknown> = {
       role,
@@ -75,6 +78,9 @@ export const workspacesApi = {
       can_create_collections: canCreateCollections,
       can_write_collections: canWriteCollections,
       can_read_collections: canReadCollections,
+      can_create_numerators: canCreateNumerators,
+      can_write_numerators: canWriteNumerators,
+      can_read_numerators: canReadNumerators,
     }
     if (byUserId) {
       body.user_id = inviteCodeOrUserId

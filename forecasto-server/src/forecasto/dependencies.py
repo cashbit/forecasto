@@ -212,6 +212,37 @@ def check_collection_permission(member: WorkspaceMember, action: str) -> None:
         raise ForbiddenException(messages[action])
 
 
+def check_numerator_permission(member: WorkspaceMember, action: str) -> None:
+    """Check if member can act on numerators. action: 'create'|'write'|'read'.
+
+    'create' = create/update/delete numerator definitions; 'write' = reserve /
+    confirm / cancel numbers; 'read' = list/get numerators, their history and peek.
+
+    Owner and admin always have permissions. Viewers are read-only by role. For
+    regular members the three per-member flags govern access.
+    """
+    if member.role in ("owner", "admin"):
+        return
+
+    messages = {
+        "create": "Non hai il permesso di creare o modificare i numeratori",
+        "write": "Non hai il permesso di emettere numeri",
+        "read": "Non hai il permesso di leggere i numeratori",
+    }
+
+    if member.role == "viewer" and action in ("create", "write"):
+        raise ForbiddenException(messages[action])
+
+    allowed = {
+        "create": member.can_create_numerators,
+        "write": member.can_write_numerators,
+        "read": member.can_read_numerators,
+    }[action]
+
+    if not allowed:
+        raise ForbiddenException(messages[action])
+
+
 async def require_admin(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:

@@ -95,6 +95,9 @@ class WorkspaceWithRole(BaseModel):
     can_create_collections: bool = False
     can_write_collections: bool = True
     can_read_collections: bool = True
+    can_create_numerators: bool = False
+    can_write_numerators: bool = True
+    can_read_numerators: bool = True
 
     model_config = {"from_attributes": True}
 
@@ -122,6 +125,9 @@ class MemberResponse(BaseModel):
     can_create_collections: bool = False
     can_write_collections: bool = True
     can_read_collections: bool = True
+    can_create_numerators: bool = False
+    can_write_numerators: bool = True
+    can_read_numerators: bool = True
     joined_at: datetime
 
     model_config = {"from_attributes": True}
@@ -139,6 +145,9 @@ class MemberUpdate(BaseModel):
     can_create_collections: bool | None = None
     can_write_collections: bool | None = None
     can_read_collections: bool | None = None
+    can_create_numerators: bool | None = None
+    can_write_numerators: bool | None = None
+    can_read_numerators: bool | None = None
 
 class InvitationCreate(BaseModel):
     """Invitation creation request. Provide either invite_code or user_id."""
@@ -154,6 +163,9 @@ class InvitationCreate(BaseModel):
     can_create_collections: bool = False
     can_write_collections: bool = True
     can_read_collections: bool = True
+    can_create_numerators: bool = False
+    can_write_numerators: bool = True
+    can_read_numerators: bool = True
 
     @field_validator('invite_code')
     @classmethod
@@ -190,6 +202,9 @@ class InvitationResponse(BaseModel):
     can_create_collections: bool = False
     can_write_collections: bool = True
     can_read_collections: bool = True
+    can_create_numerators: bool = False
+    can_write_numerators: bool = True
+    can_read_numerators: bool = True
     created_at: datetime
     expires_at: datetime
     accepted_at: datetime | None = None

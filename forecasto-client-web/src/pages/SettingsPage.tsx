@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
-import { User, Building, Bell, Shield, Users, Landmark, Handshake, Receipt, Download, Trash2, Loader2, Bot, Palette, Sparkles } from 'lucide-react'
+import { User, Building, Bell, Shield, Users, Landmark, Handshake, Receipt, Download, Trash2, Loader2, Bot, Palette, Sparkles, Hash } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,6 +13,7 @@ import { useWorkspaceStore } from '@/stores/workspaceStore'
 import { MembersDialog } from '@/components/workspace/MembersDialog'
 import { BankAccountsTab } from '@/components/settings/BankAccountsTab'
 import { VatRegistriesTab } from '@/components/settings/VatRegistriesTab'
+import { NumeratoriTab } from '@/components/settings/NumeratoriTab'
 import { PartnershipTab } from '@/components/settings/PartnershipTab'
 import { WorkspaceBankAccountsSection } from '@/components/settings/WorkspaceBankAccountsSection'
 import { DeleteAccountDialog } from '@/components/settings/DeleteAccountDialog'
@@ -198,6 +199,10 @@ export function SettingsPage() {
           <TabsTrigger value="vat-registries">
             <Receipt className="mr-2 h-4 w-4" />
             Partite IVA
+          </TabsTrigger>
+          <TabsTrigger value="numeratori">
+            <Hash className="mr-2 h-4 w-4" />
+            Numeratori
           </TabsTrigger>
           {user?.is_partner && (
             <TabsTrigger value="partnership">
@@ -454,6 +459,25 @@ export function SettingsPage() {
 
         <TabsContent value="vat-registries">
           <VatRegistriesTab />
+        </TabsContent>
+
+        <TabsContent value="numeratori">
+          {primaryWorkspace ? (
+            <NumeratoriTab
+              workspaceId={primaryWorkspace.id}
+              canManage={
+                primaryWorkspace.role === 'owner' ||
+                primaryWorkspace.role === 'admin' ||
+                !!primaryWorkspace.can_create_numerators
+              }
+            />
+          ) : (
+            <Card>
+              <CardContent className="py-8">
+                <p className="text-muted-foreground text-center">Seleziona un workspace per gestire i numeratori</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {user?.is_partner && (

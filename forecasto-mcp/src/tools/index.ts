@@ -7,6 +7,7 @@ import { registerBankAccountTools } from "./bank_accounts.js";
 import { registerVatTools } from "./vat.js";
 import { registerVatRegistryTools } from "./vat_registry.js";
 import { registerCollectionTools } from "./collections.js";
+import { registerNumeratorTools } from "./numerators.js";
 
 export function registerAllTools(
   server: McpServer,
@@ -19,4 +20,5 @@ export function registerAllTools(
   registerVatTools(server, getClient);
   registerVatRegistryTools(server, getClient);
   registerCollectionTools(server, getClient);
+  registerNumeratorTools(server, getClient);
 }

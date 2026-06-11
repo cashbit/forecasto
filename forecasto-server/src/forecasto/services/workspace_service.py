@@ -89,6 +89,9 @@ class WorkspaceService:
             can_create_collections=True,
             can_write_collections=True,
             can_read_collections=True,
+            can_create_numerators=True,
+            can_write_numerators=True,
+            can_read_numerators=True,
         )
         self.db.add(member)
 
@@ -185,6 +188,15 @@ class WorkspaceService:
 
         if data.can_read_collections is not None:
             member.can_read_collections = data.can_read_collections
+
+        if data.can_create_numerators is not None:
+            member.can_create_numerators = data.can_create_numerators
+
+        if data.can_write_numerators is not None:
+            member.can_write_numerators = data.can_write_numerators
+
+        if data.can_read_numerators is not None:
+            member.can_read_numerators = data.can_read_numerators
 
         return member
 
@@ -351,6 +363,9 @@ class WorkspaceService:
             can_create_collections=data.can_create_collections,
             can_write_collections=data.can_write_collections,
             can_read_collections=data.can_read_collections,
+            can_create_numerators=data.can_create_numerators,
+            can_write_numerators=data.can_write_numerators,
+            can_read_numerators=data.can_read_numerators,
             token_hash=hash_password(token),
             expires_at=datetime.utcnow() + timedelta(days=7),
         )
@@ -510,6 +525,9 @@ class WorkspaceService:
                 "can_create_collections": inv.can_create_collections,
                 "can_write_collections": inv.can_write_collections,
                 "can_read_collections": inv.can_read_collections,
+                "can_create_numerators": inv.can_create_numerators,
+                "can_write_numerators": inv.can_write_numerators,
+                "can_read_numerators": inv.can_read_numerators,
                 "created_at": inv.created_at,
                 "expires_at": inv.expires_at,
             })
@@ -565,6 +583,15 @@ class WorkspaceService:
 
         if data.can_read_collections is not None:
             invitation.can_read_collections = data.can_read_collections
+
+        if data.can_create_numerators is not None:
+            invitation.can_create_numerators = data.can_create_numerators
+
+        if data.can_write_numerators is not None:
+            invitation.can_write_numerators = data.can_write_numerators
+
+        if data.can_read_numerators is not None:
+            invitation.can_read_numerators = data.can_read_numerators
 
         return invitation
 
@@ -634,6 +661,9 @@ class WorkspaceService:
             can_create_collections=invitation.can_create_collections,
             can_write_collections=invitation.can_write_collections,
             can_read_collections=invitation.can_read_collections,
+            can_create_numerators=invitation.can_create_numerators,
+            can_write_numerators=invitation.can_write_numerators,
+            can_read_numerators=invitation.can_read_numerators,
         )
         self.db.add(member)
 

@@ -56,6 +56,9 @@ async def list_workspaces(
             can_create_collections=member.can_create_collections,
             can_write_collections=member.can_write_collections,
             can_read_collections=member.can_read_collections,
+            can_create_numerators=member.can_create_numerators,
+            can_write_numerators=member.can_write_numerators,
+            can_read_numerators=member.can_read_numerators,
         )
         for ws, member in results
     ]
@@ -85,6 +88,9 @@ async def create_workspace(
         can_create_collections=True,
         can_write_collections=True,
         can_read_collections=True,
+        can_create_numerators=True,
+        can_write_numerators=True,
+        can_read_numerators=True,
     )}
 
 @router.get("/{workspace_id}", response_model=dict)

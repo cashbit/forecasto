@@ -106,6 +106,10 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
   const [inviteCanCreateCollections, setInviteCanCreateCollections] = useState(false)
   const [inviteCanWriteCollections, setInviteCanWriteCollections] = useState(true)
   const [inviteCanReadCollections, setInviteCanReadCollections] = useState(true)
+  // Numerator (document numbering) permissions — invito di default: leggi+scrivi sì, crea no
+  const [inviteCanCreateNumerators, setInviteCanCreateNumerators] = useState(false)
+  const [inviteCanWriteNumerators, setInviteCanWriteNumerators] = useState(true)
+  const [inviteCanReadNumerators, setInviteCanReadNumerators] = useState(true)
   const [isInviting, setIsInviting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [editedPermissions, setEditedPermissions] = useState<GranularAreaPermissions | null>(null)
@@ -115,6 +119,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
   const [editedCanCreateCollections, setEditedCanCreateCollections] = useState(false)
   const [editedCanWriteCollections, setEditedCanWriteCollections] = useState(true)
   const [editedCanReadCollections, setEditedCanReadCollections] = useState(true)
+  const [editedCanCreateNumerators, setEditedCanCreateNumerators] = useState(false)
+  const [editedCanWriteNumerators, setEditedCanWriteNumerators] = useState(true)
+  const [editedCanReadNumerators, setEditedCanReadNumerators] = useState(true)
   const [lookupResult, setLookupResult] = useState<{ name: string } | null>(null)
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [isLookingUp, setIsLookingUp] = useState(false)
@@ -170,6 +177,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
       setEditedCanCreateCollections(selectedMember.can_create_collections ?? false)
       setEditedCanWriteCollections(selectedMember.can_write_collections ?? true)
       setEditedCanReadCollections(selectedMember.can_read_collections ?? true)
+      setEditedCanCreateNumerators(selectedMember.can_create_numerators ?? false)
+      setEditedCanWriteNumerators(selectedMember.can_write_numerators ?? true)
+      setEditedCanReadNumerators(selectedMember.can_read_numerators ?? true)
     } else {
       setEditedPermissions(null)
       setEditedCanImport(true)
@@ -178,6 +188,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
       setEditedCanCreateCollections(false)
       setEditedCanWriteCollections(true)
       setEditedCanReadCollections(true)
+      setEditedCanCreateNumerators(false)
+      setEditedCanWriteNumerators(true)
+      setEditedCanReadNumerators(true)
     }
   }, [selectedMember])
 
@@ -240,6 +253,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
     setEditedCanCreateCollections(invitation.can_create_collections ?? false)
     setEditedCanWriteCollections(invitation.can_write_collections ?? true)
     setEditedCanReadCollections(invitation.can_read_collections ?? true)
+    setEditedCanCreateNumerators(invitation.can_create_numerators ?? false)
+    setEditedCanWriteNumerators(invitation.can_write_numerators ?? true)
+    setEditedCanReadNumerators(invitation.can_read_numerators ?? true)
     // Clear invite code
     setInviteCode('')
     setLookupResult(null)
@@ -296,7 +312,10 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
         true, // byUserId
         inviteCanCreateCollections,
         inviteCanWriteCollections,
-        inviteCanReadCollections
+        inviteCanReadCollections,
+        inviteCanCreateNumerators,
+        inviteCanWriteNumerators,
+        inviteCanReadNumerators
       )
       toast({ title: 'Invito inviato', variant: 'success' })
       loadMembers()
@@ -328,7 +347,10 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
         false, // byUserId
         inviteCanCreateCollections,
         inviteCanWriteCollections,
-        inviteCanReadCollections
+        inviteCanReadCollections,
+        inviteCanCreateNumerators,
+        inviteCanWriteNumerators,
+        inviteCanReadNumerators
       )
       toast({ title: 'Invito inviato', variant: 'success' })
       setInviteCode('')
@@ -340,6 +362,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
       setInviteCanCreateCollections(false)
       setInviteCanWriteCollections(true)
       setInviteCanReadCollections(true)
+      setInviteCanCreateNumerators(false)
+      setInviteCanWriteNumerators(true)
+      setInviteCanReadNumerators(true)
       loadMembers()
     } catch (error: unknown) {
       // Extract error message from axios response
@@ -418,6 +443,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
         can_create_collections: editedCanCreateCollections,
         can_write_collections: editedCanWriteCollections,
         can_read_collections: editedCanReadCollections,
+        can_create_numerators: editedCanCreateNumerators,
+        can_write_numerators: editedCanWriteNumerators,
+        can_read_numerators: editedCanReadNumerators,
       }
       await workspacesApi.updateMember(workspaceId, selectedMember.user.id, update)
       toast({ title: 'Permessi aggiornati', variant: 'success' })
@@ -441,6 +469,9 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
         can_create_collections: editedCanCreateCollections,
         can_write_collections: editedCanWriteCollections,
         can_read_collections: editedCanReadCollections,
+        can_create_numerators: editedCanCreateNumerators,
+        can_write_numerators: editedCanWriteNumerators,
+        can_read_numerators: editedCanReadNumerators,
       }
       await workspacesApi.updateInvitation(workspaceId, selectedInvitation.id, update)
       toast({ title: 'Permessi invito aggiornati', variant: 'success' })
@@ -764,6 +795,36 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
                             Crea nuove collection
                           </Label>
                         </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="invite-can-read-numerators"
+                            checked={inviteCanReadNumerators}
+                            onCheckedChange={(checked) => setInviteCanReadNumerators(!!checked)}
+                          />
+                          <Label htmlFor="invite-can-read-numerators" className="text-xs cursor-pointer">
+                            Leggi i numeratori
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="invite-can-write-numerators"
+                            checked={inviteCanWriteNumerators}
+                            onCheckedChange={(checked) => setInviteCanWriteNumerators(!!checked)}
+                          />
+                          <Label htmlFor="invite-can-write-numerators" className="text-xs cursor-pointer">
+                            Emetti numeri (riserva/conferma)
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="invite-can-create-numerators"
+                            checked={inviteCanCreateNumerators}
+                            onCheckedChange={(checked) => setInviteCanCreateNumerators(!!checked)}
+                          />
+                          <Label htmlFor="invite-can-create-numerators" className="text-xs cursor-pointer">
+                            Crea nuovi numeratori
+                          </Label>
+                        </div>
                       </div>
                     </div>
 
@@ -921,6 +982,36 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
                           />
                           <Label htmlFor="inv-edit-can-create-collections" className="text-xs cursor-pointer">
                             Crea nuove collection
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="inv-edit-can-read-numerators"
+                            checked={editedCanReadNumerators}
+                            onCheckedChange={(checked) => setEditedCanReadNumerators(!!checked)}
+                          />
+                          <Label htmlFor="inv-edit-can-read-numerators" className="text-xs cursor-pointer">
+                            Leggi i numeratori
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="inv-edit-can-write-numerators"
+                            checked={editedCanWriteNumerators}
+                            onCheckedChange={(checked) => setEditedCanWriteNumerators(!!checked)}
+                          />
+                          <Label htmlFor="inv-edit-can-write-numerators" className="text-xs cursor-pointer">
+                            Emetti numeri (riserva/conferma)
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="inv-edit-can-create-numerators"
+                            checked={editedCanCreateNumerators}
+                            onCheckedChange={(checked) => setEditedCanCreateNumerators(!!checked)}
+                          />
+                          <Label htmlFor="inv-edit-can-create-numerators" className="text-xs cursor-pointer">
+                            Crea nuovi numeratori
                           </Label>
                         </div>
                       </div>
@@ -1093,6 +1184,36 @@ export function MembersDialog({ workspaceId, open, onOpenChange, inline }: Membe
                           />
                           <Label htmlFor="member-can-create-collections" className="text-xs cursor-pointer">
                             Crea nuove collection
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="member-can-read-numerators"
+                            checked={editedCanReadNumerators}
+                            onCheckedChange={(checked) => setEditedCanReadNumerators(!!checked)}
+                          />
+                          <Label htmlFor="member-can-read-numerators" className="text-xs cursor-pointer">
+                            Leggi i numeratori
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="member-can-write-numerators"
+                            checked={editedCanWriteNumerators}
+                            onCheckedChange={(checked) => setEditedCanWriteNumerators(!!checked)}
+                          />
+                          <Label htmlFor="member-can-write-numerators" className="text-xs cursor-pointer">
+                            Emetti numeri (riserva/conferma)
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="member-can-create-numerators"
+                            checked={editedCanCreateNumerators}
+                            onCheckedChange={(checked) => setEditedCanCreateNumerators(!!checked)}
+                          />
+                          <Label htmlFor="member-can-create-numerators" className="text-xs cursor-pointer">
+                            Crea nuovi numeratori
                           </Label>
                         </div>
                       </div>

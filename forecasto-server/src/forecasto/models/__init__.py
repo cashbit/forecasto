@@ -12,6 +12,7 @@ from forecasto.models.document_processing import (
     UsageRecord,
 )
 from forecasto.models.inbox import InboxItem
+from forecasto.models.numerator import Numerator, NumeratorEntry
 from forecasto.models.prompt_generation import PromptGenerationJob
 from forecasto.models.bank_account import BankAccount, BankAccountBalance
 from forecasto.models.base import Base
@@ -58,5 +59,7 @@ __all__ = [
     "PromptGenerationJob",
     "Collection",
     "CollectionDocument",
+    "Numerator",
+    "NumeratorEntry",
 ]
 
