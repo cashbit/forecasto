@@ -4,6 +4,7 @@ from __future__ import annotations
 
 
 from forecasto.api import (
+    agent_zero,
     auth,
     bank_accounts,
     cashflow,
@@ -23,6 +24,7 @@ from forecasto.api import (
 )
 
 __all__ = [
+    "agent_zero",
     "auth",
     "users",
     "workspaces",

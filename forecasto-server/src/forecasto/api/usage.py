@@ -31,7 +31,12 @@ async def get_usage_summary(
     """Get aggregated usage stats for a workspace + user monthly quota."""
     service = DocumentProcessingService(db)
     summary = await service.get_usage_summary(workspace_id, current_user.id, from_date, to_date)
-    return {"success": True, **summary}
+
+    # Agente-zero usage (separate feature, billed in EUR)
+    from forecasto.services.agent_zero.service import AgentZeroService
+
+    agent_zero = await AgentZeroService(db).usage_summary(workspace_id)
+    return {"success": True, **summary, "agent_zero": agent_zero}
 
 
 @router.get("/{workspace_id}/usage/records", response_model=dict)

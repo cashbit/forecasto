@@ -39,6 +39,19 @@ class Settings(BaseSettings):
     inbox_rejected_retention_days: int = 7
     inbox_cleanup_interval_minutes: int = 60
 
+    # Agente-zero (incremental note analysis → dashboard highlights)
+    agent_zero_enabled: bool = True
+    agent_zero_model: str = "claude-haiku-4-5-20251001"
+    # Wait this long after a record was last touched before (re)analyzing it,
+    # so rapid edits don't trigger repeated LLM calls.
+    agent_zero_delay_seconds: int = 300
+    # Scheduler poll interval.
+    agent_zero_poll_seconds: int = 60
+    # How many records per LLM call.
+    agent_zero_batch_size: int = 15
+    # Safety cap on records analyzed per scheduler pass.
+    agent_zero_max_per_pass: int = 60
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

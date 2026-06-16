@@ -8,6 +8,24 @@ export interface UsageSummary {
   monthly_page_quota: number
   pages_this_month: number
   pages_remaining: number
+  // Agente-zero (separate feature, billed in EUR)
+  agent_zero?: AgentZeroUsage
+}
+
+export interface AgentZeroUsageMonth {
+  month: string
+  input_tokens: number
+  output_tokens: number
+  cost_eur: number
+  runs: number
+}
+
+export interface AgentZeroUsage {
+  runs_this_month: number
+  input_tokens_this_month: number
+  output_tokens_this_month: number
+  cost_eur_this_month: number
+  by_month: AgentZeroUsageMonth[]
 }
 
 export interface ModelUsageSummary {

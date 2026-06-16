@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, FileText, Cpu, FileStack } from 'lucide-react'
+import { BarChart3, FileText, Cpu, FileStack, Bot } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { useWorkspaceStore } from '@/stores/workspaceStore'
@@ -119,6 +119,78 @@ export function UsagePage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Agente-zero */}
+      {summary?.agent_zero && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Bot className="h-4 w-4 text-primary" />
+              Agente-zero
+            </CardTitle>
+            <CardDescription>
+              Analisi note dei record per le evidenze in dashboard — {monthName}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Esecuzioni</p>
+                <p className="text-2xl font-bold">{summary.agent_zero.runs_this_month}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Token</p>
+                <p className="text-2xl font-bold">
+                  {formatTokens(
+                    summary.agent_zero.input_tokens_this_month +
+                      summary.agent_zero.output_tokens_this_month,
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatTokens(summary.agent_zero.input_tokens_this_month)} in +{' '}
+                  {formatTokens(summary.agent_zero.output_tokens_this_month)} out
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Costo</p>
+                <p className="text-2xl font-bold">
+                  € {summary.agent_zero.cost_eur_this_month.toFixed(4)}
+                </p>
+              </div>
+            </div>
+            {summary.agent_zero.by_month.length > 0 && (
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-xs text-muted-foreground">
+                      <th className="pb-2 pr-4 text-left">Mese</th>
+                      <th className="pb-2 pr-4 text-right">Esecuzioni</th>
+                      <th className="pb-2 pr-4 text-right">Token In</th>
+                      <th className="pb-2 pr-4 text-right">Token Out</th>
+                      <th className="pb-2 text-right">Costo €</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {summary.agent_zero.by_month.map((m) => (
+                      <tr key={m.month} className="border-b last:border-0">
+                        <td className="py-2 pr-4 font-medium">{m.month}</td>
+                        <td className="py-2 pr-4 text-right">{m.runs}</td>
+                        <td className="py-2 pr-4 text-right text-muted-foreground">
+                          {formatTokens(m.input_tokens)}
+                        </td>
+                        <td className="py-2 pr-4 text-right text-muted-foreground">
+                          {formatTokens(m.output_tokens)}
+                        </td>
+                        <td className="py-2 text-right font-medium">{m.cost_eur.toFixed(4)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Per-model breakdown */}

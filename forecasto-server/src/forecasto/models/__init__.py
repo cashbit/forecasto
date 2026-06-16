@@ -4,6 +4,7 @@ from __future__ import annotations
 
 
 from forecasto.models.agent_token import AgentToken
+from forecasto.models.agent_zero import AgentZeroRun
 from forecasto.models.audit import AuditLog
 from forecasto.models.billing_profile import BillingProfile
 from forecasto.models.document_processing import (
@@ -31,6 +32,7 @@ from forecasto.models.workspace import ApiKey, Invitation, Workspace, WorkspaceM
 
 __all__ = [
     "AgentToken",
+    "AgentZeroRun",
     "Base",
     "BillingProfile",
     "DocumentProcessingJob",

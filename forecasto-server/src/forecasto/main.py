@@ -14,6 +14,7 @@ from sqlalchemy import select
 from forecasto.api import (
     admin,
     agent,
+    agent_zero,
     auth,
     bank_accounts,
     cashflow,
@@ -78,6 +79,10 @@ async def lifespan(app: FastAPI):
     from forecasto.services.inbox_cleanup_scheduler import inbox_cleanup_scheduler
     await inbox_cleanup_scheduler.start()
 
+    # Start Agente-zero incremental note-analysis scheduler
+    from forecasto.services.agent_zero.scheduler import agent_zero_scheduler
+    await agent_zero_scheduler.start()
+
     # Create upload directory
     from pathlib import Path
     Path(settings.document_upload_dir).mkdir(parents=True, exist_ok=True)
@@ -85,6 +90,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
+    await agent_zero_scheduler.stop()
     await inbox_cleanup_scheduler.stop()
     await processing_queue.stop()
 
@@ -148,6 +154,7 @@ app.include_router(numerators.router, prefix="/api/v1/workspaces", tags=["Numera
 app.include_router(agent.router, prefix="/api/v1", tags=["Agent"])
 app.include_router(document_upload.router, prefix="/api/v1/workspaces", tags=["Document Upload"])
 app.include_router(usage.router, prefix="/api/v1/workspaces", tags=["Usage"])
+app.include_router(agent_zero.router, prefix="/api/v1/workspaces", tags=["Agente-zero"])
 app.include_router(prompt_builder.router, prefix="/api/v1", tags=["Prompt Builder"])
 
 @app.get("/health")

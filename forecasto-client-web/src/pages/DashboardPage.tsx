@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Loader2, Bell, Target, Plus, Sparkles, X } from 'lucide-react'
 import { RemindersKanban } from '@/components/dashboard/RemindersKanban'
 import { FocusKanban } from '@/components/dashboard/FocusKanban'
+import { AgentZeroHighlights } from '@/components/dashboard/AgentZeroHighlights'
 import { RecordDetail } from '@/components/records/RecordDetail'
 import { RecordForm } from '@/components/records/RecordForm'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -249,6 +250,7 @@ export function DashboardPage() {
             </div>
           </div>
         )}
+        <AgentZeroHighlights onSelectRecord={setSelectedRecord} />
         <Tabs
           value={section}
           onValueChange={(v) => {

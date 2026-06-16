@@ -22,6 +22,7 @@ import { AgentPromptSection } from '@/components/settings/AgentPromptSection'
 import { AppearanceTab } from '@/components/settings/AppearanceTab'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
 import { toast } from '@/hooks/useToast'
 import { authApi } from '@/api/auth'
 import { useQuery } from '@tanstack/react-query'
@@ -79,6 +80,10 @@ export function SettingsPage() {
     primaryWorkspace?.settings?.reminder_email_provider ?? 'native',
   )
   const [isSavingReminders, setIsSavingReminders] = useState(false)
+  const [agentZeroEnabled, setAgentZeroEnabled] = useState<boolean>(
+    primaryWorkspace?.settings?.agent_zero_enabled ?? false,
+  )
+  const [isSavingAgentZero, setIsSavingAgentZero] = useState(false)
 
   const { data: vatRegistries = [] } = useQuery({
     queryKey: ['vat-registries'],
@@ -97,8 +102,9 @@ export function SettingsPage() {
       setReminderShiftDays(primaryWorkspace.settings?.reminder_shift_days ?? 7)
       setReminderEmailSignature(primaryWorkspace.settings?.reminder_email_signature ?? '')
       setReminderEmailProvider(primaryWorkspace.settings?.reminder_email_provider ?? 'native')
+      setAgentZeroEnabled(primaryWorkspace.settings?.agent_zero_enabled ?? false)
     }
-  }, [primaryWorkspace?.id, primaryWorkspace?.name, primaryWorkspace?.description, primaryWorkspace?.vat_registry_id, primaryWorkspace?.settings?.reminder_lead_days, primaryWorkspace?.settings?.reminder_shift_days, primaryWorkspace?.settings?.reminder_email_signature, primaryWorkspace?.settings?.reminder_email_provider])
+  }, [primaryWorkspace?.id, primaryWorkspace?.name, primaryWorkspace?.description, primaryWorkspace?.vat_registry_id, primaryWorkspace?.settings?.reminder_lead_days, primaryWorkspace?.settings?.reminder_shift_days, primaryWorkspace?.settings?.reminder_email_signature, primaryWorkspace?.settings?.reminder_email_provider, primaryWorkspace?.settings?.agent_zero_enabled])
 
   const handleProfileSave = async (data: { name: string; email: string }) => {
     setIsLoading(true)
@@ -150,6 +156,29 @@ export function SettingsPage() {
       toast({ title: 'Errore durante il salvataggio', variant: 'destructive' })
     } finally {
       setIsSavingReminders(false)
+    }
+  }
+
+  const handleAgentZeroToggle = async (value: boolean) => {
+    if (!primaryWorkspace) return
+    setAgentZeroEnabled(value)
+    setIsSavingAgentZero(true)
+    try {
+      await updateWorkspace(primaryWorkspace.id, {
+        settings: {
+          ...primaryWorkspace.settings,
+          agent_zero_enabled: value,
+        },
+      })
+      toast({
+        title: value ? 'Agente-zero attivato' : 'Agente-zero disattivato',
+        variant: 'success',
+      })
+    } catch {
+      setAgentZeroEnabled(!value)
+      toast({ title: 'Errore durante il salvataggio', variant: 'destructive' })
+    } finally {
+      setIsSavingAgentZero(false)
     }
   }
 
@@ -409,6 +438,31 @@ export function SettingsPage() {
                     <Button type="button" onClick={handleRemindersSave} disabled={isSavingReminders}>
                       {isSavingReminders ? 'Salvataggio...' : 'Salva promemoria'}
                     </Button>
+                  </div>
+
+                  <Separator className="my-6" />
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Bot className="h-4 w-4 text-primary" />
+                          <h3 className="text-sm font-semibold">Agente-zero</h3>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Interpreta il testo scritto dopo il tag <code className="rounded bg-muted px-1">@zero</code> nelle
+                          note dei record aperti e mostra in dashboard, sopra le colonne, “cose da ricordare” e “criticità”.
+                        </p>
+                        <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                          ⚠️ Se attivo consuma token AI (a pagamento). I consumi sono visibili nella pagina “Consumo AI”.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={agentZeroEnabled}
+                        onCheckedChange={handleAgentZeroToggle}
+                        disabled={isSavingAgentZero}
+                        aria-label="Attiva Agente-zero"
+                      />
+                    </div>
                   </div>
                 </>
               )}

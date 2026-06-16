@@ -87,6 +87,13 @@ class Record(Base, UUIDMixin, TimestampMixin):
         String(36), ForeignKey("users.id"), nullable=True
     )
 
+    # Agente-zero — derived insights from note/nextaction analysis (server-only,
+    # not exposed in RecordResponse/form). `agent_source_hash` is the hash of the
+    # analyzed fields at the last run; `agent_analyzed_at` is when it ran.
+    agent_insights: Mapped[dict] = mapped_column(JSON, default=dict)
+    agent_source_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    agent_analyzed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     # Soft delete
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     deleted_by: Mapped[Optional[str]] = mapped_column(

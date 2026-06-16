@@ -49,6 +49,7 @@ export interface WorkspaceSettings {
   reminder_email_signature?: string
   reminder_email_provider?: 'native' | 'gmail'
   is_demo?: boolean
+  agent_zero_enabled?: boolean
 }
 
 export interface WorkspaceCreate {
