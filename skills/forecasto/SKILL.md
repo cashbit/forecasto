@@ -512,6 +512,141 @@ get_account_balances(workspace_id, account_id)         → verifica storico
 
 ---
 
+## Workflow — Fatture da XML FatturaPA
+
+> Se i file sono `.p7m`, estrarre prima l'XML con la skill `p7m-extractor` prima di procedere.
+> **Non leggere mai l'XML direttamente** — usare sempre gli script di estrazione (~200 token vs ~1500 dell'XML grezzo).
+
+### Script di estrazione
+
+**Fatture attive** (emesse da TechMakers):
+```bash
+python /mnt/skills/organization/forecasto/scripts/extract_fatture_attive.py /mnt/user-data/uploads/*.xml
+```
+
+**Fatture passive** (ricevute da fornitori):
+```bash
+python /mnt/skills/organization/forecasto/scripts/extract_fatture_passive.py /mnt/user-data/uploads/*.xml
+```
+
+Output: array JSON con i dati essenziali di ogni fattura. Elaborare sempre il JSON, mai l'XML direttamente.
+
+---
+
+### Fattura attiva — Flusso di caricamento
+
+Per ogni fattura estratta, la sequenza è sempre: **cerca order → confronta importi → decidi il percorso**.
+
+#### 1. Cerca order correlato
+```
+list_records(area="orders", text_filter="[numero_offerta o cliente]")
+```
+Criteri di ricerca in ordine di priorità: numero offerta (pattern `XXXX_VN_YYYY`), denominazione cliente, importo compatibile.
+
+#### 2a. Match esatto — importo fattura = importo order
+```
+update_record(record_id, transaction_id="FATTURA N/ANNO", date_offer=data_emissione,
+              date_cashflow=data_scadenza, amount, vat, total, stage="0")
+transfer_record(record_id, to_area="actual", note="Fattura N emessa")
+```
+
+#### 2b. Match parziale — importo fattura < importo order
+La fattura copre solo una parte dell'order. Prima si divide l'order, poi si sposta solo la parte fatturata.
+
+1. Calcola `pct_fatturato = round((fattura.imponibile / order.amount) * 100, 2)`
+2. `pct_residuo = round(100 - pct_fatturato, 2)` — verificare che la somma sia esattamente 100
+3. Dividi l'order:
+```
+split_record(
+  record_id=UUID_order,
+  installments=[
+    {date: data_scadenza_fattura,  split_percent: pct_fatturato},
+    {date: order.date_cashflow,    split_percent: pct_residuo}
+  ]
+)
+```
+4. Recupera i due nuovi record: `list_records(area="orders", text_filter="[cliente]")`
+5. Identifica il primo record (importo ≈ fattura.imponibile)
+6. Aggiorna e trasferisci la parte fatturata:
+```
+update_record(primo_record_id, transaction_id="FATTURA N/ANNO", date_offer=data_emissione,
+              date_cashflow=data_scadenza, amount, vat, total, stage="0")
+transfer_record(primo_record_id, to_area="actual", note="Fattura N — parziale su ordine [ref]")
+```
+7. Il secondo record rimane in `orders` come residuo da fatturare in seguito.
+
+#### 2c. Nessun order correlato
+Creare direttamente in `actual`:
+```
+create_record(area="actual", stage="0", ...)
+```
+
+#### Mapping account — fatture attive
+
+| Tipo di servizio | Account |
+|---|---|
+| Software, webapp, sviluppo custom | `INCOME SW` |
+| Servizi, consulenza, PM, licenze SaaS | `INCOME SE` |
+| Hardware, sensori, gateway, elettronica | `INCOME HW` |
+
+---
+
+### Fattura passiva — Flusso di caricamento
+
+Le fatture passive vanno sempre **direttamente in `actual`** — non esiste area `orders` per i costi.
+Gli importi sono sempre **negativi**: `amount = -(imponibile)`, `total = -(imponibile + IVA)`.
+
+#### Gestione fornitori AMEX
+Fornitori riconosciuti: Amazon, Digi-Key, 1NCE, Float, ZeroTier, SendGrid, Enel X.
+- `date_cashflow` = **12 del mese successivo** alla data fattura
+- `reference` e `transaction_id` con suffisso ` - AMEX`
+- Nessuna commissione bancaria aggiuntiva
+
+#### Fornitori non AMEX — commissione bancaria
+Aggiungere sempre un secondo record dopo la fattura:
+```
+create_record(
+  area="actual", account="ONERI BANCARI", reference="SELLA",
+  amount=-0.75, vat=0.0, total=-0.75, stage="0",
+  date_cashflow=fattura.date_cashflow,
+  transaction_id="COM_[FORNITORE]_[MESE]"
+)
+```
+Bonifici: -€0,75 | SDD: -€0,70 | Fornitori esteri: verificare commissione effettiva.
+
+#### Mapping account — fatture passive
+
+| Pattern nel nome fornitore | Account |
+|---|---|
+| FRANZA, FOSSA, LANZA | `COLLABORATORE` |
+| FASSONERIA, MUTTNIK | `RISTORAZIONE` |
+| DUFERCO, ENEL, ENI, SIAD | `BOLLETTE` |
+| WIND, TRE, TIM, FIBRA FORTE, GOOGLE, MICROSOFT, AWS | `ABBONAMENTO` |
+| AMAZON, DIGI-KEY, MOUSER | `ACQUISTO MERCI` |
+| CAMPI 2004 | `AFFITTO` |
+| ALONGI, COMMERCIALISTA | `CONSULENZA` |
+| DHL, UPS, BRT, GLS | `SPEDIZIONI` |
+| HERTZ, TRENITALIA, ITALO | `SPESE VIAGGIO` |
+| *Default* | `CONSULENZA` |
+
+> Collaboratori in regime forfettario (Franza, Fossa, Lanza): IVA = 0%. Aggiungere eventuale bollo €2 come record separato.
+
+---
+
+### Checklist fatture XML
+
+- [ ] File P7M? → prima skill `p7m-extractor`, poi procedere
+- [ ] JSON estratto con lo script corretto (attive / passive)?
+- [ ] Verificati duplicati in Forecasto prima di creare?
+- [ ] **Fattura attiva:** cercato order correlato?
+- [ ] **Match parziale:** usato `split_record` prima di `transfer_record`?
+- [ ] Percentuali dello split sommano esattamente a 100?
+- [ ] **Fattura passiva:** importi negativi?
+- [ ] Fornitore AMEX → `date_cashflow` al 12 del mese successivo?
+- [ ] Commissione bancaria aggiunta (se non AMEX)?
+
+---
+
 ## Checklist Pre-Operazione
 
 - [ ] Ho il `workspace_id` corretto? (`list_workspaces` se non noto)
