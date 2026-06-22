@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { Loader2, Bell, Target, Plus, Sparkles, X } from 'lucide-react'
+import { Loader2, Bell, Target, Plus, Sparkles, X, Receipt } from 'lucide-react'
 import { RemindersKanban } from '@/components/dashboard/RemindersKanban'
 import { FocusKanban } from '@/components/dashboard/FocusKanban'
+import { FatturazioneSection } from '@/components/dashboard/FatturazioneSection'
 import { AgentZeroHighlights } from '@/components/dashboard/AgentZeroHighlights'
 import { RecordDetail } from '@/components/records/RecordDetail'
 import { RecordForm } from '@/components/records/RecordForm'
@@ -35,11 +36,12 @@ function onboardingBannerStorageKey(workspaceId: string | undefined): string {
 
 const DASHBOARD_SECTION_STORAGE_KEY = 'forecasto-dashboard-section'
 
-function readDashboardSection(): 'focus' | 'solleciti' {
+type DashboardSection = 'focus' | 'solleciti' | 'fatturazione'
+
+function readDashboardSection(): DashboardSection {
   if (typeof window === 'undefined') return 'focus'
-  return window.localStorage.getItem(DASHBOARD_SECTION_STORAGE_KEY) === 'solleciti'
-    ? 'solleciti'
-    : 'focus'
+  const v = window.localStorage.getItem(DASHBOARD_SECTION_STORAGE_KEY)
+  return v === 'solleciti' || v === 'fatturazione' ? v : 'focus'
 }
 
 export function DashboardPage() {
@@ -70,7 +72,7 @@ export function DashboardPage() {
   const [selectedRecord, setSelectedRecord] = useState<Record | null>(null)
   const [editingRecord, setEditingRecord] = useState<Record | null>(null)
   const [recordToDelete, setRecordToDelete] = useState<Record | null>(null)
-  const [section, setSection] = useState<'focus' | 'solleciti'>(readDashboardSection)
+  const [section, setSection] = useState<DashboardSection>(readDashboardSection)
 
   const textFilter = useFilterStore(s => s.textFilter)
   const textFilterField = useFilterStore(s => s.textFilterField)
@@ -254,7 +256,7 @@ export function DashboardPage() {
         <Tabs
           value={section}
           onValueChange={(v) => {
-            const next = v as 'focus' | 'solleciti'
+            const next = v as DashboardSection
             setSection(next)
             if (typeof window !== 'undefined') {
               window.localStorage.setItem(DASHBOARD_SECTION_STORAGE_KEY, next)
@@ -271,6 +273,10 @@ export function DashboardPage() {
               <TabsTrigger value="solleciti" className="gap-2">
                 <Bell className="h-4 w-4" />
                 Solleciti
+              </TabsTrigger>
+              <TabsTrigger value="fatturazione" className="gap-2">
+                <Receipt className="h-4 w-4" />
+                Fatturazione
               </TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-3">
@@ -336,6 +342,16 @@ export function DashboardPage() {
                 />
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="fatturazione" className="mt-3 min-h-0 flex-1 flex flex-col overflow-hidden data-[state=inactive]:hidden">
+            <div className="mb-3 flex-shrink-0">
+              <p className="text-xs text-muted-foreground">
+                Fatture emesse non ancora inviate a SDI. Giallo &gt;7gg, rosso &gt;10gg dall'invio al
+                cliente; sanzione oltre 12gg dalla data fattura senza invio a SDI.
+              </p>
+            </div>
+            <FatturazioneSection workspaceIds={selectedWorkspaceIds} />
           </TabsContent>
         </Tabs>
       </div>

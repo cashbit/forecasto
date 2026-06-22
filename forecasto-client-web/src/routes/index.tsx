@@ -4,6 +4,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { MovimentiPage } from '@/pages/MovimentiPage'
+import { FatturePage } from '@/pages/FatturePage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { CashflowPage } from '@/pages/CashflowPage'
 import { SettingsPage } from '@/pages/SettingsPage'
@@ -81,6 +82,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'movimenti', element: <MovimentiPage /> },
+      { path: 'fatture', element: <FatturePage /> },
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'cashflow', element: <CashflowPage /> },
       { path: 'inbox', element: <InboxPage /> },

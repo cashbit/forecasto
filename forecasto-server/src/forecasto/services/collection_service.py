@@ -206,6 +206,49 @@ class CollectionService:
         await self.db.refresh(collection)
         return collection
 
+    async def get_or_create_system_collection(
+        self,
+        workspace_id: str,
+        slug: str,
+        name: str,
+        description: str | None = None,
+        handler_instructions: str | None = None,
+        user_id: str | None = None,
+    ) -> Collection:
+        """Return the workspace collection with this exact slug, creating it if absent.
+
+        Unlike :meth:`create_collection` (which uniquifies the slug with -2/-3
+        suffixes), system collections — ``customers``, ``invoices``,
+        ``e-invoices``, ``intent-letters`` — use a fixed, well-known slug so
+        services can locate them deterministically across calls.
+        """
+        result = await self.db.execute(
+            select(Collection).where(
+                Collection.workspace_id == workspace_id,
+                Collection.slug == slug,
+                Collection.deleted_at.is_(None),
+            )
+        )
+        existing = result.scalar_one_or_none()
+        if existing is not None:
+            return existing
+        collection = Collection(
+            workspace_id=workspace_id,
+            name=name,
+            slug=slug,
+            description=description,
+            handler_instructions=handler_instructions,
+            extraction_schema={},
+            classification_hints={},
+            document_count=0,
+            is_archived=False,
+            created_by=user_id,
+        )
+        self.db.add(collection)
+        await self.db.flush()
+        await self.db.refresh(collection)
+        return collection
+
     async def list_collections(
         self,
         workspace_id: str,

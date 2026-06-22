@@ -104,6 +104,17 @@ if [ "$DEPLOY_SERVER" = true ]; then
   echo "Server code synced."
   echo ""
 
+  # Sync the e-invoice library (sibling repo, outside forecasto/) — used by the
+  # server to generate FatturaPA/EN16931 XML. Only src/ + manifest are needed.
+  echo ">>> Syncing e-invoice library..."
+  rsync -avz --delete \
+      --exclude '.venv' --exclude '.git' --exclude '__pycache__' \
+      --exclude '*.pyc' --exclude 'samples' --exclude 'tests' \
+      --exclude '*.egg-info' \
+      "$LOCAL_DIR/../e-invoice/" "$SERVER:$REMOTE_APP/e-invoice/"
+  echo "e-invoice library synced."
+  echo ""
+
   echo ">>> Remote: install deps, migrate, restart FastAPI..."
   ssh "$SERVER" bash -s <<'REMOTE_SERVER'
 set -euo pipefail
@@ -118,6 +129,9 @@ fi
 cd "$SERVER_DIR"
 .venv/bin/pip install --upgrade pip -q
 .venv/bin/pip install -e . -q
+# e-invoice lib: editable, no PDF deps (serializers need only lxml + pydantic,
+# both already installed via forecasto-server). Lives at $APP_DIR/e-invoice.
+.venv/bin/pip install -e "$APP_DIR/e-invoice" --no-deps -q
 
 echo "Running database migrations..."
 .venv/bin/python -m alembic upgrade head

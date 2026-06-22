@@ -321,6 +321,16 @@ export function Header() {
             size="sm"
             asChild
             className={cn(
+              location.pathname === '/fatture' && 'bg-primary/10 text-primary font-semibold'
+            )}
+          >
+            <Link to="/fatture">Fatture</Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className={cn(
               location.pathname === '/cashflow' && 'bg-primary/10 text-primary font-semibold'
             )}
           >

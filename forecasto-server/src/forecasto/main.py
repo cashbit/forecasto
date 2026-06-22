@@ -19,9 +19,11 @@ from forecasto.api import (
     bank_accounts,
     cashflow,
     collections,
+    customers,
     document_upload,
     events,
     inbox,
+    invoices,
     numerators,
     oauth,
     partner,
@@ -150,6 +152,8 @@ app.include_router(events.router, prefix="/api/v1", tags=["Events"])
 app.include_router(oauth.router, prefix="/oauth", tags=["OAuth"])
 app.include_router(inbox.router, prefix="/api/v1/workspaces", tags=["Inbox"])
 app.include_router(collections.router, prefix="/api/v1/workspaces", tags=["Collections"])
+app.include_router(customers.router, prefix="/api/v1/workspaces", tags=["Customers"])
+app.include_router(invoices.router, prefix="/api/v1/workspaces", tags=["Invoices"])
 app.include_router(numerators.router, prefix="/api/v1/workspaces", tags=["Numerators"])
 app.include_router(agent.router, prefix="/api/v1", tags=["Agent"])
 app.include_router(document_upload.router, prefix="/api/v1/workspaces", tags=["Document Upload"])
